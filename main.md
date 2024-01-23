@@ -27,7 +27,7 @@ Table: Binary operators, given in order of increasing precedence.
 
 Name      | Symbol  | Operators
 --------- | ------- | ---------
-Complex   | $\star$ | "$\mid$", ",", "$\models$", "or", "and"
+Complex   | $\star$ | "$\mid$", ",", "$\update$", "or", "and"
 Cartesian | $\circ$ | ($=$, $\neq$), ($<$, $\leq$, $>$, $\geq$), ($+$, $-$), ($*$, $/$), $\%$
 
 A *filter definition* has the shape
@@ -104,8 +104,7 @@ Example
   the whole filter would expand to "$0 \as \$x \mid 1 \as \$x \mid \$x$",
   which evaluates to 1.
 
-[^leftmost]:
-  In these simplified semantics, we have only a single kind of error, $\bot$,
+[^leftmost]: In these simplified semantics, we have only a single kind of error, $\bot$,
   so it might seem pointless to specify which error we return.
   However, in an implementation, we may have different kinds of errors.
 
@@ -148,7 +147,7 @@ $.[]$ | $\begin{cases}\langle v_0, \dots, v_n\rangle & \text{if } v = [v_0, \dot
 $.[f]$ | $\sum_{i \in f|^c_v} \langle v[i] \rangle$
 $\phi\; xs \as \$x (init; f)$ | $\sum_{i \in init|^c_v} \phi^c_i(xs|^c_v, f)$
 $x(f_1; \dots; f_n)$ | $g[f_1 / x_1, \dots, f_n / x_n]|^c_v$ if $x(x_1; \dots; x_n) \coloneqq g$
-$f \models g$ | see [](#tab:update-semantics)
+$f \update g$ | see [](#tab:update-semantics)
 
 The evaluation semantics are given in [](#tab:eval-semantics).
 We suppose that the Cartesian operator $\circ$ is defined on pairs of values,
@@ -208,7 +207,7 @@ Proof
   The other cases for $\varphi(f)$ can be proved similarly.
 
 The semantics of jq and those shown in [](#tab:eval-semantics)
-differ most notably in the case of updates; that is, $f \models g$.
+differ most notably in the case of updates; that is, $f \update g$.
 We are going to deal with this in the next subsection.
 
 
@@ -219,7 +218,7 @@ A path is a sequence of indices $i_j$ that can be written as $.[i_1]\dots[i_n]$.
 It refers to a value that can be retrieved by the filter "$.[i_1] \mid \dots \mid .[i_n]$".
 Note that "$.$" is a valid path, referring to the input value.
 
-The update operation "$f \models g$" attempts to
+The update operation "$f \update g$" attempts to
 first obtain the paths of all values returned by $f$,
 then for each path, it replaces the value at the path by $g$ applied to it.
 Note that $f$ is not allowed to produce new values; it may only return paths.
@@ -228,7 +227,7 @@ Example
 : Consider the input value $[[1, 2], [3, 4]]$.
   We can retrieve the arrays $[1, 2]$ and $[3, 4]$ from the input with the filter "$.[]$", and
   we can retrieve the numbers 1, 2, 3, 4 from the input with the filter "$.[] \mid .[]$".
-  To replace each number with its successor, we run "$(.[] \mid .[]) \models .+1$",
+  To replace each number with its successor, we run "$(.[] \mid .[]) \update .+1$",
   obtaining $[[2, 3], [4, 5]]$.
   Internally, in jq, this first builds the paths
   $.[0][0]$, $.[0][1]$, $.[1][0]$, $.[1][1]$,
@@ -240,7 +239,7 @@ the collected paths may point to values that do not exist any more.
 
 Example ex:update
 : Consider the input value $[1, 2, 2, 3]$ and the filter
-  "$.[] \models g$", where $g$ is "$\ifj . = 2 \thenj \emptys \elsej .$",
+  "$.[] \update g$", where $g$ is "$\ifj . = 2 \thenj \emptys \elsej .$",
   which we might suppose to delete all values equal to 2 from the input list.
   However, the output of jq is $[1, 2, 3]$.
   What happens here is perhaps unexpected,
@@ -257,7 +256,7 @@ there are more general examples which this approach treats in unexpected ways.
 
 Example ex:update-comma
 : Consider the input value $[[0]]$ and the filter
-  "$(.[],\; .[][]) \models g$", where $g$ is "$\ifj . = [0] \thenj [1, 1] \elsej .+1$".
+  "$(.[],\; .[][]) \update g$", where $g$ is "$\ifj . = [0] \thenj [1, 1] \elsej .+1$".
   Executing this filter in jq first builds the path
   $.[0]$ stemming from "$.[]$", then
   $.[0][0]$ stemming from "$.[][]$".
@@ -279,7 +278,7 @@ By doing so, these semantics can abandon the idea of paths altogether.
 
 The semantics use a helper function that takes an input array $v$ and
 replaces its $i$-th element by the output of $\sigma$ applied to it:
-$$(.[i] \models \sigma)|^c_v = \begin{cases}
+$$(.[i] \update \sigma)|^c_v = \begin{cases}
 [\langle v_0, \dots, v_{i-1} \rangle + \sigma|^c_{v_i} + \langle v_{i+1}, \dots, v_n \rangle] & \text{if } v = [v_0, \dots, v_n] \text{ and } 0 \leq i < n \\
 \bot & \text{otherwise}
 \end{cases}$$
@@ -289,17 +288,17 @@ $$(.[i] \models \sigma)|^c_v = \begin{cases}
 
 Table: Update semantics. Here, $\$x'$ is a fresh variable. \label{tab:update-semantics}
 
-$\mu$ | $\mu \models \sigma$
+$\mu$ | $\mu \update \sigma$
 -- | ---
 $\emptys$ | $.$
 $.$ | $\sigma$
-$f \mid g$ | $f \models (g \models \sigma)$
-$f, g$ | $(f \models \sigma) \mid (g \models \sigma)$
-$f \as \$x \mid g$ | $\reduce f \as \$x'\; (.;\; g[\$x' / \$x] \models \sigma)$
-$\ifj f \thenj g \elsej h$ | $\reduce f \as \$x'\; (.;\; \ifj \$x' \thenj g \models \sigma \elsej h \models \sigma)$
-$.[f]$ | $\reduce f \as \$x'\; (.;\; .[\$x'] \models \sigma)$
+$f \mid g$ | $f \update (g \update \sigma)$
+$f, g$ | $(f \update \sigma) \mid (g \update \sigma)$
+$f \as \$x \mid g$ | $\reduce f \as \$x'\; (.;\; g[\$x' / \$x] \update \sigma)$
+$\ifj f \thenj g \elsej h$ | $\reduce f \as \$x'\; (.;\; \ifj \$x' \thenj g \update \sigma \elsej h \update \sigma)$
+$.[f]$ | $\reduce f \as \$x'\; (.;\; .[\$x'] \update \sigma)$
 $.[]$ | $[.[] \mid \sigma]$
-$x(f_1; \dots; f_n)$ | $g[f_1 / x_1, \dots, f_n / x_n] \models \sigma$ if $x(x_1; \dots; x_n) \coloneqq g$
+$x(f_1; \dots; f_n)$ | $g[f_1 / x_1, \dots, f_n / x_n] \update \sigma$ if $x(x_1; \dots; x_n) \coloneqq g$
 
 The update semantics are given in [](#tab:update-semantics).
 The case for $f \as \$x \mid g$ is slightly tricky:
@@ -312,9 +311,9 @@ replace $\$x$ by a fresh variable $\$x'$ and
 substitute $\$x$ by $\$x'$ in $g$.
 
 Example
-: Consider the filter $0 \as \$x \mid (1 \as \$x \mid .[\$x]) \models \$x$.
+: Consider the filter $0 \as \$x \mid (1 \as \$x \mid .[\$x]) \update \$x$.
   This updates the input array at index $1$.
-  If the right-hand side of "$\models$"
+  If the right-hand side of "$\update$"
   had access to variables bound on the right-hand side,
   then the array element would be replaced by $1$,
   because the variable binding $0 \as \$x$ would be shadowed by $1 \as \$x$.
@@ -325,10 +324,10 @@ Example
 
 <!--
 We can define the plain assignment filter "$f = g$" by
-"$. \as \$x \mid f \models (\$x \mid g)$", where
+"$. \as \$x \mid f \update (\$x \mid g)$", where
 $\$x$ may not occur free in $f$ or $g$.
-The difference between "$f \models g$" and "$f = g$" is: where
-"$f \models g$" replaces all values $v$ at positions $f$ by $g$ applied to $v$,
+The difference between "$f \update g$" and "$f = g$" is: where
+"$f \update g$" replaces all values $v$ at positions $f$ by $g$ applied to $v$,
 "$f = g$" replaces all values   at positions $f$ by $g$ applied to the *same* value,
 namely the input value of "$f = g$".
 -->
