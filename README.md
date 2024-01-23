@@ -1,10 +1,4 @@
----
-title: Formal specification of the jq language
-author: Michael Färber
----
+# Formal Specification of the jq programming language
 
-$\DeclareMathOperator{\update}{\models}$
-
-## Update
-
-* $f \update g$
+Run `make` to generate a HTML version of the specification.
+For this, Pandoc 2.9 should be installed.
