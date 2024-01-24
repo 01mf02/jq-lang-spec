@@ -425,14 +425,14 @@ In addition to the filters defined in @tab:eval-semantics,
 we define the semantics of the two fold-like filters "reduce" and "foreach" as follows,
 where $"xs"$ evaluates to $angle.l x_0, dots, x_n angle.r$:
 
-$ "reduce"   "xs" "as" \$x ("init"; f) &= "init" &
-"foreach" "xs" "as" \$x ("init"; f) &= "init" \
-& | x_0 "as" \$x | f &
-& | ., (x_0 "as" \$x | f \
-& | dots &
-& | dots \
-& | x_n "as" \$x | f &
-& | ., (x_n "as" \$x | f) dots)
+$ "reduce"   "xs" "as" \$x ("init"; f) =& "init" &
+"foreach" "xs" "as" \$x ("init"; f) =& "init" \
+|& x_0 "as" \$x | f &
+|& ., (x_0 "as" \$x | f \
+|& dots &
+|& dots \
+|& x_n "as" \$x | f &
+|& ., (x_n "as" \$x | f) dots)
 $
 
 Both filters fold $f$ over the sequence $"xs"$ with the initial value $"init"$.
