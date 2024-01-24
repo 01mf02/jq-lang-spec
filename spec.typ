@@ -24,23 +24,10 @@
 #set heading(numbering: "1.")
 #set raw(lang: "jq")
 
-#let example = thmplain(
-  "example",
-  "Example",
-  inset: (left: 0em, right: 0em),
-)
-
-#let lemma = thmplain(
-  "lemma",
-  "Lemma",
-  inset: (left: 0em, right: 0em),
-)
-
-#let proof = thmplain(
-  "proof",
-  "Proof",
-  inset: (left: 0em, right: 0em),
-  base: "theorem",
+#let thm(x, y, ..args) = thmplain(x, y, inset: (left: 0em, right: 0em), args)
+#let example = thm("example", "Example")
+#let lemma = thm("theorem", "Lemma")
+#let proof = thm("proof", "Proof",
   bodyfmt: body => [
     #body #h(1fr) $square$    // Insert QED symbol
   ]
