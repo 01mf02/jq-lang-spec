@@ -38,7 +38,7 @@
 
 = Introduction
 
-UNIX has popularised the concept of *filters* and *pipes* #cite(label("DBLP:journals/bstj/Ritchie84")):
+UNIX has popularised the concept of _filters_ and _pipes_ #cite(label("DBLP:journals/bstj/Ritchie84")):
 A filter is a program that reads from an input stream and writes to an output stream.
 Pipes are used to compose filters.
 
@@ -94,7 +94,7 @@ allow for more performant execution.
 This goal of this section is to convey an intuition about how jq functions.
 The official documentation of jq is @jq-manual.
 
-jq programs are called *filters*.
+jq programs are called _filters_.
 For now, let us consider a filter to be a function from a value to a (lazy) stream of values.
 Furthermore, let us assume a value to be either a boolean, an integer, or an array of values.
 
@@ -157,7 +157,7 @@ This way, we can define a filter to calculate the factorial function, for exampl
 ] <ex:fac>
 
 
-Composition can also be used to bind values to *variables*.
+Composition can also be used to bind values to _variables_.
 The filter "`f as $x | g`" performs the following:
 Given an input value `i`,
 for every output `o` of the filter `f` applied to `i`,
@@ -208,7 +208,7 @@ which has a similar function as lens setters in languages such as Haskell
 #cite(label("DBLP:journals/programming/PickeringGW17")):
 Intuitively, the filter "`p |= f`" considers any value `v` returned by `p` and
 replaces it by the output of `f` applied to `v`.
-We call a filter on the left-hand side of "`|=`" a *path expression*.
+We call a filter on the left-hand side of "`|=`" a _path expression_.
 For example, when given the input `[1, 2, 3]`,
 the filter  "`.[] |= (. + 1)`" yields `[2, 3, 4]`, and
 the filter "`.[1] |= (. + 1)`" yields `[1, 3, 3]`.
@@ -246,7 +246,7 @@ the concrete syntax introduced in @preliminaries,
 we use cursive font (as in "$f$", "$v$") for the specification
 instead of the previously used typewriter font (as in "`f`", "`v`").
 
-A *filter* $f$ is defined by
+A _filter_ $f$ is defined by
 $ f := n | \$x | . | .[] | .[f] | [f] | (f) | f? | f star f | f circ f | "if" f "then" f "else" f | x | x(f; dots; f) $
 where $n$ is an integer and $x$ is an identifier (such as "empty").
 
@@ -269,7 +269,7 @@ a fold of the shape "$phi med f "as" \$x (f; f)$", where $phi$ is either "reduce
   ],
 ) <tab:binops>
 
-A *filter definition* has the shape
+A _filter definition_ has the shape
 "$f(x_1; dots; x_n) := g$".
 Here, $f$ is an $n$-ary filter where $g$ may refer to $x_i$.
 For example, this allows us to define filters that produce the booleans,
@@ -458,7 +458,7 @@ We are going to deal with this in @updates.
 == Updates <updates>
 
 /*
-jq's update mechanism works with *paths*.
+jq's update mechanism works with _paths_.
 A path is a sequence of indices $i_j$ that can be written as $.[i_1]\dots[i_n]$.
 It refers to a value that can be retrieved by the filter "$.[i_1] \mid \dots \mid .[i_n]$".
 Note that "$.$" is a valid path, referring to the input value.
@@ -573,7 +573,7 @@ We can define the plain assignment filter "$f = g$" by
 $\$x$ may not occur free in $f$ or $g$.
 The difference between "$f \update g$" and "$f = g$" is: where
 "$f \update g$" replaces all values $v$ at positions $f$ by $g$ applied to $v$,
-"$f = g$" replaces all values   at positions $f$ by $g$ applied to the *same* value,
+"$f = g$" replaces all values   at positions $f$ by $g$ applied to the _same_ value,
 namely the input value of "$f = g$".
 -->
 
