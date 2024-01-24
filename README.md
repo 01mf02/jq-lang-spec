@@ -1,4 +1,4 @@
 # Formal Specification of the jq programming language
 
-Run `make` to generate a HTML version of the specification.
-For this, Pandoc 2.9 should be installed.
+Run `typst compile spec.typ` to generate a PDF version of the specification.
+For this, Typst 0.10 should be installed.
