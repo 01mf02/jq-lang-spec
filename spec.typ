@@ -33,15 +33,24 @@
   ]
 ).with(numbering: none)
 
-#let circ = $circle.small$
+#let circ = [#box($circle.small$)]
 #let update = $models$
 #let var(x) = $\$#x$
+#let circeq = [#box($circ#h(0pt)=$)]
 
 = TODO:
 
 - fix QED at end of proof
+- fix substitution syntax
 - extend to full JSON
-- lowering goes from HIR to MIR: $.[p_1]dots[p_n]$, $f circ g$, $f circ = g$, $f = g$, $f?$
+- constant filter (string, number)
+- lowering goes from HIR to MIR:
+  - $.[p_1]dots[p_n]$
+  - $f circ g$
+  - $f circeq g$
+  - $f = g$
+  - $f?$
+  - if-then-else
 - convention: error $e$, result $r$, value $v$, path part $p$, variable $var(x)$
 - error: value or break
 - specify $.[l:h]$ and $"try" f "catch" g$, $"label" var(x) | g$, $"break" var(x)$
@@ -60,14 +69,15 @@ Lowering paths:
 
 $f[p_1]dots[p_n] equiv . "as" var(x') | f | .[p_1]_var(x') | dots | .[p_n]_var(x')$
 
-$ .[p]_var(x) = cases(
-  .[] & "if" p "is empty",
-  (var(x) | f) "as" var(y') | .[var(y')] & "if" p "is" f,
-  (var(x) | f) "as" var(y') | .[var(y') :] & "if" p "is" f:,
-  (var(x) | g) "as" var(z') | .[: var(z')] & "if" p "is" :g,
-  (var(x) | f) "as" var(y') | (var(x) | g) "as" var(z') | .[var(y') : var(z')] & "if" p "is" f:g,
+#figure(table(columns: 2, align: (left, right),
+  $[p]$, $.[p]_var(x)$,
+  $[ ]$, $.[]$,
+  $[f]$, $(var(x) | f) "as" var(y') | .[var(y')]$,
+  $[f:]$, $(var(x) | f) "as" var(y') | .[var(y') :]$,
+  $[:g]$, $(var(x) | g) "as" var(z') | .[: var(z')]$,
+  $[f:g]$, $(var(x) | f) "as" var(y') | (var(x) | g) "as" var(z') | .[var(y') : var(z')]$,
+))
 
-) $
 
 
 = Introduction
@@ -491,34 +501,34 @@ We are going to deal with this in @updates.
 
 == Updates <updates>
 
-/*
 jq's update mechanism works with _paths_.
-A path is a sequence of indices $i_j$ that can be written as $.[i_1]\dots[i_n]$.
-It refers to a value that can be retrieved by the filter "$.[i_1] \mid \dots \mid .[i_n]$".
+A path is a sequence of indices $i_j$ that can be written as $.[i_1]dots[i_n]$.
+It refers to a value that can be retrieved by the filter "$.[i_1] | dots | .[i_n]$".
 Note that "$.$" is a valid path, referring to the input value.
 
-The update operation "$f \update g$" attempts to
+The update operation "$f update g$" attempts to
 first obtain the paths of all values returned by $f$,
 then for each path, it replaces the value at the path by $g$ applied to it.
 Note that $f$ is not allowed to produce new values; it may only return paths.
 
-Example
-: Consider the input value $[[1, 2], [3, 4]]$.
+#example[
+  Consider the input value $[[1, 2], [3, 4]]$.
   We can retrieve the arrays $[1, 2]$ and $[3, 4]$ from the input with the filter "$.[]$", and
-  we can retrieve the numbers 1, 2, 3, 4 from the input with the filter "$.[] \mid .[]$".
-  To replace each number with its successor, we run "$(.[] \mid .[]) \update .+1$",
+  we can retrieve the numbers 1, 2, 3, 4 from the input with the filter "$.[] | .[]$".
+  To replace each number with its successor, we run "$(.[] | .[]) update .+1$",
   obtaining $[[2, 3], [4, 5]]$.
   Internally, in jq, this first builds the paths
   $.[0][0]$, $.[0][1]$, $.[1][0]$, $.[1][1]$,
   then updates the value at each of these paths with $g$.
+]
 
 There are several problems with this approach to updates:
 One of these problems is that if $g$ returns no output,
 the collected paths may point to values that do not exist any more.
 
-Example ex:update
-: Consider the input value $[1, 2, 2, 3]$ and the filter
-  "$.[] \update g$", where $g$ is "$\ifj . = 2 \thenj \emptys \elsej .$",
+#example[
+  Consider the input value $[1, 2, 2, 3]$ and the filter
+  "$.[] update g$", where $g$ is "$"if" . = 2 "then" "empty" "else" .$",
   which we might suppose to delete all values equal to 2 from the input list.
   However, the output of jq is $[1, 2, 3]$.
   What happens here is perhaps unexpected,
@@ -528,14 +538,15 @@ Example ex:update
   Applying $g$ to $.[1]$ removes the first occurrence of the number 2 from the list,
   leaving the list $[1, 2, 3]$ and the paths $.[2]$, $.[3]$ to update.
   However, $.[2]$ now refers to the number 3, and $.[3]$ points beyond the list.
+] <ex:update>
 
 Even if this particular example can be executed correctly with a special case for
 filters that do not return exactly one output,
 there are more general examples which this approach treats in unexpected ways.
 
-Example ex:update-comma
-: Consider the input value $[[0]]$ and the filter
-  "$(.[],\; .[][]) \update g$", where $g$ is "$\ifj . = [0] \thenj [1, 1] \elsej .+1$".
+#example[
+  Consider the input value $[[0]]$ and the filter
+  "$(.[], med .[][]) update g$", where $g$ is "$"if" . = [0] "then" [1, 1] "else" .+1$".
   Executing this filter in jq first builds the path
   $.[0]$ stemming from "$.[]$", then
   $.[0][0]$ stemming from "$.[][]$".
@@ -543,65 +554,67 @@ Example ex:update-comma
   $[[1, 1]]$.
   Now, executing $g$ on the remaining path yields $[[2, 1]]$,
   instead of $[[2, 2]]$ as we might have expected.
+] <ex:update-comma>
 
 The general problem here is that the execution of the filter $g$ changes the input value,
 yet only the paths constructed from the initial input are considered.
 This leads to
 paths pointing to the wrong data,
-paths pointing to non-existent data (both occurring in [@ex:update]), and
-missing paths ([@ex:update-comma]).
+paths pointing to non-existent data (both occurring in @ex:update), and
+missing paths (@ex:update-comma).
 
 I now show different semantics that avoid this problem,
 by interleaving calls to $f$ and $g$.
 By doing so, these semantics can abandon the idea of paths altogether.
 
 The semantics use a helper function that takes an input array $v$ and
-replaces its $i$-th element by the output of $\sigma$ applied to it:
-$$(.[i] \update \sigma)|^c_v = \begin{cases}
-[\langle v_0, \dots, v_{i-1} \rangle + \sigma|^c_{v_i} + \langle v_{i+1}, \dots, v_n \rangle] & \text{if } v = [v_0, \dots, v_n] \text{ and } 0 \leq i < n \\
-\bot & \text{otherwise}
-\end{cases}$$
+replaces its $i$-th element by the output of $sigma$ applied to it:
+$ (.[i] update sigma)|^c_v = cases(
+  [angle.l v_0, dots, v_(i-1) angle.r + sigma|^c_(v_i) + angle.l v_(i+1), dots, v_n angle.r]
+    & "if " v = [v_0, dots, v_n] " and " 0 lt.eq i < n,
+  bot & "otherwise"
+) $
 
-<!-- μονοπάτι = path -->
-<!-- συνάρτηση = function -->
+// μονοπάτι = path
+// συνάρτηση = function
 
-Table: Update semantics. Here, $var(x')$ is a fresh variable. \label{tab:update-semantics}
+#figure(caption: [Update semantics. Here, $var(x')$ is a fresh variable.], table(columns: 2,
+  $mu$, $mu update sigma$,
+  $"empty"$, $.$,
+  $.$, $sigma$,
+  $f | g$, $f update (g update sigma)$,
+  $f, g$, $(f update sigma) | (g update sigma)$,
+  $f "as" var(x) | g$, $"reduce" f "as" var(x') (.; g[var(x') / var(x)] update sigma)$,
+  $"if" f "then" g "else" h$, $"reduce" f "as" var(x') (.; "if" var(x') "then" g update sigma "else" h update sigma)$,
+  $.[f]$, $"reduce" f "as" var(x') (.; .[var(x')] update sigma)$,
+  $.[]$, $[.[] | sigma]$,
+  $x(f_1; dots; f_n)$, $g[f_1 / x_1, dots, f_n / x_n] update sigma "if" x(x_1; dots; x_n) := g$,
+)) <tab:update-semantics>
 
-$\mu$ | $\mu \update \sigma$
--- | ---
-$\emptys$ | $.$
-$.$ | $\sigma$
-$f \mid g$ | $f \update (g \update \sigma)$
-$f, g$ | $(f \update \sigma) \mid (g \update \sigma)$
-$f \as var(x) \mid g$ | $\reduce f \as var(x')\; (.;\; g[var(x') / var(x)] \update \sigma)$
-$\ifj f \thenj g \elsej h$ | $\reduce f \as var(x')\; (.;\; \ifj var(x') \thenj g \update \sigma \elsej h \update \sigma)$
-$.[f]$ | $\reduce f \as var(x')\; (.;\; .[var(x')] \update \sigma)$
-$.[]$ | $[.[] \mid \sigma]$
-$x(f_1; \dots; f_n)$ | $g[f_1 / x_1, \dots, f_n / x_n] \update \sigma$ if $x(x_1; \dots; x_n) \coloneqq g$
-
-The update semantics are given in [](#tab:update-semantics).
-The case for $f \as var(x) \mid g$ is slightly tricky:
-Here, the intent is that $g$ has access to $var(x)$, but $\sigma$ does not.
+The update semantics are given in @tab:update-semantics.
+The case for $f "as" var(x) | g$ is slightly tricky:
+Here, the intent is that $g$ has access to $var(x)$, but $sigma$ does not.
 This is to ensure compatibility with jq's original semantics,
-which execute $\mu$ and $\sigma$ independently,
-so $\sigma$ should not be able to access variables bound in $\mu$.
+which execute $mu$ and $sigma$ independently,
+so $sigma$ should not be able to access variables bound in $mu$.
 In order to ensure that, we
 replace $var(x)$ by a fresh variable $var(x')$ and
 substitute $var(x)$ by $var(x')$ in $g$.
 
-Example
-: Consider the filter $0 \as var(x) \mid (1 \as var(x) \mid .[var(x)]) \update var(x)$.
+#example[
+  Consider the filter $0 "as" var(x) | (1 "as" var(x) | .[var(x)]) update var(x)$.
   This updates the input array at index $1$.
-  If the right-hand side of "$\update$"
+  If the right-hand side of "$update$"
   had access to variables bound on the right-hand side,
   then the array element would be replaced by $1$,
-  because the variable binding $0 \as var(x)$ would be shadowed by $1 \as var(x)$.
+  because the variable binding $0 "as" var(x)$ would be shadowed by $1 "as" var(x)$.
   However, because we enforce that
   the right-hand side does not have access to variables bound on the right-hand side,
   the array element is replaced by $0$, which is the value originally bound to $var(x)$.
   Given the input array $[1, 2, 3]$, the filter yields the final result $[1, 0, 3]$.
+]
 
-<!--
+/*
 We can define the plain assignment filter "$f = g$" by
 "$. \as var(x) \mid f \update (var(x) \mid g)$", where
 $var(x)$ may not occur free in $f$ or $g$.
@@ -609,20 +622,16 @@ The difference between "$f \update g$" and "$f = g$" is: where
 "$f \update g$" replaces all values $v$ at positions $f$ by $g$ applied to $v$,
 "$f = g$" replaces all values   at positions $f$ by $g$ applied to the _same_ value,
 namely the input value of "$f = g$".
--->
-
-<!--
-In summary, the given semantics are easier to define and to reason about,
-while keeping compatibility with the original semantics in most use cases.
-Furthermore, avoiding to construct paths also appears to
-be more performant, as I will show in [](#evaluation).
--->
 */
 
+= Conclusion
 
-#figure(caption: "Update semantics.", table(columns: 2,
-)) <tab:update-semantics>
-
+In summary, the given semantics are easier to define and to reason about,
+while keeping compatibility with the original semantics in most use cases.
+/*
+Furthermore, avoiding to construct paths also appears to
+be more performant, as I will show in [](#evaluation).
+*/
 
 
 #bibliography("literature.bib")
