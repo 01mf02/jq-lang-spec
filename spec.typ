@@ -35,6 +35,40 @@
 
 #let circ = $circle.small$
 #let update = $models$
+#let var(x) = $\$#x$
+
+= TODO:
+
+- fix QED at end of proof
+- extend to full JSON
+- lowering goes from HIR to MIR: $.[p_1]dots[p_n]$, $f circ g$, $f circ = g$, $f = g$, $f?$
+- convention: error $e$, result $r$, value $v$, path part $p$, variable $var(x)$
+- error: value or break
+- specify $.[l:h]$ and $"try" f "catch" g$, $"label" var(x) | g$, $"break" var(x)$
+- specify arithmetic operations for non-numeric values (recursive object merge, ...)
+- try/catch difference: allow simulation via $"label" var(x) | "try" f "catch" (g, "break" var(x))$
+- why is empty not definable? because of updates!
+- define inputs, keys
+- is $.[var(x)]?$ equivalent to $(.[var(x)])?$?
+- is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
+- define foreach via for and clarify that latter is not part of jq
+- define $"dom"(v)$
+- xs -> $x$
+- literature research
+
+Lowering paths:
+
+$f[p_1]dots[p_n] equiv . "as" var(x') | f | .[p_1]_var(x') | dots | .[p_n]_var(x')$
+
+$ .[p]_var(x) = cases(
+  .[] & "if" p "is empty",
+  (var(x) | f) "as" var(y') | .[var(y')] & "if" p "is" f,
+  (var(x) | f) "as" var(y') | .[var(y') :] & "if" p "is" f:,
+  (var(x) | g) "as" var(z') | .[: var(z')] & "if" p "is" :g,
+  (var(x) | f) "as" var(y') | (var(x) | g) "as" var(z') | .[var(y') : var(z')] & "if" p "is" f:g,
+
+) $
+
 
 = Introduction
 
@@ -247,14 +281,14 @@ we use cursive font (as in "$f$", "$v$") for the specification
 instead of the previously used typewriter font (as in "`f`", "`v`").
 
 A _filter_ $f$ is defined by
-$ f := n | \$x | . | .[] | .[f] | [f] | (f) | f? | f star f | f circ f | "if" f "then" f "else" f | x | x(f; dots; f) $
+$ f := n | var(x) | . | .[] | .[f] | [f] | (f) | f? | f star f | f circ f | "if" f "then" f "else" f | x | x(f; dots; f) $
 where $n$ is an integer and $x$ is an identifier (such as "empty").
 
-By convention, we write $\$x'$ to denote a fresh variable.
+By convention, we write $var(x')$ to denote a fresh variable.
 The potential instances of $star$ and $circ$ are given in @tab:binops.
 Furthermore, $f$ can be
-a variable binding of the shape "$f "as" \$x | f$" or
-a fold of the shape "$phi med f "as" \$x (f; f)$", where $phi$ is either "reduce" or "foreach".
+a variable binding of the shape "$f "as" var(x) | f$" or
+a fold of the shape "$phi med f "as" var(x) (f; f)$", where $phi$ is either "reduce" or "for".
 
 #figure(
   table(
@@ -332,12 +366,12 @@ This prevents variable bindings in $phi.alt$ from
 shadowing variables that occur in the co-domain of $sigma$.
 
 #example[
-  Consider the filter "$0 "as" \$x | f(\$x)$", where "$f(g) := 1 "as" \$x | g$".
-  Here, "$f(\$x)$" expands to "$1 "as" \$x' | \$x$", where "$\$x'$" is a fresh variable.
-  The whole filter expands to "$0 "as" \$x | 1 "as" \$x' | \$x$",
+  Consider the filter "$0 "as" var(x) | f(var(x))$", where "$f(g) := 1 "as" var(x) | g$".
+  Here, "$f(var(x))$" expands to "$1 "as" var(x') | var(x)$", where "$var(x')$" is a fresh variable.
+  The whole filter expands to "$0 "as" var(x) | 1 "as" var(x') | var(x)$",
   which evaluates to 0.
-  If we would (erroneously) fail to replace $\$x$ in $f(g)$ by a fresh variable, then
-  the whole filter would expand to "$0 "as" \$x | 1 "as" \$x | \$x$",
+  If we would (erroneously) fail to replace $var(x)$ in $f(g)$ by a fresh variable, then
+  the whole filter would expand to "$0 "as" var(x) | 1 "as" var(x) | var(x)$",
   which evaluates to 1.
 ]
 
@@ -346,21 +380,21 @@ shadowing variables that occur in the co-domain of $sigma$.
     columns: 2,
     $phi.alt$, $sigma phi.alt$,
     [$.$, $n$ (where $n in bb(Z)$), or $.[]$], $phi.alt$,
-    [$\$x$ or $x$], $sigma (phi.alt)$,
+    [$var(x)$ or $x$], $sigma (phi.alt)$,
     $.[f]$, $.[sigma f]$,
     $f?$, $(sigma f)?$,
     $f star g$, $sigma f star sigma g$,
     $f circ g$, $sigma f circ sigma g$,
     $"if" f "then" g "else" h$, $"if" sigma f "then" sigma g "else" sigma h$,
     $x(f_1; dots; f_n)$, $x(sigma f_1; dots; sigma f_n)$,
-    $f "as" \$x | g$, $sigma f "as" \$x' | sigma' g$,
+    $f "as" var(x) | g$, $sigma f "as" var(x') | sigma' g$,
     // TODO: correctly render xs and init, see https://github.com/typst/typst/issues/1125
-    $phi med "xs" "as" \$x ("init"; f)$, $phi med sigma "xs" "as" \$x'(sigma "init"; sigma' f)$
+    $phi med x "as" var(x) (y_0; f)$, $phi med sigma x "as" var(x')(sigma y_0; sigma' f)$
   ),
   caption: [
     Substitution. Here,
-    $\$x'$ is a fresh variable and
-    $sigma' = sigma{\$x |-> \$x'}$.
+    $var(x')$ is a fresh variable and
+    $sigma' = sigma{var(x) |-> var(x')}$.
   ]
 ) <tab:substitution>
 
@@ -369,11 +403,11 @@ shadowing variables that occur in the co-domain of $sigma$.
   $"empty"$, $angle.l angle.r$,
   $.$, $angle.l v angle.r$,
   [$n$ (where $n in bb(Z)$)], $angle.l n angle.r$,
-  $\$x$, $angle.l c(\$x) angle.r$,
+  $var(x)$, $angle.l c(var(x)) angle.r$,
   $[f]$, $angle.l [f|^c_v] angle.r$,
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
-  $f "as" \$x | g$, $sum_(x in f|^c_v) g|^(c{\$x |-> x})_v$,
+  $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
   $f circ g$, $sum_(x in f|^c_v) sum_(y in g|^c_v) angle.l x circ y angle.r$,
   $f?$, $sum_(x in f|^c_v) cases(
     angle.l angle.r & "if " x = bot,
@@ -387,7 +421,7 @@ shadowing variables that occur in the co-domain of $sigma$.
     angle.l bot angle.r & "otherwise"
   )$,
   $.[f]$, $sum_(i in f|^c_v) angle.l v[i] angle.r$,
-  $phi med "xs" "as" \$x ("init"; f)$, $sum_(i in "init"|^c_v) phi^c_i ("xs"|^c_v, f)$,
+  $phi med x "as" var(x) (y_0; f)$, $sum_(i in y_0|^c_v) phi^c_i (x|^c_v, f)$,
   $x(f_1; dots; f_n)$, [$g[f_1 / x_1, dots, f_n / x_n]|^c_v$ if $x(x_1; dots; x_n) := g$],
   $f update g$, [see @tab:update-semantics]
 )) <tab:eval-semantics>
@@ -402,48 +436,48 @@ $sum_(y in g|^c_v) sum_(x in f|^c_v) angle.l x circ y angle.r$.
 //The reason will be given in [](#cloning).
 Note that the difference only shows when both $f$ and $g$ return multiple values.
 
-$ phi^c_v ("xs", f) := cases(
-  angle.l #hide("v") angle.r + sum_(x in f|^(c{\$x |-> x})_v) phi^c_x ("xt", f) & "if " "xs" = angle.l x angle.r + "xt" " and " phi = "reduce",
-  angle.l        v   angle.r + sum_(x in f|^(c{\$x |-> x})_v) phi^c_x ("xt", f) & "if " "xs" = angle.l x angle.r + "xt" " and " phi = "foreach",
+$ phi^c_v (l, f) := cases(
+  angle.l #hide("v") angle.r + sum_(x in f|^(c{var(x) |-> h})_v) phi^c_x (t, f) & "if " l = angle.l h angle.r + t " and " phi = "reduce",
+  angle.l        v   angle.r + sum_(x in f|^(c{var(x) |-> h})_v) phi^c_x (t, f) & "if " l = angle.l h angle.r + t " and " phi = "for",
   angle.l        v   angle.r & "otherwise"
 ) $
 
 In addition to the filters defined in @tab:eval-semantics,
-we define the semantics of the two fold-like filters "reduce" and "foreach" as follows,
-where $"xs"$ evaluates to $angle.l x_0, dots, x_n angle.r$:
+we define the semantics of the two fold-like filters "reduce" and "for" as follows,
+where $x$ evaluates to $angle.l x_0, dots, x_n angle.r$:
 
-$ "reduce"   "xs" "as" \$x ("init"; f) =& "init" &
-"foreach" "xs" "as" \$x ("init"; f) =& "init" \
-|& x_0 "as" \$x | f &
-|& ., (x_0 "as" \$x | f \
+$ "reduce"   x "as" var(x) (y_0; f) =& y_0 &
+  "for"      x "as" var(x) (y_0; f) =& y_0 \
+|& x_0 "as" var(x) | f &
+|& ., (x_0 "as" var(x) | f \
 |& dots &
 |& dots \
-|& x_n "as" \$x | f &
-|& ., (x_n "as" \$x | f) dots)
+|& x_n "as" var(x) | f &
+|& ., (x_n "as" var(x) | f) dots)
 $
 
-Both filters fold $f$ over the sequence $"xs"$ with the initial value $"init"$.
+Both filters fold $f$ over the sequence given by $x$ with the initial value $y_0$.
 Their main difference is that "reduce" returns only the final value(s),
-whereas "foreach" also returns all intermediate ones.
+whereas "for" also returns all intermediate ones.
 
 The following property can be used to eliminate bindings.
 
 #lemma[
   Let $phi.alt(f)$ be a filter such that $phi.alt(f)|^c_v$ has the shape
   "$sum_(x in f|^c_v) dots$".
-  Then $phi.alt(f)$ is equivalent to "$f "as" \$x | phi.alt(\$x)$".
+  Then $phi.alt(f)$ is equivalent to "$f "as" var(x) | phi.alt(var(x))$".
 ]
 
 #proof[
   We have to prove the statement for $phi.alt(f)$ set to
-  "$f | g$", "$f "as" \$x | g$", "$f circ g$", "$f?$",
+  "$f | g$", "$f "as" var(x) | g$", "$f circ g$", "$f?$",
   "$f "and" g$", "$f "or" g$", "$"if" f "then" g "else" h$",
-  "$.[f]$", and "$phi "xs" "as" \$x(f; g)$".
+  "$.[f]$", and "$phi med x "as" var(x)(f; g)$".
   Let us consider the filter $phi.alt(f)$ to be $.[f]$.
-  Then we show that $.[f]$ is equivalent to $f "as" \$x | .[\$x]$:
-  $ (f "as" \$x | .[\$x])|^c_v
-  &= sum_(x in f|^c_v) .[\$x]|^(c{\$x |-> x})_v \
-  &= sum_(x in f|^c_v) sum_(i in \$x|^(c{\$x |-> x})_v) angle.l v[i] angle.r \
+  Then we show that $.[f]$ is equivalent to $f "as" var(x) | .[var(x)]$:
+  $ (f "as" var(x) | .[var(x)])|^c_v
+  &= sum_(x in f|^c_v) .[var(x)]|^(c{var(x) |-> x})_v \
+  &= sum_(x in f|^c_v) sum_(i in var(x)|^(c{var(x) |-> x})_v) angle.l v[i] angle.r \
   &= sum_(x in f|^c_v) sum_(i in angle.l x angle.r) angle.l v[i] angle.r \
   &= sum_(x in f|^c_v) angle.l v[x] angle.r \
   &= .[f]|^c_v
@@ -531,7 +565,7 @@ $$(.[i] \update \sigma)|^c_v = \begin{cases}
 <!-- μονοπάτι = path -->
 <!-- συνάρτηση = function -->
 
-Table: Update semantics. Here, $\$x'$ is a fresh variable. \label{tab:update-semantics}
+Table: Update semantics. Here, $var(x')$ is a fresh variable. \label{tab:update-semantics}
 
 $\mu$ | $\mu \update \sigma$
 -- | ---
@@ -539,38 +573,38 @@ $\emptys$ | $.$
 $.$ | $\sigma$
 $f \mid g$ | $f \update (g \update \sigma)$
 $f, g$ | $(f \update \sigma) \mid (g \update \sigma)$
-$f \as \$x \mid g$ | $\reduce f \as \$x'\; (.;\; g[\$x' / \$x] \update \sigma)$
-$\ifj f \thenj g \elsej h$ | $\reduce f \as \$x'\; (.;\; \ifj \$x' \thenj g \update \sigma \elsej h \update \sigma)$
-$.[f]$ | $\reduce f \as \$x'\; (.;\; .[\$x'] \update \sigma)$
+$f \as var(x) \mid g$ | $\reduce f \as var(x')\; (.;\; g[var(x') / var(x)] \update \sigma)$
+$\ifj f \thenj g \elsej h$ | $\reduce f \as var(x')\; (.;\; \ifj var(x') \thenj g \update \sigma \elsej h \update \sigma)$
+$.[f]$ | $\reduce f \as var(x')\; (.;\; .[var(x')] \update \sigma)$
 $.[]$ | $[.[] \mid \sigma]$
 $x(f_1; \dots; f_n)$ | $g[f_1 / x_1, \dots, f_n / x_n] \update \sigma$ if $x(x_1; \dots; x_n) \coloneqq g$
 
 The update semantics are given in [](#tab:update-semantics).
-The case for $f \as \$x \mid g$ is slightly tricky:
-Here, the intent is that $g$ has access to $\$x$, but $\sigma$ does not.
+The case for $f \as var(x) \mid g$ is slightly tricky:
+Here, the intent is that $g$ has access to $var(x)$, but $\sigma$ does not.
 This is to ensure compatibility with jq's original semantics,
 which execute $\mu$ and $\sigma$ independently,
 so $\sigma$ should not be able to access variables bound in $\mu$.
 In order to ensure that, we
-replace $\$x$ by a fresh variable $\$x'$ and
-substitute $\$x$ by $\$x'$ in $g$.
+replace $var(x)$ by a fresh variable $var(x')$ and
+substitute $var(x)$ by $var(x')$ in $g$.
 
 Example
-: Consider the filter $0 \as \$x \mid (1 \as \$x \mid .[\$x]) \update \$x$.
+: Consider the filter $0 \as var(x) \mid (1 \as var(x) \mid .[var(x)]) \update var(x)$.
   This updates the input array at index $1$.
   If the right-hand side of "$\update$"
   had access to variables bound on the right-hand side,
   then the array element would be replaced by $1$,
-  because the variable binding $0 \as \$x$ would be shadowed by $1 \as \$x$.
+  because the variable binding $0 \as var(x)$ would be shadowed by $1 \as var(x)$.
   However, because we enforce that
   the right-hand side does not have access to variables bound on the right-hand side,
-  the array element is replaced by $0$, which is the value originally bound to $\$x$.
+  the array element is replaced by $0$, which is the value originally bound to $var(x)$.
   Given the input array $[1, 2, 3]$, the filter yields the final result $[1, 0, 3]$.
 
 <!--
 We can define the plain assignment filter "$f = g$" by
-"$. \as \$x \mid f \update (\$x \mid g)$", where
-$\$x$ may not occur free in $f$ or $g$.
+"$. \as var(x) \mid f \update (var(x) \mid g)$", where
+$var(x)$ may not occur free in $f$ or $g$.
 The difference between "$f \update g$" and "$f = g$" is: where
 "$f \update g$" replaces all values $v$ at positions $f$ by $g$ applied to $v$,
 "$f = g$" replaces all values   at positions $f$ by $g$ applied to the _same_ value,
