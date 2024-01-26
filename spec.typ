@@ -294,6 +294,9 @@ but eliminate corner cases like the ones shown.
 - equality
 
 An object is a unordered map from strings to values.
+We write
+${k_1:    v_1, ..., k_n:    v_n}$ as alternative syntax for
+${k_1 |-> v_1, ..., k_n |-> v_n}$.
 We also refer to the domain of an object as _keys_.
 
 By convention, we write
@@ -325,7 +328,7 @@ $ abs(v) := cases(
   "error" & "otherwise (if " v in {"true", "false"}")",
 ) $
 
-We define addition of two values as follows:
+We define addition of two values $l$ and $r$ as follows:
 
 $ l + r := cases(
   v & "if" l = "null" "and" r = v", or" l = v "and" r = "null",
@@ -360,7 +363,7 @@ It returns $"null"$ if
 the value $v$ does not contain a value at index $i$,
 but $v$ could be _extended_ to contain one.
 More formally, $v[i]$ is $"null"$ if $v eq.not "null"$ and
-there exists some value $v' = v + delta$ such that $v'[i]$ is not null.
+there exists some value $v' = v + delta$ such that $v'[i] eq.not "null"$.
 
 We establish a total order on values:
 $ "null" < "false" < "true" < n < s < a < o, $ where
