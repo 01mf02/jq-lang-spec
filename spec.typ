@@ -341,12 +341,12 @@ $ l + r := cases(
 
 The most complicated case here is the addition of two objects:
 It simply states that the addition is _right-biased_; i.e.,
-if we have two objects $l$ and $r$, then $(l + r)[i] = r[i]$.
+if we have two objects $l$ and $r$ and $r[i] eq.not "null"$, then $(l + r)[i] = r[i]$.
 
-We will now introduce an indexing operator#footnote[
-  While we will use this operator to define jq's `.[i]` operator,
-  it does not capture the full complexity of `.[i]`; for example,
-  `.[i]` is also defined for cases where `i` yields a negative number.
+The value $v[i]$ of a value $v$ at index $i$ is defined as follows#footnote[
+  While we will use $v[i]$ to define jq's `.[i]` operator,
+  $v[i]$ does not capture the full complexity of `.[i]`; for example,
+  #box(`.[i]`) is also defined for cases where `i` yields a negative number.
   We will address these differences later in @semantics.
 ]:
 
