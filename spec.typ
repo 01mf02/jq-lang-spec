@@ -280,6 +280,107 @@ that behave like jq in most typical use cases
 but eliminate corner cases like the ones shown.
 
 
+= Values & Errors
+
+- JSON
+- YAML
+- numbers
+- errors
+- $"error"$
+- multiplication
+- subtraction
+- division
+- modulo
+- equality
+
+An object is a unordered map from strings to values.
+We also refer to the domain of an object as _keys_.
+
+By convention, we write
+$v$ for values,
+$n$ for numbers,
+$s$ for strings,
+$a$ for arrays,
+$o$ for objects,
+$c$ for characters,
+$k$ for object keys, and
+$e$ for errors.
+
+The domain of a value is defined as follows:
+
+$ "dom"(v) := cases(
+  [0  , dots,   n] & "if " v = [v_0, dots, v_n],
+  [k_0, dots, k_n] & "if " v = {k_0: v_0, dots, k_n: v_n},
+  "error"          & "otherwise",
+) $
+
+We define the _length_ of a value as follows:
+
+$ abs(v) := cases(
+  0       & "if " v = "null",
+  abs(n)  & "if " v "is a number" n,
+  n       & "if " v = c_1...c_n,
+  n       & "if " v = [v_1, dots, v_n],
+  n       & "if " v = {k_1: v_1, dots, k_n: v_n},
+  "error" & "otherwise (if " v in {"true", "false"}")",
+) $
+
+We define addition of two values as follows:
+
+$ l + r := cases(
+  v & "if" l = "null" "and" r = v", or" l = v "and" r = "null",
+  n_1 + n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
+  c_(l,1)...c_(l,m)c_(r,1)...c_(r,n) & "if" l = c_(l,1)...c_(l,m) "and" r = c_(r,1)...c_(r,n),
+  [l_1, ..., l_m, r_1, ..., r_n] & "if" l = [l_1, dots, l_m] "and" r = [r_1, dots, r_n],
+  (union.big_(k in "dom"(l) without "dom"(r)) {k: l[k]}) union r & "if" l = {...} "and" r = {...},
+  "error" & "otherwise",
+) $
+
+The most complicated case here is the addition of two objects:
+It simply states that the addition is _right-biased_; i.e.,
+if we have two objects $l$ and $r$, then $(l + r)[i] = r[i]$.
+
+We will now introduce an indexing operator#footnote[
+  While we will use this operator to define jq's `.[i]` operator,
+  it does not capture the full complexity of `.[i]`; for example,
+  `.[i]` is also defined for cases where `i` yields a negative number.
+  We will address these differences later in @semantics.
+]:
+
+$ v[i] := cases(
+  v_i    & "if" v = [v_0, dots, v_n] "," i in bb(N)", and" i <= n,
+  "null" & "if" v = [v_0, dots, v_n] "," i in bb(N)", and" i > n,
+  v_j    & "if" v = {k_0: v_0, dots, k_n: v_n}"," i "is a string, and" k_j = i,
+  "null" & "if" v = {k_0: v_0, dots, k_n: v_n}"," i "is a string, and" i in.not {k_0, dots, k_n},
+  "error" & "otherwise",
+) $
+
+The idea behind this indexing operator is as follows:
+It returns $"null"$ if
+the value $v$ does not contain a value at index $i$,
+but $v$ could be _extended_ to contain one.
+More formally, $v[i]$ is $"null"$ if $v eq.not "null"$ and
+there exists some value $v' = v + delta$ such that $v'[i]$ is not null.
+
+We establish a total order on values:
+$ "null" < "false" < "true" < n < s < a < o, $ where
+$n$ is a number,
+$s$ is a string,
+$a$ is an array, and
+$o$ is an object.
+We assume that there is a total order on numbers.
+Arrays are compared lexicographically.
+Two objects $o_1$ and $o_2$ are compared as follows:
+For both objects $o_i$ ($i in {1, 2}$),
+we sort the array $"dom"(o_i)$ to obtain the ordered array of keys
+$k_i = [k_1, dots, k_n]$, from which we obtain
+$v_i = [o[k_1], dots, o[k_n]]$.
+If $k_1 = k_2$, the ordering of $o_1$ and $o_2$ is the ordering of $v_1$ and $v_2$,
+otherwise, the ordering of $o_1$ and $o_2$ is the ordering of $k_1$ and $k_2$.
+
+#example[
+  TODO: For object comparison.
+]
 
 = Syntax
 
