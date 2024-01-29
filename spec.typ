@@ -64,19 +64,7 @@
 - define $"dom"(v)$
 - xs -> $x$
 - literature research
-
-Lowering paths:
-
-$f[p_1]dots[p_n] equiv . "as" var(x') | f | .[p_1]_var(x') | dots | .[p_n]_var(x')$
-
-#figure(table(columns: 2, align: (left, right),
-  $[p]$, $.[p]_var(x)$,
-  $[ ]$, $.[]$,
-  $[f]$, $(var(x) | f) "as" var(y') | .[var(y')]$,
-  $[f:]$, $(var(x) | f) "as" var(y') | .[var(y') :]$,
-  $[:g]$, $(var(x) | g) "as" var(z') | .[: var(z')]$,
-  $[f:g]$, $(var(x) | f) "as" var(y') | (var(x) | g) "as" var(z') | .[var(y') : var(z')]$,
-))
+- try-catch and ? are different from jq, but can be simulated via label-break
 
 
 
@@ -371,8 +359,8 @@ $n$ is a number,
 $s$ is a string,
 $a$ is an array, and
 $o$ is an object.
-We assume that there is a total order on numbers.
-Arrays are compared lexicographically.
+We assume that there is a total order on numbers and characters.
+Strings and arrays are compared lexicographically.
 Two objects $o_1$ and $o_2$ are compared as follows:
 For both objects $o_i$ ($i in {1, 2}$),
 we sort the array $"dom"(o_i)$ to obtain the ordered array of keys
@@ -394,9 +382,28 @@ the concrete syntax introduced in @preliminaries,
 we use cursive font (as in "$f$", "$v$") for the specification
 instead of the previously used typewriter font (as in "`f`", "`v`").
 
+We will start by introducing high-level intermediate representation (HIR) syntax in @hir.
+This syntax is very close to actual jq syntax.
+Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @mir and provide a way to translate from HIR to MIR.
+This will simplify our semantics later.
+
+#let or_ = $quad || quad$
+
+== HIR <hir>
+
 A _filter_ $f$ is defined by
-$ f := n | var(x) | . | .[] | .[f] | [f] | (f) | f? | f star f | f circ f | "if" f "then" f "else" f | x | x(f; dots; f) $
-where $n$ is an integer and $x$ is an identifier (such as "empty").
+
+$ f :=& n #or_ s #or_ . \
+  #or_& (f) #or_ f? #or_ [f] #or_ {f: f, dots, f: f} #or_ f[p]^?dots[p]^? \
+  #or_& f star f #or_ f circ f \
+  #or_& f "as" var(x) | f #or_  phi med f "as" var(x) (f; f) #or_ var(x) \
+  #or_& "label" var(x) | f #or_ "break" var(x) \
+  #or_& "if" f "then" f "else" f #or_ "try" f "catch" f \
+  #or_& x #or_ x(f; dots; f)
+$
+where $p$ is a path part of the shape
+$ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f]. $
+Here, $x$ is an identifier (such as "empty").
 
 By convention, we write $var(x')$ to denote a fresh variable.
 The potential instances of $star$ and $circ$ are given in @tab:binops.
@@ -423,12 +430,65 @@ Here, $f$ is an $n$-ary filter where $g$ may refer to $x_i$.
 For example, this allows us to define filters that produce the booleans,
 by defining $"true" := (0 = 0)$ and $"false" := (0 eq.not 0)$.
 
-A value $v$ is defined by
-$ v := "true" | "false" | n | [v, ..., v] $
-where $n$ is an integer.
-While this captures only a subset of JSON values,
-it provides a solid base to specify semantics such that
-they are relatively straightforward to extend to the full set of JSON values.
+== MIR <mir>
+
+A MIR filter $f$ has the shape
+$ f :=& n #or_ s #or_ . \
+  #or_& f? #or_ [f] #or_ {f: f, dots, f: f} #or_ .[p] \
+  #or_& f star f #or_ var(x) circ var(x) \
+  #or_& f "as" var(x) | f
+  #or_  phi med f "as" var(x) (var(y_0); f)
+  #or_ var(x) \
+  #or_& "if" var(x) "then" f "else" f
+  #or_ "try" f "catch" f \
+  #or_& "label" var(x) | f
+  #or_ "break" var(x) \
+  #or_& x(f; dots; f)
+$
+where $p$ is a path part of the shape
+$ p := [] #or_ [var(x)] #or_ [var(x):] #or_ [:var(x)] #or_ [var(x):var(x)]. $
+
+Compared to HIR, MIR filters have significantly simpler path operations
+($.[p]$ versus $f[p]^?dots[p]^?$)
+and replace certain occurrences of filters by variables
+(e.g. $var(x) circ var(x)$ versus $f circ f$).
+
+We can lower any HIR filter $phi$ to an equivalent MIR filter $floor(phi)$
+using @tab:lowering.
+In particular, this desugars path operations and
+makes it explicit which operations are cartesian or complex.
+
+#figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
+  $phi$, $floor(phi)$,
+  [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
+  $(f)$, $floor(f)$,
+  $f?$, $floor(f)?$,
+  $[f]$, $[floor(f)]$,
+  ${f_1: g_1, dots, f_n: g_n}$, ${floor(f_1): floor(g_1), dots, floor(f_n): floor(g_n)}$,
+  $f[p_1]^?dots[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | dots | floor([p_n]^?)_var(x')$,
+  $f star g$, $floor(f) star floor(g)$,
+  $f circ g$, $f "as" var(x') | g "as" var(y') | var(x) circ var(y)$,
+  $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
+  $phi.alt f_x "as" var(x) (f_y; f)$, $floor(f_y) "as" var(y') | phi.alt floor(f_x) "as" var(x) (var(y'); floor(f))$,
+  $"if" f_x "then" f "else" g$, $f_x "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
+  $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
+  $"label" var(x) | f$, $"label" var(x) | floor(f)$,
+  $x$, $x()$,
+  $x(f_1; dots; f_n)$, $x(floor(f_1); dots; floor(f_n))$,
+)) <tab:lowering>
+
+We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
+
+#figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
+  $[p  ]^?$, $floor([p]^?)_var(x)$,
+  $[   ]^?$, $.[]^?$,
+  $[f  ]^?$, $(var(x) | floor(f)) "as" var(y') | .[var(y')]^?$,
+  $[f: ]^?$, $(var(x) | floor(f)) "as" var(y') | .[var(y') :]^?$,
+  $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | .[: var(y')]^?$,
+  $[f:g]^?$, $(var(x) | floor(f)) "as" var(y') | (var(x) | floor(g)) "as" var(z') | .[var(y') : var(z')]^?$,
+)) <tab:lower-path>
+
+
 
 = Semantics <semantics>
 
