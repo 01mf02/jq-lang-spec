@@ -22,6 +22,10 @@
 )
 
 #set heading(numbering: "1.")
+#set par(
+  first-line-indent: 1em,
+  justify: true,
+)
 #set raw(lang: "jq")
 
 #let thm(x, y, ..args) = thmplain(x, y, inset: (left: 0em, right: 0em), args)
@@ -72,7 +76,6 @@
 - exception = error or break
 - evaluation for $alt$
 - remove some filter cases in proof of lemma --- it's not exhaustive anyway right now
-
 
 
 = Introduction
