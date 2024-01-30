@@ -33,10 +33,13 @@
   ]
 ).with(numbering: none)
 
-#let circ = [#box($circle.small$)]
-#let update = $models$
 #let var(x) = $\$#x$
-#let circeq = [#box($circ#h(0pt)=$)]
+#let cartesian = math.op($circle.small$)
+#let arith = math.op($dot.circle$)
+#let aritheq = math.op($dot.circle#h(0pt)=$)
+#let fold = math.op($phi.alt$)
+#let update = $models$
+#let alt = $slash.double$
 
 = TODO:
 
@@ -45,12 +48,8 @@
 - extend to full JSON
 - constant filter (string, number)
 - lowering goes from HIR to MIR:
-  - $.[p_1]dots[p_n]$
-  - $f circ g$
-  - $f circeq g$
+  - $f aritheq g$
   - $f = g$
-  - $f?$
-  - if-then-else
 - convention: error $e$, result $r$, value $v$, path part $p$, variable $var(x)$
 - error: value or break
 - specify $.[l:h]$ and $"try" f "catch" g$, $"label" var(x) | g$, $"break" var(x)$
@@ -65,6 +64,9 @@
 - xs -> $x$
 - literature research
 - try-catch and ? are different from jq, but can be simulated via label-break
+- exception = error or break
+- evaluation for $alt$
+- remove some filter cases in proof of lemma --- it's not exhaustive anyway right now
 
 
 
@@ -395,8 +397,8 @@ A _filter_ $f$ is defined by
 
 $ f :=& n #or_ s #or_ . \
   #or_& (f) #or_ f? #or_ [f] #or_ {f: f, dots, f: f} #or_ f[p]^?dots[p]^? \
-  #or_& f star f #or_ f circ f \
-  #or_& f "as" var(x) | f #or_  phi med f "as" var(x) (f; f) #or_ var(x) \
+  #or_& f star f #or_ f cartesian f \
+  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (f; f) #or_ var(x) \
   #or_& "label" var(x) | f #or_ "break" var(x) \
   #or_& "if" f "then" f "else" f #or_ "try" f "catch" f \
   #or_& x #or_ x(f; dots; f)
@@ -406,23 +408,25 @@ $ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f]. $
 Here, $x$ is an identifier (such as "empty").
 
 By convention, we write $var(x')$ to denote a fresh variable.
-The potential instances of $star$ and $circ$ are given in @tab:binops.
-Furthermore, $f$ can be
-a variable binding of the shape "$f "as" var(x) | f$" or
-a fold of the shape "$phi med f "as" var(x) (f; f)$", where $phi$ is either "reduce" or "for".
+The potential instances of $star$ and $cartesian$ are given in @tab:binops.
+A folding operation $fold$ is either "reduce" or "for".
 
 #figure(
   table(
     columns: 3,
     [Name], [Symbol], [Operators],
-    [Complex], $star$, ["$|$", ",", "$update$", "or", "and"],
-    [Cartesian], $circ$, [($=$, $eq.not$), ($<$, $lt.eq$, $>$, $gt.eq$), ($+$, $-$), ($*$, $\/$), $\%$]
+    [Complex], $star$, ["$|$", ",", ("=", "$update$", $aritheq$), "$alt$", "or", "and"],
+    [Cartesian], $cartesian$, [($eq.quest$, $eq.not$), ($<$, $lt.eq$, $>$, $gt.eq$), $dot.circle$],
+    [Arithmetic], $dot.circle$, [($+$, $-$), ($*$, $\/$), $\%$],
   ),
   caption: [
     Binary operators, given in order of increasing precedence.
     Operators surrounded by parentheses have equal precedence.
   ],
 ) <tab:binops>
+
+All operators $star$ and $cartesian$ are left-associative, except for
+"$|$", "$=$", "$update$", and "$aritheq$".
 
 A _filter definition_ has the shape
 "$f(x_1; dots; x_n) := g$".
@@ -435,14 +439,10 @@ by defining $"true" := (0 = 0)$ and $"false" := (0 eq.not 0)$.
 A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
   #or_& f? #or_ [f] #or_ {f: f, dots, f: f} #or_ .[p] \
-  #or_& f star f #or_ var(x) circ var(x) \
-  #or_& f "as" var(x) | f
-  #or_  phi med f "as" var(x) (var(y_0); f)
-  #or_ var(x) \
-  #or_& "if" var(x) "then" f "else" f
-  #or_ "try" f "catch" f \
-  #or_& "label" var(x) | f
-  #or_ "break" var(x) \
+  #or_& f star f #or_ var(x) cartesian var(x) \
+  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (var(y_0); f) #or_ var(x) \
+  #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
+  #or_& "label" var(x) | f #or_ "break" var(x) \
   #or_& x(f; dots; f)
 $
 where $p$ is a path part of the shape
@@ -451,7 +451,7 @@ $ p := [] #or_ [var(x)] #or_ [var(x):] #or_ [:var(x)] #or_ [var(x):var(x)]. $
 Compared to HIR, MIR filters have significantly simpler path operations
 ($.[p]$ versus $f[p]^?dots[p]^?$)
 and replace certain occurrences of filters by variables
-(e.g. $var(x) circ var(x)$ versus $f circ f$).
+(e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
 
 We can lower any HIR filter $phi$ to an equivalent MIR filter $floor(phi)$
 using @tab:lowering.
@@ -466,16 +466,24 @@ makes it explicit which operations are cartesian or complex.
   $[f]$, $[floor(f)]$,
   ${f_1: g_1, dots, f_n: g_n}$, ${floor(f_1): floor(g_1), dots, floor(f_n): floor(g_n)}$,
   $f[p_1]^?dots[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | dots | floor([p_n]^?)_var(x')$,
+  $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
+  $f aritheq g$, $floor(f update . arith g)$,
   $f star g$, $floor(f) star floor(g)$,
-  $f circ g$, $f "as" var(x') | g "as" var(y') | var(x) circ var(y)$,
+  $f cartesian g$, $f "as" var(x') | g "as" var(y') | var(x) cartesian var(y)$,
   $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
-  $phi.alt f_x "as" var(x) (f_y; f)$, $floor(f_y) "as" var(y') | phi.alt floor(f_x) "as" var(x) (var(y'); floor(f))$,
+  $fold f_x "as" var(x) (f_y; f)$, $floor(f_y) "as" var(y') | fold floor(f_x) "as" var(x) (var(y'); floor(f))$,
   $"if" f_x "then" f "else" g$, $f_x "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
   $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
   $"label" var(x) | f$, $"label" var(x) | floor(f)$,
   $x$, $x()$,
   $x(f_1; dots; f_n)$, $x(floor(f_1); dots; floor(f_n))$,
 )) <tab:lowering>
+
+#example[
+  The HIR filter $[3] | .[0] = ("length", 2)$ is lowered to the MIR filter
+  $"TODO"$.
+  Its output is $angle.l [1], [2] angle.r$.
+]
 
 We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
 
@@ -530,13 +538,13 @@ $ v[i] = cases(
 ) $
 
 To evaluate calls to filters that have been introduced by definition,
-we define the substitution $phi.alt[f_1 / x_1, dots, f_n / x_n]$ to be
-$sigma phi.alt$, where
+we define the substitution $phi[f_1 / x_1, dots, f_n / x_n]$ to be
+$sigma phi$, where
 $sigma = {x_1 |-> f_1, dots, x_n |-> f_n}$.
-The substitution $sigma phi.alt$ is defined in @tab:substitution:
+The substitution $sigma phi$ is defined in @tab:substitution:
 It both applies the substitution $sigma$ and
-replaces all variables bound in $phi.alt$ by fresh ones.
-This prevents variable bindings in $phi.alt$ from
+replaces all variables bound in $phi$ by fresh ones.
+This prevents variable bindings in $phi$ from
 shadowing variables that occur in the co-domain of $sigma$.
 
 #example[
@@ -552,18 +560,18 @@ shadowing variables that occur in the co-domain of $sigma$.
 #figure(
   table(
     columns: 2,
-    $phi.alt$, $sigma phi.alt$,
-    [$.$, $n$ (where $n in bb(Z)$), or $.[]$], $phi.alt$,
-    [$var(x)$ or $x$], $sigma (phi.alt)$,
+    $phi$, $sigma phi$,
+    [$.$, $n$ (where $n in bb(Z)$), or $.[]$], $phi$,
+    [$var(x)$ or $x$], $sigma (phi)$,
     $.[f]$, $.[sigma f]$,
     $f?$, $(sigma f)?$,
     $f star g$, $sigma f star sigma g$,
-    $f circ g$, $sigma f circ sigma g$,
+    $f cartesian g$, $sigma f cartesian sigma g$,
     $"if" f "then" g "else" h$, $"if" sigma f "then" sigma g "else" sigma h$,
     $x(f_1; dots; f_n)$, $x(sigma f_1; dots; sigma f_n)$,
     $f "as" var(x) | g$, $sigma f "as" var(x') | sigma' g$,
     // TODO: correctly render xs and init, see https://github.com/typst/typst/issues/1125
-    $phi med x "as" var(x) (y_0; f)$, $phi med sigma x "as" var(x')(sigma y_0; sigma' f)$
+    $fold x "as" var(x) (y_0; f)$, $fold sigma x "as" var(x')(sigma y_0; sigma' f)$
   ),
   caption: [
     Substitution. Here,
@@ -573,7 +581,7 @@ shadowing variables that occur in the co-domain of $sigma$.
 ) <tab:substitution>
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
-  $phi.alt$, $phi.alt|^c_v$,
+  $phi$, $phi|^c_v$,
   $"empty"$, $angle.l angle.r$,
   $.$, $angle.l v angle.r$,
   [$n$ (where $n in bb(Z)$)], $angle.l n angle.r$,
@@ -582,7 +590,7 @@ shadowing variables that occur in the co-domain of $sigma$.
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
   $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
-  $f circ g$, $sum_(x in f|^c_v) sum_(y in g|^c_v) angle.l x circ y angle.r$,
+  $f cartesian g$, $sum_(x in f|^c_v) sum_(y in g|^c_v) angle.l x cartesian y angle.r$,
   $f?$, $sum_(x in f|^c_v) cases(
     angle.l angle.r & "if " x = bot,
     angle.l x angle.r & "otherwise"
@@ -595,24 +603,24 @@ shadowing variables that occur in the co-domain of $sigma$.
     angle.l bot angle.r & "otherwise"
   )$,
   $.[f]$, $sum_(i in f|^c_v) angle.l v[i] angle.r$,
-  $phi med x "as" var(x) (y_0; f)$, $sum_(i in y_0|^c_v) phi^c_i (x|^c_v, f)$,
+  $fold x "as" var(x) (y_0; f)$, $sum_(i in y_0|^c_v) fold^c_i (x|^c_v, f)$,
   $x(f_1; dots; f_n)$, [$g[f_1 / x_1, dots, f_n / x_n]|^c_v$ if $x(x_1; dots; x_n) := g$],
   $f update g$, [see @tab:update-semantics]
 )) <tab:eval-semantics>
 
 The evaluation semantics are given in @tab:eval-semantics.
-We suppose that the Cartesian operator $circ$ is defined on pairs of values,
+We suppose that the Cartesian operator $cartesian$ is defined on pairs of values,
 yielding a value result.
 We have seen examples of the shown filters in @preliminaries.
 The semantics diverge relatively little from the implementation in jq.
-One notable exception is $f circ g$, which jq evaluates differently as
-$sum_(y in g|^c_v) sum_(x in f|^c_v) angle.l x circ y angle.r$.
+One notable exception is $f cartesian g$, which jq evaluates differently as
+$sum_(y in g|^c_v) sum_(x in f|^c_v) angle.l x cartesian y angle.r$.
 //The reason will be given in [](#cloning).
 Note that the difference only shows when both $f$ and $g$ return multiple values.
 
-$ phi^c_v (l, f) := cases(
-  angle.l #hide("v") angle.r + sum_(x in f|^(c{var(x) |-> h})_v) phi^c_x (t, f) & "if " l = angle.l h angle.r + t " and " phi = "reduce",
-  angle.l        v   angle.r + sum_(x in f|^(c{var(x) |-> h})_v) phi^c_x (t, f) & "if " l = angle.l h angle.r + t " and " phi = "for",
+$ fold^c_v (l, f) := cases(
+  angle.l #hide("v") angle.r + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, f) & "if " l = angle.l h angle.r + t " and " fold = "reduce",
+  angle.l        v   angle.r + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, f) & "if " l = angle.l h angle.r + t " and " fold = "for",
   angle.l        v   angle.r & "otherwise"
 ) $
 
@@ -637,17 +645,17 @@ whereas "for" also returns all intermediate ones.
 The following property can be used to eliminate bindings.
 
 #lemma[
-  Let $phi.alt(f)$ be a filter such that $phi.alt(f)|^c_v$ has the shape
+  Let $phi(f)$ be a filter such that $phi(f)|^c_v$ has the shape
   "$sum_(x in f|^c_v) dots$".
-  Then $phi.alt(f)$ is equivalent to "$f "as" var(x) | phi.alt(var(x))$".
+  Then $phi(f)$ is equivalent to "$f "as" var(x) | phi(var(x))$".
 ]
 
 #proof[
-  We have to prove the statement for $phi.alt(f)$ set to
-  "$f | g$", "$f "as" var(x) | g$", "$f circ g$", "$f?$",
+  We have to prove the statement for $phi(f)$ set to
+  "$f | g$", "$f "as" var(x) | g$", "$f cartesian g$", "$f?$",
   "$f "and" g$", "$f "or" g$", "$"if" f "then" g "else" h$",
-  "$.[f]$", and "$phi med x "as" var(x)(f; g)$".
-  Let us consider the filter $phi.alt(f)$ to be $.[f]$.
+  "$.[f]$", and "$fold x "as" var(x)(f; g)$".
+  Let us consider the filter $phi(f)$ to be $.[f]$.
   Then we show that $.[f]$ is equivalent to $f "as" var(x) | .[var(x)]$:
   $ (f "as" var(x) | .[var(x)])|^c_v
   &= sum_(x in f|^c_v) .[var(x)]|^(c{var(x) |-> x})_v \
@@ -656,7 +664,7 @@ The following property can be used to eliminate bindings.
   &= sum_(x in f|^c_v) angle.l v[x] angle.r \
   &= .[f]|^c_v
   $
-  The other cases for $phi.alt(f)$ can be proved similarly.
+  The other cases for $phi(f)$ can be proved similarly.
 ]
 
 The semantics of jq and those shown in @tab:eval-semantics
