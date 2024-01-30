@@ -395,7 +395,7 @@ instead of the previously used typewriter font (as in "`f`", "`v`").
 We will start by introducing high-level intermediate representation (HIR) syntax in @hir.
 This syntax is very close to actual jq syntax.
 Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @mir and provide a way to translate from HIR to MIR.
-This will simplify our semantics later.
+This will simplify our semantics in @semantics.
 
 #let or_ = $quad || quad$
 
@@ -603,7 +603,7 @@ shadowing variables that occur in the co-domain of $sigma$.
   $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
   $var(x) cartesian var(y)$, $stream(var(x) cartesian var(y))$,
   $f?$, $sum_(x in f|^c_v) cases(
-    stream() & "if" x = bot,
+    stream() & "if" x "is an error",
     stream(x) & "otherwise"
   )$,
   $var(x) "and" f$, $"ite"(var(x), "false", stream("false"), f|^c_v)$,
