@@ -475,6 +475,8 @@ makes it explicit which operations are cartesian or complex.
   $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
   $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
   $f aritheq g$, $floor(f update . arith g)$,
+  $f "and" g$, $floor(f) "as" var(x') | var(x') "and" floor(g)$,
+  $f "or"  g$, $floor(f) "as" var(x') | var(x') "or"  floor(g)$,
   $f star g$, $floor(f) star floor(g)$,
   $f cartesian g$, $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
   $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
@@ -534,8 +536,7 @@ $ [stream(v_0, ..., v_n)] = cases(
 ) $
 The next function helps define filters such as if-then-else, conjunction, and disjunction:
 $ "ite"(v, i, t, e) = cases(
-  stream(bot) & "if" v = bot,
-  t & "if" v eq.not bot "and" v = i,
+  t & "if" v = i,
   e & "otherwise"
 ) $
 The last function serves to retrieve the $i$-th element from a list, if it exists:
@@ -597,20 +598,20 @@ shadowing variables that occur in the co-domain of $sigma$.
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
   $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
-  $f cartesian g$, $sum_(x in f|^c_v) sum_(y in g|^c_v) stream(x cartesian y)$,
+  $var(x) cartesian var(y)$, $stream(var(x) cartesian var(y))$,
   $f?$, $sum_(x in f|^c_v) cases(
     stream() & "if" x = bot,
     stream(x) & "otherwise"
   )$,
-  $f "and" g$, $sum_(x in f|^c_v) "ite"(x, "false", stream("false"), g|^c_v)$,
-  $f "or"  g$, $sum_(x in f|^c_v) "ite"(x, "true" , stream("true" ), g|^c_v)$,
-  $"if" f "then" g "else" h$, $sum_(x in f|^c_v) "ite"(x, "true", g|^c_v, h|^c_v)$,
+  $var(x) "and" f$, $"ite"(var(x), "false", stream("false"), f|^c_v)$,
+  $var(x) "or"  f$, $"ite"(var(x), "true" , stream("true" ), f|^c_v)$,
+  $"if" var(x) "then" f "else" g$, $"ite"(var(x), "true", f|^c_v, g|^c_v)$,
   $.[]$, $cases(
     stream(v_0, ..., v_n) & "if" v = [v_0, ..., v_n],
     stream(bot) & "otherwise"
   )$,
-  $.[f]$, $sum_(i in f|^c_v) stream(v[i])$,
-  $fold x "as" var(x) (y_0; f)$, $sum_(i in y_0|^c_v) fold^c_i (x|^c_v, f)$,
+  $.[var(x)]$, $stream(v[var(i)])$,
+  $fold x "as" var(x) (var(y); f)$, $fold^c_var(y) (x|^c_v, f)$,
   $x(f_1; ...; f_n)$, [$g[f_1 / x_1, ..., f_n / x_n]|^c_v$ if $x(x_1; ...; x_n) := g$],
   $f update g$, [see @tab:update-semantics]
 )) <tab:eval-semantics>
