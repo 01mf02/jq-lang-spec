@@ -33,6 +33,10 @@
   ]
 ).with(numbering: none)
 
+#let stream(..xs) = {
+  let bla = xs.pos().join($, $)
+  $angle.l #bla angle.r$
+}
 #let var(x) = $\$#x$
 #let cartesian = math.op($circle.small$)
 #let arith = math.op($dot.circle$)
@@ -40,6 +44,7 @@
 #let fold = math.op($phi.alt$)
 #let update = $models$
 #let alt = $slash.double$
+#let breakr(x, v) = $"break"(\$#x, #v)$
 
 = TODO:
 
@@ -302,20 +307,20 @@ $e$ for errors.
 The domain of a value is defined as follows:
 
 $ "dom"(v) := cases(
-  [0  , dots,   n] & "if " v = [v_0, dots, v_n],
-  [k_0, dots, k_n] & "if " v = {k_0: v_0, dots, k_n: v_n},
+  [0  , dots,   n] & "if" v = [v_0, dots, v_n],
+  [k_0, dots, k_n] & "if" v = {k_0: v_0, dots, k_n: v_n},
   "error"          & "otherwise",
 ) $
 
 We define the _length_ of a value as follows:
 
 $ abs(v) := cases(
-  0       & "if " v = "null",
-  abs(n)  & "if " v "is a number" n,
-  n       & "if " v = c_1...c_n,
-  n       & "if " v = [v_1, dots, v_n],
-  n       & "if " v = {k_1: v_1, dots, k_n: v_n},
-  "error" & "otherwise (if " v in {"true", "false"}")",
+  0       & "if" v = "null",
+  abs(n)  & "if" v "is a number" n,
+  n       & "if" v = c_1...c_n,
+  n       & "if" v = [v_1, dots, v_n],
+  n       & "if" v = {k_1: v_1, dots, k_n: v_n},
+  "error" & "otherwise (if" v in {"true", "false"}")",
 ) $
 
 We define addition of two values $l$ and $r$ as follows:
@@ -447,6 +452,7 @@ $ f :=& n #or_ s #or_ . \
 $
 where $p$ is a path part of the shape
 $ p := [] #or_ [var(x)] #or_ [var(x):] #or_ [:var(x)] #or_ [var(x):var(x)]. $
+Furthermore, $star$ in MIR does not include "$=$" and "$aritheq$" anymore.
 
 Compared to HIR, MIR filters have significantly simpler path operations
 ($.[p]$ versus $f[p]^?dots[p]^?$)
@@ -482,7 +488,7 @@ makes it explicit which operations are cartesian or complex.
 #example[
   The HIR filter $[3] | .[0] = ("length", 2)$ is lowered to the MIR filter
   $"TODO"$.
-  Its output is $angle.l [1], [2] angle.r$.
+  Its output is $stream([1], [2])$.
 ]
 
 We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
@@ -509,7 +515,7 @@ The goals for creating these semantics were, in descending order of importance:
 Let us start with a few definitions.
 A context is a mapping from variables to values.
 A value result is either a value or an error $bot$.
-A stream of value results is written as $angle.l v_0, dots, v_n angle.r$.
+A stream of value results is written as $stream(v_0, dots, v_n)$.
 The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
 
 We are now going to introduce a few helper functions.
@@ -521,19 +527,19 @@ the leftmost error
   However, in an implementation, we may have different kinds of errors.]
 in the stream otherwise:
 
-$ [angle.l v_0, dots, v_n angle.r] = cases(
+$ [stream(v_0, dots, v_n)] = cases(
   [v_0, dots, v_n]       & "if for all " i", " v_i eq.not bot,
   v_(min{i | v_i = bot}) & "otherwise"
 ) $
 The next function helps define filters such as if-then-else, conjunction, and disjunction:
 $ "ite"(v, i, t, e) = cases(
-  angle.l bot angle.r & "if " v = bot,
-  t & "if " v eq.not bot " and " v = i,
+  stream(bot) & "if" v = bot,
+  t & "if" v eq.not bot "and" v = i,
   e & "otherwise"
 ) $
 The last function serves to retrieve the $i$-th element from a list, if it exists:
 $ v[i] = cases(
-  v_i & "if " v = [v_0, dots, v_n] " and " 0 lt.eq i < n,
+  v_i & "if" v = [v_0, dots, v_n] "and" 0 lt.eq i < n,
   bot & "otherwise"
 ) $
 
@@ -582,27 +588,27 @@ shadowing variables that occur in the co-domain of $sigma$.
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $phi|^c_v$,
-  $"empty"$, $angle.l angle.r$,
-  $.$, $angle.l v angle.r$,
-  [$n$ (where $n in bb(Z)$)], $angle.l n angle.r$,
-  $var(x)$, $angle.l c(var(x)) angle.r$,
-  $[f]$, $angle.l [f|^c_v] angle.r$,
+  $"empty"$, $stream()$,
+  $.$, $stream(v)$,
+  [$n$ (where $n in bb(Z)$)], $stream(n)$,
+  $var(x)$, $stream(c(var(x)))$,
+  $[f]$, $stream([f|^c_v])$,
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
   $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
-  $f cartesian g$, $sum_(x in f|^c_v) sum_(y in g|^c_v) angle.l x cartesian y angle.r$,
+  $f cartesian g$, $sum_(x in f|^c_v) sum_(y in g|^c_v) stream(x cartesian y)$,
   $f?$, $sum_(x in f|^c_v) cases(
-    angle.l angle.r & "if " x = bot,
-    angle.l x angle.r & "otherwise"
+    stream() & "if" x = bot,
+    stream(x) & "otherwise"
   )$,
-  $f "and" g$, $sum_(x in f|^c_v) "ite"(x, "false", angle.l "false" angle.r, g|^c_v)$,
-  $f "or"  g$, $sum_(x in f|^c_v) "ite"(x, "true" , angle.l "true"  angle.r, g|^c_v)$,
+  $f "and" g$, $sum_(x in f|^c_v) "ite"(x, "false", stream("false"), g|^c_v)$,
+  $f "or"  g$, $sum_(x in f|^c_v) "ite"(x, "true" , stream("true" ), g|^c_v)$,
   $"if" f "then" g "else" h$, $sum_(x in f|^c_v) "ite"(x, "true", g|^c_v, h|^c_v)$,
   $.[]$, $cases(
-    angle.l v_0", " dots", " v_n angle.r & "if " v = [v_0, dots, v_n],
-    angle.l bot angle.r & "otherwise"
+    stream(v_0, dots, v_n) & "if" v = [v_0, dots, v_n],
+    stream(bot) & "otherwise"
   )$,
-  $.[f]$, $sum_(i in f|^c_v) angle.l v[i] angle.r$,
+  $.[f]$, $sum_(i in f|^c_v) stream(v[i])$,
   $fold x "as" var(x) (y_0; f)$, $sum_(i in y_0|^c_v) fold^c_i (x|^c_v, f)$,
   $x(f_1; dots; f_n)$, [$g[f_1 / x_1, dots, f_n / x_n]|^c_v$ if $x(x_1; dots; x_n) := g$],
   $f update g$, [see @tab:update-semantics]
@@ -614,19 +620,19 @@ yielding a value result.
 We have seen examples of the shown filters in @preliminaries.
 The semantics diverge relatively little from the implementation in jq.
 One notable exception is $f cartesian g$, which jq evaluates differently as
-$sum_(y in g|^c_v) sum_(x in f|^c_v) angle.l x cartesian y angle.r$.
+$sum_(y in g|^c_v) sum_(x in f|^c_v) stream(x cartesian y)$.
 //The reason will be given in [](#cloning).
 Note that the difference only shows when both $f$ and $g$ return multiple values.
 
 $ fold^c_v (l, f) := cases(
-  angle.l #hide("v") angle.r + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, f) & "if " l = angle.l h angle.r + t " and " fold = "reduce",
-  angle.l        v   angle.r + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, f) & "if " l = angle.l h angle.r + t " and " fold = "for",
-  angle.l        v   angle.r & "otherwise"
+  stream(#hide("v")) + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, f) & "if" l = stream(h) + t "and" fold = "reduce",
+  stream(        v ) + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, f) & "if" l = stream(h) + t "and" fold = "for",
+  stream(        v ) & "otherwise"
 ) $
 
 In addition to the filters defined in @tab:eval-semantics,
 we define the semantics of the two fold-like filters "reduce" and "for" as follows,
-where $x$ evaluates to $angle.l x_0, dots, x_n angle.r$:
+where $x$ evaluates to $stream(x_0, dots, x_n)$:
 
 $ "reduce"   x "as" var(x) (y_0; f) =& y_0 &
   "for"      x "as" var(x) (y_0; f) =& y_0 \
@@ -659,9 +665,9 @@ The following property can be used to eliminate bindings.
   Then we show that $.[f]$ is equivalent to $f "as" var(x) | .[var(x)]$:
   $ (f "as" var(x) | .[var(x)])|^c_v
   &= sum_(x in f|^c_v) .[var(x)]|^(c{var(x) |-> x})_v \
-  &= sum_(x in f|^c_v) sum_(i in var(x)|^(c{var(x) |-> x})_v) angle.l v[i] angle.r \
-  &= sum_(x in f|^c_v) sum_(i in angle.l x angle.r) angle.l v[i] angle.r \
-  &= sum_(x in f|^c_v) angle.l v[x] angle.r \
+  &= sum_(x in f|^c_v) sum_(i in var(x)|^(c{var(x) |-> x})_v) stream(v[i]) \
+  &= sum_(x in f|^c_v) sum_(i in stream(x)) stream(v[i]) \
+  &= sum_(x in f|^c_v) stream(v[x]) \
   &= .[f]|^c_v
   $
   The other cases for $phi(f)$ can be proved similarly.
@@ -742,8 +748,8 @@ By doing so, these semantics can abandon the idea of paths altogether.
 The semantics use a helper function that takes an input array $v$ and
 replaces its $i$-th element by the output of $sigma$ applied to it:
 $ (.[i] update sigma)|^c_v = cases(
-  [angle.l v_0, dots, v_(i-1) angle.r + sigma|^c_(v_i) + angle.l v_(i+1), dots, v_n angle.r]
-    & "if " v = [v_0, dots, v_n] " and " 0 lt.eq i < n,
+  [stream(v_0, dots, v_(i-1)) + sigma|^c_(v_i) + stream(v_(i+1), dots, v_n)]
+    & "if" v = [v_0, dots, v_n] "and" 0 lt.eq i < n,
   bot & "otherwise"
 ) $
 
@@ -751,17 +757,28 @@ $ (.[i] update sigma)|^c_v = cases(
 // συνάρτηση = function
 
 #figure(caption: [Update semantics. Here, $var(x')$ is a fresh variable.], table(columns: 2,
-  $mu$, $mu update sigma$,
+  $mu$, $mu^? update sigma$,
   $"empty"$, $.$,
   $.$, $sigma$,
-  $f | g$, $f update (g update sigma)$,
-  $f, g$, $(f update sigma) | (g update sigma)$,
-  $f "as" var(x) | g$, $"reduce" f "as" var(x') (.; g[var(x') / var(x)] update sigma)$,
-  $"if" f "then" g "else" h$, $"reduce" f "as" var(x') (.; "if" var(x') "then" g update sigma "else" h update sigma)$,
-  $.[f]$, $"reduce" f "as" var(x') (.; .[var(x')] update sigma)$,
-  $.[]$, $[.[] | sigma]$,
-  $x(f_1; dots; f_n)$, $g[f_1 / x_1, dots, f_n / x_n] update sigma "if" x(x_1; dots; x_n) := g$,
+  $f | g$, $f^? update (g^? update sigma)$,
+  $f, g$, $(f^? update sigma) | (g^? update sigma)$,
+  $f "as" var(x) | g$, $"reduce" f^? "as" var(x') (.; g[var(x') / var(x)]^? update sigma)$,
+  $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f^? update sigma "else" g^? update sigma$,
+  $x(f_1; dots; f_n)$, $g[f_1 / x_1, dots, f_n / x_n]^? update sigma "if" x(x_1; dots; x_n) := g$,
 )) <tab:update-semantics>
+
+#figure(table(columns: 2,
+  $mu$, $(mu^? update sigma)|^c_v$,
+  $.[p]$, [TODO],
+  $"label" var(x) | f$, $"label"(var(x), f^? update sigma)$,
+  $"break" var(x)$, $stream(breakr(x, v))$,
+))
+
+$ "label"(var(x), l) := cases(
+  stream(v) & "if" l = stream(breakr(x, v)) + t,
+  stream(h) + "label"(var(x), t) & "if" l = stream(h) + t "and" h "is a value or an error",
+  stream() & "if" l = stream(),
+) $
 
 The update semantics are given in @tab:update-semantics.
 The case for $f "as" var(x) | g$ is slightly tricky:
