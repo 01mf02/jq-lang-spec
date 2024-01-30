@@ -307,8 +307,8 @@ $e$ for errors.
 The domain of a value is defined as follows:
 
 $ "dom"(v) := cases(
-  [0  , dots,   n] & "if" v = [v_0, dots, v_n],
-  [k_0, dots, k_n] & "if" v = {k_0: v_0, dots, k_n: v_n},
+  [0  , ...,   n] & "if" v = [v_0, ..., v_n],
+  [k_0, ..., k_n] & "if" v = {k_0: v_0, ..., k_n: v_n},
   "error"          & "otherwise",
 ) $
 
@@ -318,8 +318,8 @@ $ abs(v) := cases(
   0       & "if" v = "null",
   abs(n)  & "if" v "is a number" n,
   n       & "if" v = c_1...c_n,
-  n       & "if" v = [v_1, dots, v_n],
-  n       & "if" v = {k_1: v_1, dots, k_n: v_n},
+  n       & "if" v = [v_1, ..., v_n],
+  n       & "if" v = {k_1: v_1, ..., k_n: v_n},
   "error" & "otherwise (if" v in {"true", "false"}")",
 ) $
 
@@ -329,7 +329,7 @@ $ l + r := cases(
   v & "if" l = "null" "and" r = v", or" l = v "and" r = "null",
   n_1 + n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
   c_(l,1)...c_(l,m)c_(r,1)...c_(r,n) & "if" l = c_(l,1)...c_(l,m) "and" r = c_(r,1)...c_(r,n),
-  [l_1, ..., l_m, r_1, ..., r_n] & "if" l = [l_1, dots, l_m] "and" r = [r_1, dots, r_n],
+  [l_1, ..., l_m, r_1, ..., r_n] & "if" l = [l_1, ..., l_m] "and" r = [r_1, ..., r_n],
   (union.big_(k in "dom"(l) without "dom"(r)) {k: l[k]}) union r & "if" l = {...} "and" r = {...},
   "error" & "otherwise",
 ) $
@@ -346,10 +346,10 @@ The value $v[i]$ of a value $v$ at index $i$ is defined as follows#footnote[
 ]:
 
 $ v[i] := cases(
-  v_i    & "if" v = [v_0, dots, v_n] "," i in bb(N)", and" i <= n,
-  "null" & "if" v = [v_0, dots, v_n] "," i in bb(N)", and" i > n,
-  v_j    & "if" v = {k_0: v_0, dots, k_n: v_n}"," i "is a string, and" k_j = i,
-  "null" & "if" v = {k_0: v_0, dots, k_n: v_n}"," i "is a string, and" i in.not {k_0, dots, k_n},
+  v_i    & "if" v = [v_0, ..., v_n] "," i in bb(N)", and" i <= n,
+  "null" & "if" v = [v_0, ..., v_n] "," i in bb(N)", and" i > n,
+  v_j    & "if" v = {k_0: v_0, ..., k_n: v_n}"," i "is a string, and" k_j = i,
+  "null" & "if" v = {k_0: v_0, ..., k_n: v_n}"," i "is a string, and" i in.not {k_0, ..., k_n},
   "error" & "otherwise",
 ) $
 
@@ -371,8 +371,8 @@ Strings and arrays are compared lexicographically.
 Two objects $o_1$ and $o_2$ are compared as follows:
 For both objects $o_i$ ($i in {1, 2}$),
 we sort the array $"dom"(o_i)$ to obtain the ordered array of keys
-$k_i = [k_1, dots, k_n]$, from which we obtain
-$v_i = [o[k_1], dots, o[k_n]]$.
+$k_i = [k_1, ..., k_n]$, from which we obtain
+$v_i = [o[k_1], ..., o[k_n]]$.
 If $k_1 = k_2$, the ordering of $o_1$ and $o_2$ is the ordering of $v_1$ and $v_2$,
 otherwise, the ordering of $o_1$ and $o_2$ is the ordering of $k_1$ and $k_2$.
 
@@ -401,12 +401,12 @@ This will simplify our semantics later.
 A _filter_ $f$ is defined by
 
 $ f :=& n #or_ s #or_ . \
-  #or_& (f) #or_ f? #or_ [f] #or_ {f: f, dots, f: f} #or_ f[p]^?dots[p]^? \
+  #or_& (f) #or_ f? #or_ [f] #or_ {f: f, ..., f: f} #or_ f[p]^?...[p]^? \
   #or_& f star f #or_ f cartesian f \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (f; f) #or_ var(x) \
   #or_& "label" var(x) | f #or_ "break" var(x) \
   #or_& "if" f "then" f "else" f #or_ "try" f "catch" f \
-  #or_& x #or_ x(f; dots; f)
+  #or_& x #or_ x(f; ...; f)
 $
 where $p$ is a path part of the shape
 $ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f]. $
@@ -434,7 +434,7 @@ All operators $star$ and $cartesian$ are left-associative, except for
 "$|$", "$=$", "$update$", and "$aritheq$".
 
 A _filter definition_ has the shape
-"$f(x_1; dots; x_n) := g$".
+"$f(x_1; ...; x_n) := g$".
 Here, $f$ is an $n$-ary filter where $g$ may refer to $x_i$.
 For example, this allows us to define filters that produce the booleans,
 by defining $"true" := (0 = 0)$ and $"false" := (0 eq.not 0)$.
@@ -443,19 +443,20 @@ by defining $"true" := (0 = 0)$ and $"false" := (0 eq.not 0)$.
 
 A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
-  #or_& f? #or_ [f] #or_ {f: f, dots, f: f} #or_ .[p] \
+  #or_& f? #or_ [f] #or_ {f: f, ..., f: f} #or_ .[p] \
   #or_& f star f #or_ var(x) cartesian var(x) \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (var(y_0); f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
   #or_& "label" var(x) | f #or_ "break" var(x) \
-  #or_& x(f; dots; f)
+  #or_& x(f; ...; f)
 $
 where $p$ is a path part of the shape
 $ p := [] #or_ [var(x)] #or_ [var(x):] #or_ [:var(x)] #or_ [var(x):var(x)]. $
-Furthermore, $star$ in MIR does not include "$=$" and "$aritheq$" anymore.
+Furthermore, the set of complex operators $star$ in MIR
+does not include "$=$" and "$aritheq$" anymore.
 
 Compared to HIR, MIR filters have significantly simpler path operations
-($.[p]$ versus $f[p]^?dots[p]^?$)
+($.[p]$ versus $f[p]^?...[p]^?$)
 and replace certain occurrences of filters by variables
 (e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
 
@@ -470,8 +471,8 @@ makes it explicit which operations are cartesian or complex.
   $(f)$, $floor(f)$,
   $f?$, $floor(f)?$,
   $[f]$, $[floor(f)]$,
-  ${f_1: g_1, dots, f_n: g_n}$, ${floor(f_1): floor(g_1), dots, floor(f_n): floor(g_n)}$,
-  $f[p_1]^?dots[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | dots | floor([p_n]^?)_var(x')$,
+  ${f_1: g_1, ..., f_n: g_n}$, ${floor(f_1): floor(g_1), ..., floor(f_n): floor(g_n)}$,
+  $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
   $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
   $f aritheq g$, $floor(f update . arith g)$,
   $f star g$, $floor(f) star floor(g)$,
@@ -482,7 +483,7 @@ makes it explicit which operations are cartesian or complex.
   $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
   $"label" var(x) | f$, $"label" var(x) | floor(f)$,
   $x$, $x()$,
-  $x(f_1; dots; f_n)$, $x(floor(f_1); dots; floor(f_n))$,
+  $x(f_1; ...; f_n)$, $x(floor(f_1); ...; floor(f_n))$,
 )) <tab:lowering>
 
 #example[
@@ -515,7 +516,7 @@ The goals for creating these semantics were, in descending order of importance:
 Let us start with a few definitions.
 A context is a mapping from variables to values.
 A value result is either a value or an error $bot$.
-A stream of value results is written as $stream(v_0, dots, v_n)$.
+A stream of value results is written as $stream(v_0, ..., v_n)$.
 The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
 
 We are now going to introduce a few helper functions.
@@ -527,8 +528,8 @@ the leftmost error
   However, in an implementation, we may have different kinds of errors.]
 in the stream otherwise:
 
-$ [stream(v_0, dots, v_n)] = cases(
-  [v_0, dots, v_n]       & "if for all " i", " v_i eq.not bot,
+$ [stream(v_0, ..., v_n)] = cases(
+  [v_0, ..., v_n]       & "if for all " i", " v_i eq.not bot,
   v_(min{i | v_i = bot}) & "otherwise"
 ) $
 The next function helps define filters such as if-then-else, conjunction, and disjunction:
@@ -539,14 +540,14 @@ $ "ite"(v, i, t, e) = cases(
 ) $
 The last function serves to retrieve the $i$-th element from a list, if it exists:
 $ v[i] = cases(
-  v_i & "if" v = [v_0, dots, v_n] "and" 0 lt.eq i < n,
+  v_i & "if" v = [v_0, ..., v_n] "and" 0 lt.eq i < n,
   bot & "otherwise"
 ) $
 
 To evaluate calls to filters that have been introduced by definition,
-we define the substitution $phi[f_1 / x_1, dots, f_n / x_n]$ to be
+we define the substitution $phi[f_1 / x_1, ..., f_n / x_n]$ to be
 $sigma phi$, where
-$sigma = {x_1 |-> f_1, dots, x_n |-> f_n}$.
+$sigma = {x_1 |-> f_1, ..., x_n |-> f_n}$.
 The substitution $sigma phi$ is defined in @tab:substitution:
 It both applies the substitution $sigma$ and
 replaces all variables bound in $phi$ by fresh ones.
@@ -568,13 +569,13 @@ shadowing variables that occur in the co-domain of $sigma$.
     columns: 2,
     $phi$, $sigma phi$,
     [$.$, $n$ (where $n in bb(Z)$), or $.[]$], $phi$,
-    [$var(x)$ or $x$], $sigma (phi)$,
+    [$var(x)$ or $x$], $sigma(phi)$,
     $.[f]$, $.[sigma f]$,
     $f?$, $(sigma f)?$,
     $f star g$, $sigma f star sigma g$,
     $f cartesian g$, $sigma f cartesian sigma g$,
     $"if" f "then" g "else" h$, $"if" sigma f "then" sigma g "else" sigma h$,
-    $x(f_1; dots; f_n)$, $x(sigma f_1; dots; sigma f_n)$,
+    $x(f_1; ...; f_n)$, $x(sigma f_1; ...; sigma f_n)$,
     $f "as" var(x) | g$, $sigma f "as" var(x') | sigma' g$,
     // TODO: correctly render xs and init, see https://github.com/typst/typst/issues/1125
     $fold x "as" var(x) (y_0; f)$, $fold sigma x "as" var(x')(sigma y_0; sigma' f)$
@@ -605,12 +606,12 @@ shadowing variables that occur in the co-domain of $sigma$.
   $f "or"  g$, $sum_(x in f|^c_v) "ite"(x, "true" , stream("true" ), g|^c_v)$,
   $"if" f "then" g "else" h$, $sum_(x in f|^c_v) "ite"(x, "true", g|^c_v, h|^c_v)$,
   $.[]$, $cases(
-    stream(v_0, dots, v_n) & "if" v = [v_0, dots, v_n],
+    stream(v_0, ..., v_n) & "if" v = [v_0, ..., v_n],
     stream(bot) & "otherwise"
   )$,
   $.[f]$, $sum_(i in f|^c_v) stream(v[i])$,
   $fold x "as" var(x) (y_0; f)$, $sum_(i in y_0|^c_v) fold^c_i (x|^c_v, f)$,
-  $x(f_1; dots; f_n)$, [$g[f_1 / x_1, dots, f_n / x_n]|^c_v$ if $x(x_1; dots; x_n) := g$],
+  $x(f_1; ...; f_n)$, [$g[f_1 / x_1, ..., f_n / x_n]|^c_v$ if $x(x_1; ...; x_n) := g$],
   $f update g$, [see @tab:update-semantics]
 )) <tab:eval-semantics>
 
@@ -632,16 +633,16 @@ $ fold^c_v (l, f) := cases(
 
 In addition to the filters defined in @tab:eval-semantics,
 we define the semantics of the two fold-like filters "reduce" and "for" as follows,
-where $x$ evaluates to $stream(x_0, dots, x_n)$:
+where $x$ evaluates to $stream(x_0, ..., x_n)$:
 
 $ "reduce"   x "as" var(x) (y_0; f) =& y_0 &
   "for"      x "as" var(x) (y_0; f) =& y_0 \
 |& x_0 "as" var(x) | f &
 |& ., (x_0 "as" var(x) | f \
-|& dots &
-|& dots \
+|& ... &
+|& ... \
 |& x_n "as" var(x) | f &
-|& ., (x_n "as" var(x) | f) dots)
+|& ., (x_n "as" var(x) | f) ...)
 $
 
 Both filters fold $f$ over the sequence given by $x$ with the initial value $y_0$.
@@ -652,7 +653,7 @@ The following property can be used to eliminate bindings.
 
 #lemma[
   Let $phi(f)$ be a filter such that $phi(f)|^c_v$ has the shape
-  "$sum_(x in f|^c_v) dots$".
+  "$sum_(x in f|^c_v) ...$".
   Then $phi(f)$ is equivalent to "$f "as" var(x) | phi(var(x))$".
 ]
 
@@ -680,8 +681,8 @@ We are going to deal with this in @updates.
 == Updates <updates>
 
 jq's update mechanism works with _paths_.
-A path is a sequence of indices $i_j$ that can be written as $.[i_1]dots[i_n]$.
-It refers to a value that can be retrieved by the filter "$.[i_1] | dots | .[i_n]$".
+A path is a sequence of indices $i_j$ that can be written as $.[i_1]...[i_n]$.
+It refers to a value that can be retrieved by the filter "$.[i_1] | ... | .[i_n]$".
 Note that "$.$" is a valid path, referring to the input value.
 
 The update operation "$f update g$" attempts to
@@ -748,8 +749,8 @@ By doing so, these semantics can abandon the idea of paths altogether.
 The semantics use a helper function that takes an input array $v$ and
 replaces its $i$-th element by the output of $sigma$ applied to it:
 $ (.[i] update sigma)|^c_v = cases(
-  [stream(v_0, dots, v_(i-1)) + sigma|^c_(v_i) + stream(v_(i+1), dots, v_n)]
-    & "if" v = [v_0, dots, v_n] "and" 0 lt.eq i < n,
+  [stream(v_0, ..., v_(i-1)) + sigma|^c_(v_i) + stream(v_(i+1), ..., v_n)]
+    & "if" v = [v_0, ..., v_n] "and" 0 lt.eq i < n,
   bot & "otherwise"
 ) $
 
@@ -764,7 +765,7 @@ $ (.[i] update sigma)|^c_v = cases(
   $f, g$, $(f^? update sigma) | (g^? update sigma)$,
   $f "as" var(x) | g$, $"reduce" f^? "as" var(x') (.; g[var(x') / var(x)]^? update sigma)$,
   $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f^? update sigma "else" g^? update sigma$,
-  $x(f_1; dots; f_n)$, $g[f_1 / x_1, dots, f_n / x_n]^? update sigma "if" x(x_1; dots; x_n) := g$,
+  $x(f_1; ...; f_n)$, $g[f_1 / x_1, ..., f_n / x_n]^? update sigma "if" x(x_1; ...; x_n) := g$,
 )) <tab:update-semantics>
 
 #figure(table(columns: 2,
