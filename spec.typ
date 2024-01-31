@@ -341,16 +341,12 @@ The most complicated case here is the addition of two objects:
 It simply states that the addition is _right-biased_; i.e.,
 if we have two objects $l$ and $r$ and $r[i] eq.not "null"$, then $(l + r)[i] = r[i]$.
 
-The value $v[i]$ of a value $v$ at index $i$ is defined as follows#footnote[
-  While we will use $v[i]$ to define jq's `.[i]` operator,
-  $v[i]$ does not capture the full complexity of `.[i]`; for example,
-  #box(`.[i]`) is also defined for cases where `i` yields a negative number.
-  We will address these differences later in @semantics.
-]:
+The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
 
 $ v[i] := cases(
   v_i    & "if" v = [v_0, ..., v_n] "," i in bb(N)", and" i <= n,
   "null" & "if" v = [v_0, ..., v_n] "," i in bb(N)", and" i > n,
+  v[n+i] & "if" v = [v_0, ..., v_n] "," i in bb(Z) without bb(N)", and" 0 <= n+i,
   v_j    & "if" v = {k_0: v_0, ..., k_n: v_n}"," i "is a string, and" k_j = i,
   "null" & "if" v = {k_0: v_0, ..., k_n: v_n}"," i "is a string, and" i in.not {k_0, ..., k_n},
   "error" & "otherwise",
