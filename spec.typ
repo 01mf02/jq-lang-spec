@@ -307,6 +307,10 @@ $c$ for characters,
 $k$ for object keys, and
 $e$ for errors.
 
+== Simple functions
+
+We are now going to define several functions that take values and return a value.
+
 The domain of a value is defined as follows:
 
 $ "dom"(v) := cases(
@@ -341,6 +345,17 @@ The most complicated case here is the addition of two objects:
 It simply states that the addition is _right-biased_; i.e.,
 if we have two objects $l$ and $r$ and $r[i] eq.not "null"$, then $(l + r)[i] = r[i]$.
 
+== Construction, Iteration, Indexing, and Updating
+
+The next function transform a stream into
+an array if all stream elements are values, or into
+the first exception in the stream otherwise:
+
+$ [stream(v_0, ..., v_n)] = cases(
+  [v_0, ..., v_n]       & "if for all " i", " v_i eq.not bot,
+  v_(min{i | v_i = bot}) & "otherwise"
+) $
+
 The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
 
 $ v[i] := cases(
@@ -358,6 +373,45 @@ the value $v$ does not contain a value at index $i$,
 but $v$ could be _extended_ to contain one.
 More formally, $v[i]$ is $"null"$ if $v eq.not "null"$ and
 there exists some value $v' = v + delta$ such that $v'[i] eq.not "null"$.
+
+// TODO:
+// - define {l_k: l_v}
+// - explain that all operations on values, like $+$, can be generalised to
+//   operations on value results, by returning an exception immediately if
+//   an argument is an exception
+
+$ v[] update^e f = cases(
+  [f(v_0) + ... + f(v_n)] & "if" v = [v_0, ..., v_n],
+  {stream(k_0): f(v_0), ..., stream(k_n): f(v_n)} & "if" v = {k_0: v_0, ..., k_n: v_n},
+  e & "otherwise",
+) $
+
+The next function takes a value $v$ and replaces its $i$-th element by the output of $f$,
+where $f$ is a function from a value to a stream of value results:
+$ v[i] update^e f = cases(
+  [stream(v_0, ..., v_(i-1)) + f(v_i) + stream(v_(i+1), ..., v_n)]
+    & "if" v = [v_0, ..., v_n]", " i in bb(N)", and" i <= n,
+  v[n+i] update^e f & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
+  v + {stream(i): f(v[i])} & "if" v = {...} "and" i "is a string",
+
+  e & "otherwise",
+) $
+
+// TODO: in the next function, $f$ may return multiple values - we should only consider the first, and delete the slice if no value is returned!
+// idea: helper function first(l, e) := h if l = stream(h) + t and e otherwise
+// that way, we can do first(l, []) here
+// but we unfortunately cannot use it to define {k: f}, because if f returns the empty list,
+// we cannot provide a default element e that would make the key disappear
+
+$ v[i:j] update^e f = cases(
+  v[(n+i):j] & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
+  v[i:(n+j)] & "if" v = [v_0, ..., v_n]", " j in bb(Z) without bb(N)", and" 0 <= n+j,
+  [v_0, ..., v_(i-1)] + f(v[i:j]) + [v_(j), ..., v_n] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
+  v & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
+  e & "otherwise",
+) $
+
+== Ordering
 
 We establish a total order on values:
 $ "null" < "false" < "true" < n < s < a < o, $ where
@@ -420,7 +474,7 @@ A folding operation $fold$ is either "reduce" or "for".
     columns: 3,
     [Name], [Symbol], [Operators],
     [Complex], $star$, ["$|$", ",", ("=", "$update$", $aritheq$), "$alt$", "or", "and"],
-    [Cartesian], $cartesian$, [($eq.quest$, $eq.not$), ($<$, $lt.eq$, $>$, $gt.eq$), $dot.circle$],
+    [Cartesian], $cartesian$, [($eq.quest$, $eq.not$), ($<$, $<=$, $>$, $>=$), $dot.circle$],
     [Arithmetic], $dot.circle$, [($+$, $-$), ($*$, $\/$), $\%$],
   ),
   caption: [
@@ -521,27 +575,10 @@ A stream of value results is written as $stream(v_0, ..., v_n)$.
 The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
 
 We are now going to introduce a few helper functions.
-The first function transform a stream into
-an array if all stream elements are values, or into
-the leftmost error
-#footnote[In these simplified semantics, we have only a single kind of error, $bot$,
-  so it might seem pointless to specify which error we return.
-  However, in an implementation, we may have different kinds of errors.]
-in the stream otherwise:
-
-$ [stream(v_0, ..., v_n)] = cases(
-  [v_0, ..., v_n]       & "if for all " i", " v_i eq.not bot,
-  v_(min{i | v_i = bot}) & "otherwise"
-) $
 The next function helps define filters such as if-then-else, conjunction, and disjunction:
 $ "ite"(v, i, t, e) = cases(
   t & "if" v = i,
   e & "otherwise"
-) $
-The last function serves to retrieve the $i$-th element from a list, if it exists:
-$ v[i] = cases(
-  v_i & "if" v = [v_0, ..., v_n] "and" 0 lt.eq i < n,
-  bot & "otherwise"
 ) $
 
 To evaluate calls to filters that have been introduced by definition,
@@ -745,14 +782,6 @@ missing paths (@ex:update-comma).
 I now show different semantics that avoid this problem,
 by interleaving calls to $f$ and $g$.
 By doing so, these semantics can abandon the idea of paths altogether.
-
-The semantics use a helper function that takes an input array $v$ and
-replaces its $i$-th element by the output of $sigma$ applied to it:
-$ (.[i] update sigma)|^c_v = cases(
-  [stream(v_0, ..., v_(i-1)) + sigma|^c_(v_i) + stream(v_(i+1), ..., v_n)]
-    & "if" v = [v_0, ..., v_n] "and" 0 lt.eq i < n,
-  bot & "otherwise"
-) $
 
 // μονοπάτι = path
 // συνάρτηση = function
