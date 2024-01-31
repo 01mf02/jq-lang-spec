@@ -408,6 +408,7 @@ $ v[i:j] update^e f = cases(
   v[i:(n+j)] & "if" v = [v_0, ..., v_n]", " j in bb(Z) without bb(N)", and" 0 <= n+j,
   [v_0, ..., v_(i-1)] + f(v[i:j]) + [v_(j), ..., v_n] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
   v & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
+  // TODO: strings
   e & "otherwise",
 ) $
 
