@@ -454,7 +454,7 @@ $ f :=& n #or_ s #or_ . \
   #or_& x(f; ...; f)
 $
 where $p$ is a path part of the shape
-$ p := [] #or_ [var(x)] #or_ [var(x):] #or_ [:var(x)] #or_ [var(x):var(x)]. $
+$ p := [] #or_ [var(x)] #or_ [var(x):var(x)]. $
 Furthermore, the set of complex operators $star$ in MIR
 does not include "$=$" and "$aritheq$" anymore.
 
@@ -503,8 +503,8 @@ We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
   $[p  ]^?$, $floor([p]^?)_var(x)$,
   $[   ]^?$, $.[]^?$,
   $[f  ]^?$, $(var(x) | floor(f)) "as" var(y') | .[var(y')]^?$,
-  $[f: ]^?$, $(var(x) | floor(f)) "as" var(y') | .[var(y') :]^?$,
-  $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | .[: var(y')]^?$,
+  $[f: ]^?$, $(var(x) | floor(f)) "as" var(y') | "length"^? "as" var(z') | .[var(y') : var(z')]^?$,
+  $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | 0 "as" var(z') | .[var(z') : var(y')]^?$,
   $[f:g]^?$, $(var(x) | floor(f)) "as" var(y') | (var(x) | floor(g)) "as" var(z') | .[var(y') : var(z')]^?$,
 )) <tab:lower-path>
 
