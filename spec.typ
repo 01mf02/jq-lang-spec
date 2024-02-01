@@ -307,6 +307,10 @@ $c$ for characters,
 $k$ for object keys, and
 $e$ for errors.
 
+A value result is either a value or an exception.
+A stream is written as $stream(v_0, ..., v_n)$.
+The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
+
 == Simple functions
 
 We are now going to define several functions that take values and return a value.
@@ -538,7 +542,7 @@ makes it explicit which operations are cartesian or complex.
   $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
   $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
   $"label" var(x) | f$, $"label" var(x) | floor(f)$,
-  $x$, $x()$,
+  $x$, $cases(x() & "if" x := r, x & "otherwise")$,
   $x(f_1; ...; f_n)$, $x(floor(f_1); ...; floor(f_n))$,
 )) <tab:lowering>
 
@@ -570,10 +574,10 @@ The goals for creating these semantics were, in descending order of importance:
 - Compatibility: The semantics should be consistent with jq.
 
 Let us start with a few definitions.
-A context is a mapping from variables to values.
-A value result is either a value or an error $bot$.
-A stream of value results is written as $stream(v_0, ..., v_n)$.
-The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
+A context $c$ is a mapping
+from variables $var(x)$ to values and
+from identifiers $x$ to pairs $(f, c)$, where $f$ is a filter and $c$ is a context.
+Contexts store to what variables and filter arguments are bound.
 
 We are now going to introduce a few helper functions.
 The next function helps define filters such as if-then-else, conjunction, and disjunction:
@@ -581,49 +585,6 @@ $ "ite"(v, i, t, e) = cases(
   t & "if" v = i,
   e & "otherwise"
 ) $
-
-To evaluate calls to filters that have been introduced by definition,
-we define the substitution $phi[f_1 / x_1, ..., f_n / x_n]$ to be
-$sigma phi$, where
-$sigma = {x_1 |-> f_1, ..., x_n |-> f_n}$.
-The substitution $sigma phi$ is defined in @tab:substitution:
-It both applies the substitution $sigma$ and
-replaces all variables bound in $phi$ by fresh ones.
-This prevents variable bindings in $phi$ from
-shadowing variables that occur in the co-domain of $sigma$.
-
-#example[
-  Consider the filter "$0 "as" var(x) | f(var(x))$", where "$f(g) := 1 "as" var(x) | g$".
-  Here, "$f(var(x))$" expands to "$1 "as" var(x') | var(x)$", where "$var(x')$" is a fresh variable.
-  The whole filter expands to "$0 "as" var(x) | 1 "as" var(x') | var(x)$",
-  which evaluates to 0.
-  If we would (erroneously) fail to replace $var(x)$ in $f(g)$ by a fresh variable, then
-  the whole filter would expand to "$0 "as" var(x) | 1 "as" var(x) | var(x)$",
-  which evaluates to 1.
-]
-
-#figure(
-  table(
-    columns: 2,
-    $phi$, $sigma phi$,
-    [$.$, $n$ (where $n in bb(Z)$), or $.[]$], $phi$,
-    [$var(x)$ or $x$], $sigma(phi)$,
-    $.[f]$, $.[sigma f]$,
-    $f?$, $(sigma f)?$,
-    $f star g$, $sigma f star sigma g$,
-    $f cartesian g$, $sigma f cartesian sigma g$,
-    $"if" f "then" g "else" h$, $"if" sigma f "then" sigma g "else" sigma h$,
-    $x(f_1; ...; f_n)$, $x(sigma f_1; ...; sigma f_n)$,
-    $f "as" var(x) | g$, $sigma f "as" var(x') | sigma' g$,
-    // TODO: correctly render xs and init, see https://github.com/typst/typst/issues/1125
-    $fold x "as" var(x) (y_0; f)$, $fold sigma x "as" var(x')(sigma y_0; sigma' f)$
-  ),
-  caption: [
-    Substitution. Here,
-    $var(x')$ is a fresh variable and
-    $sigma' = sigma{var(x) |-> var(x')}$.
-  ]
-) <tab:substitution>
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $phi|^c_v$,
@@ -649,7 +610,8 @@ shadowing variables that occur in the co-domain of $sigma$.
   )$,
   $.[var(x)]$, $stream(v[var(i)])$,
   $fold x "as" var(x) (var(y); f)$, $fold^c_var(y) (x|^c_v, f)$,
-  $x(f_1; ...; f_n)$, [$g[f_1 / x_1, ..., f_n / x_n]|^c_v$ if $x(x_1; ...; x_n) := g$],
+  $x(f_1; ...; f_n)$, $g|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
+  $x$, $f|^c'_v "if" c(x) = (f, c')$,
   $f update g$, [see @tab:update-semantics]
 )) <tab:eval-semantics>
 
@@ -662,6 +624,8 @@ One notable exception is $f cartesian g$, which jq evaluates differently as
 $sum_(y in g|^c_v) sum_(x in f|^c_v) stream(x cartesian y)$.
 //The reason will be given in [](#cloning).
 Note that the difference only shows when both $f$ and $g$ return multiple values.
+
+// TODO: show how to implement `foreach`
 
 $ fold^c_v (l, f) := cases(
   stream(#hide("v")) + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, f) & "if" l = stream(h) + t "and" fold = "reduce",
@@ -787,29 +751,38 @@ By doing so, these semantics can abandon the idea of paths altogether.
 // μονοπάτι = path
 // συνάρτηση = function
 
-#figure(caption: [Update semantics. Here, $var(x')$ is a fresh variable.], table(columns: 2,
-  $mu$, $mu^? update sigma$,
-  $"empty"$, $.$,
-  $.$, $sigma$,
-  $f | g$, $f^? update (g^? update sigma)$,
-  $f, g$, $(f^? update sigma) | (g^? update sigma)$,
-  $f "as" var(x) | g$, $"reduce" f^? "as" var(x') (.; g[var(x') / var(x)]^? update sigma)$,
-  $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f^? update sigma "else" g^? update sigma$,
-  $x(f_1; ...; f_n)$, $g[f_1 / x_1, ..., f_n / x_n]^? update sigma "if" x(x_1; ...; x_n) := g$,
-)) <tab:update-semantics>
+// TODO:
+// - explain that sigma is now a function, not a filter
+// - make "reduce"^c_v explicit about the name of the variable $x
 
-#figure(table(columns: 2,
+#figure(caption: [Update semantics. Here, $var(x')$ is a fresh variable.], table(columns: 2,
   $mu$, $(mu^? update sigma)|^c_v$,
-  $.[p]$, [TODO],
+  $"empty"$, $stream(v)$,
+  $.$, $sigma(v)$,
+  $.[p]$, $stream(v[p] update^e sigma(v)) "where" e = cases(v & "if ? is given", "error" & "otherwise")$,
+  $f "as" var(x) | g$, $"reduce"^c_v (f^?|^c_v, (g^? update sigma))$,
+  $"if" var(x) "then" f "else" g$, $"ite"(var(x), "true", f^? update sigma, g^? update sigma)$,
   $"label" var(x) | f$, $"label"(var(x), f^? update sigma)$,
   $"break" var(x)$, $stream(breakr(x, v))$,
-))
+  $x(f_1; ...; f_n)$, $(g^? update sigma)|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
+  $x$, $(f^? update sigma)|^c'_v "if" c(x) = (f, c')$,
+)) <tab:update-semantics>
 
 $ "label"(var(x), l) := cases(
   stream(v) & "if" l = stream(breakr(x, v)) + t,
   stream(h) + "label"(var(x), t) & "if" l = stream(h) + t "and" h "is a value or an error",
   stream() & "if" l = stream(),
 ) $
+
+#figure(caption: [Properties of the update semantics.], table(columns: 2,
+  $mu$, $mu^? update sigma$,
+  $"empty"$, $.$,
+  $.$, $sigma$,
+  $f | g$, $f^? update (g^? update sigma)$,
+  $f, g$, $(f^? update sigma) | (g^? update sigma)$,
+  $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f^? update sigma "else" g^? update sigma$,
+)) <tab:update-props>
+
 
 The update semantics are given in @tab:update-semantics.
 The case for $f "as" var(x) | g$ is slightly tricky:
