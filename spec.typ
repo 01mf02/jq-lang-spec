@@ -286,11 +286,12 @@ but eliminate corner cases like the ones shown.
 - modulo
 - equality
 
-An object is a unordered map from strings to values.
-We write
-${k_1:    v_1, ..., k_n:    v_n}$ as alternative syntax for
+An object is a unordered map from strings to values that we write as
 ${k_1 |-> v_1, ..., k_n |-> v_n}$.
 We also refer to the domain of an object as _keys_.
+We assume that the union of two objects is _right-biased_; i.e.,
+if we have two objects $l$ and $r = {k |-> v, ...}$, then $(l union r)(k) = v$
+(regardless of what $l(k)$ might yield).
 
 By convention, we write
 $v$ for values,
@@ -302,9 +303,46 @@ $c$ for characters,
 $k$ for object keys, and
 $e$ for errors.
 
-A value result is either a value or an exception.
-A stream is written as $stream(v_0, ..., v_n)$.
+A stream (or lazy list) is written as $stream(v_0, ..., v_n)$.
 The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
+
+A value result is either a value or an exception.
+In this section, we will see several functions that take a fixed number of values.
+For any of these functions $f(v_1, ..., v_n)$,
+we extend their domain to value results such that $f(v_1, ..., v_n)$ yields $v_i$
+if $v_i$ is an exception and for all $j < i$, $v_j$ is a value.
+
+The next function $[dot]$ transforms a stream into
+an array if all stream elements are values, or into
+the first exception in the stream otherwise:
+
+$ [stream(v_0, ..., v_n)] := cases(
+  v_i & "if" v_i "is an exception and for all" j < i", " v_j "is a value",
+  [v_0, ..., v_n] & "otherwise",
+) $
+
+Given two values $k$ and $v$, we can make an object out of them:
+
+$ {k: v} := cases(
+  {k |-> v} & "if" k "is a string and" v "is a value",
+  "error" & "otherwise",
+) $
+
+Given streams $k_i$ and $v_i$, we can construct a stream of objects:#footnote[
+  Note that in this definition, we use the fact that functions like
+  ${l: r}$ and $l union r$ yield an exception if either $l$ or $r$ is an exception,
+  as mentioned in the beginning of the section.
+]
+
+$ {k_1: v_1, ..., k_n: v_n} := cases(
+  sum_(k in k_1) sum_(v in v_1) sum_(r in {k_2: v_2, ..., k_n: v_n}) stream({k: v} union r) & "if" n > 0,
+  stream({}) & "otherwise"
+) $
+
+If $n > 0$, then ${k_1: v_1, ..., k_n: v_n}$ is equivalent to
+$ sum_(k_1 in k_1) sum_(v_1 in v_1) ... sum_(k_n in k_n) sum_(v_n in v_n)
+stream({k_1: v_1} union ... union {k_n: v_n}). $
+
 
 == Simple functions
 
@@ -314,18 +352,18 @@ The domain of a value is defined as follows:
 
 $ "dom"(v) := cases(
   stream(0  , ...,   n) & "if" v = [v_0, ..., v_n],
-  stream(k_0, ..., k_n) & "if" v = {k_0: v_0, ..., k_n: v_n},
+  stream(k_0, ..., k_n) & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
   "error"         & "otherwise",
 ) $
 
 We define the _length_ of a value as follows:
 
-$ abs(v) := cases(
+$ |v| := cases(
   0       & "if" v = "null",
-  abs(n)  & "if" v "is a number" n,
+  |n|     & "if" v "is a number" n,
   n       & "if" v = c_1...c_n,
   n       & "if" v = [v_1, ..., v_n],
-  n       & "if" v = {k_1: v_1, ..., k_n: v_n},
+  n       & "if" v = {k_1 |-> v_1, ..., k_n |-> v_n},
   "error" & "otherwise (if" v in {"true", "false"}")",
 ) $
 
@@ -340,19 +378,14 @@ $ l + r := cases(
   "error" & "otherwise",
 ) $
 
-We assume here that the union of two objects is _right-biased_; i.e.,
-if we have two objects $l$ and $r$ and $i in "dom"(r)$, then $(l union r)[i] = r[i]$.
+We can draw a link between the functions here and jq:
+When called with the input value $v$,
+the jq filter `keys` yields $stream(["dom"(v)])$ and
+the jq filter `length` yields $stream(|v|)$.
+Furthermore, the jq filter `f + g` yields $stream(l + r)$ if
+`f` and `g` yield $stream(l)$ and $stream(r)$, respectively.
 
-== Construction, Iteration, Indexing, and Updating
-
-The next function transform a stream into
-an array if all stream elements are values, or into
-the first exception in the stream otherwise:
-
-$ [stream(v_0, ..., v_n)] = cases(
-  [v_0, ..., v_n] & "if for all " i", " v_i "is not an exception",
-  v_(min{i | v_i "is an exception"}) & "otherwise"
-) $
+== Accessing
 
 The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
 
@@ -360,8 +393,8 @@ $ v[i] := cases(
   v_i    & "if" v = [v_0, ..., v_n] "," i in bb(N)", and" i <= n,
   "null" & "if" v = [v_0, ..., v_n] "," i in bb(N)", and" i > n,
   v[n+i] & "if" v = [v_0, ..., v_n] "," i in bb(Z) without bb(N)", and" 0 <= n+i,
-  v_j    & "if" v = {k_0: v_0, ..., k_n: v_n}"," i "is a string, and" k_j = i,
-  "null" & "if" v = {k_0: v_0, ..., k_n: v_n}"," i "is a string, and" i in.not {k_0, ..., k_n},
+  v_j    & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n}"," i "is a string, and" k_j = i,
+  "null" & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n}"," i "is a string, and" i in.not {k_0, ..., k_n},
   "error" & "otherwise",
 ) $
 
@@ -385,15 +418,11 @@ $ v[i:j] := cases(
   e & "otherwise",
 ) $
 
-// TODO:
-// - define {l_k: l_v}
-// - explain that all operations on values, like $+$, can be generalised to
-//   operations on value results, by returning an exception immediately if
-//   an argument is an exception
+== Updating
 
 $ v[] update^e f = cases(
   [f(v_0) + ... + f(v_n)] & "if" v = [v_0, ..., v_n],
-  {stream(k_0): f(v_0), ..., stream(k_n): f(v_n)} & "if" v = {k_0: v_0, ..., k_n: v_n},
+  {stream(k_0): f(v_0), ..., stream(k_n): f(v_n)} & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
   e & "otherwise",
 ) $
 
@@ -403,7 +432,7 @@ $ v[i] update^e f = cases(
   v[0:i] + [f(v_i)] + v[(i+1):n]
     & "if" v = [v_0, ..., v_n]", " i in bb(N)", and" i <= n,
   v[n+i] update^e f & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
-  v + {stream(i): f(v[i])} & "if" v = {...} "and" i "is a string",
+  v + {i: f(v[i])} & "if" v = {...} "and" i "is a string",
 
   e & "otherwise",
 ) $
@@ -614,11 +643,9 @@ $ "ite"(v, i, t, e) = cases(
   $var(x) "and" f$, $"ite"(c(var(x)), "false", stream("false"), f|^c_v)$,
   $var(x) "or"  f$, $"ite"(c(var(x)), "true" , stream("true" ), f|^c_v)$,
   $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", f|^c_v, g|^c_v)$,
-  $.[]$, $cases(
-    stream(v_0, ..., v_n) & "if" v = [v_0, ..., v_n],
-    stream(bot) & "otherwise"
-  )$,
-  $.[var(x)]$, $stream(v[c(var(i))])$,
+  $.[]$, $v[]$,
+  $.[var(x)]$, $stream(v[c(var(x))])$,
+  $.[var(x):var(y)]$, $stream(v[c(var(x)):c(var(y))])$,
   $fold x "as" var(x) (var(y); f)$, $fold^c_c(var(y)) (x|^c_v, var(x), f)$,
   $x(f_1; ...; f_n)$, $g|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
   $x$, $f|^c'_v "if" c(x) = (f, c')$,
@@ -771,7 +798,8 @@ By doing so, these semantics can abandon the idea of paths altogether.
   $.$, $sigma(v)$,
   $f | g$, $(f^? update sigma')|^c_v "where" sigma'(x) = (g^? update sigma)|^c_x$,
   $f, g$, $sum_(x in (f^? update sigma)|^c_v) (g^? update sigma)|^c_x$,
-  $.[p]$, $stream(v[p] update^e sigma(v)) "where" e = cases(v & "if ? is given", "error" & "otherwise")$,
+  // TODO: mention how to extend c to c(p)
+  $.[p]$, $stream(v[c(p)] update^e sigma(v)) "where" e = cases(v & "if ? is given", "error" & "otherwise")$,
   $f "as" var(x) | g$, $"reduce"^c_v (f^?|^c_v, var(x), (g^? update sigma))$,
   $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", f^? update sigma, g^? update sigma)$,
   $"label" var(x) | f$, $"label"(var(x), f^? update sigma)$,
