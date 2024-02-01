@@ -596,23 +596,23 @@ $ "ite"(v, i, t, e) = cases(
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
   $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
-  $var(x) cartesian var(y)$, $stream(var(x) cartesian var(y))$,
+  $var(x) cartesian var(y)$, $stream(c(var(x)) cartesian c(var(y)))$,
   $f?$, $sum_(x in f|^c_v) cases(
     stream() & "if" x "is an error",
     stream(x) & "otherwise"
   )$,
-  $var(x) "and" f$, $"ite"(var(x), "false", stream("false"), f|^c_v)$,
-  $var(x) "or"  f$, $"ite"(var(x), "true" , stream("true" ), f|^c_v)$,
-  $"if" var(x) "then" f "else" g$, $"ite"(var(x), "true", f|^c_v, g|^c_v)$,
+  $var(x) "and" f$, $"ite"(c(var(x)), "false", stream("false"), f|^c_v)$,
+  $var(x) "or"  f$, $"ite"(c(var(x)), "true" , stream("true" ), f|^c_v)$,
+  $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", f|^c_v, g|^c_v)$,
   $.[]$, $cases(
     stream(v_0, ..., v_n) & "if" v = [v_0, ..., v_n],
     stream(bot) & "otherwise"
   )$,
-  $.[var(x)]$, $stream(v[var(i)])$,
-  $fold x "as" var(x) (var(y); f)$, $fold^c_var(y) (x|^c_v, f)$,
+  $.[var(x)]$, $stream(v[c(var(i))])$,
+  $fold x "as" var(x) (var(y); f)$, $fold^c_c(var(y)) (x|^c_v, var(x), f)$,
   $x(f_1; ...; f_n)$, $g|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
   $x$, $f|^c'_v "if" c(x) = (f, c')$,
-  $f update g$, [see @tab:update-semantics]
+  $f update g$, [see @updates]
 )) <tab:eval-semantics>
 
 The evaluation semantics are given in @tab:eval-semantics.
@@ -627,9 +627,9 @@ Note that the difference only shows when both $f$ and $g$ return multiple values
 
 // TODO: show how to implement `foreach`
 
-$ fold^c_v (l, f) := cases(
-  stream(#hide("v")) + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, f) & "if" l = stream(h) + t "and" fold = "reduce",
-  stream(        v ) + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, f) & "if" l = stream(h) + t "and" fold = "for",
+$ fold^c_v (l, var(x), f) := cases(
+  stream(#hide("v")) + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, var(x), f) & "if" l = stream(h) + t "and" fold = "reduce",
+  stream(        v ) + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, var(x), f) & "if" l = stream(h) + t "and" fold = "for",
   stream(        v ) & "otherwise"
 ) $
 
@@ -755,13 +755,15 @@ By doing so, these semantics can abandon the idea of paths altogether.
 // - explain that sigma is now a function, not a filter
 // - make "reduce"^c_v explicit about the name of the variable $x
 
-#figure(caption: [Update semantics. Here, $var(x')$ is a fresh variable.], table(columns: 2,
+#figure(caption: [Update semantics.], table(columns: 2,
   $mu$, $(mu^? update sigma)|^c_v$,
   $"empty"$, $stream(v)$,
   $.$, $sigma(v)$,
+  $f | g$, $(f^? update sigma')|^c_v "where" sigma'(x) = (g^? update sigma)|^c_x$,
+  $f, g$, $sum_(x in (f^? update sigma)|^c_v) (g^? update sigma)|^c_x$,
   $.[p]$, $stream(v[p] update^e sigma(v)) "where" e = cases(v & "if ? is given", "error" & "otherwise")$,
-  $f "as" var(x) | g$, $"reduce"^c_v (f^?|^c_v, (g^? update sigma))$,
-  $"if" var(x) "then" f "else" g$, $"ite"(var(x), "true", f^? update sigma, g^? update sigma)$,
+  $f "as" var(x) | g$, $"reduce"^c_v (f^?|^c_v, var(x), (g^? update sigma))$,
+  $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", f^? update sigma, g^? update sigma)$,
   $"label" var(x) | f$, $"label"(var(x), f^? update sigma)$,
   $"break" var(x)$, $stream(breakr(x, v))$,
   $x(f_1; ...; f_n)$, $(g^? update sigma)|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
@@ -774,7 +776,7 @@ $ "label"(var(x), l) := cases(
   stream() & "if" l = stream(),
 ) $
 
-#figure(caption: [Properties of the update semantics.], table(columns: 2,
+#figure(caption: [Update semantics properties.], table(columns: 2,
   $mu$, $mu^? update sigma$,
   $"empty"$, $.$,
   $.$, $sigma$,
