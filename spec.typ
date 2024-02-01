@@ -379,7 +379,7 @@ $ v[i:j] := cases(
   [v_i, ..., v_(j-1)] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
   [] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
   c_i...c_(j-1) & "if" v = c_0...c_n", " i","j in bb(N)", and" i <= j,
-  quote quote & "if" v = c_0...c_n", " i","j in bb(N)", and" i <= j,
+  quote quote & "if" v = c_0...c_n", " i","j in bb(N)", and" i > j,
   v[(n+i):j] & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
   v[i:(n+j)] & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
   e & "otherwise",
