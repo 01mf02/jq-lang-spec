@@ -56,9 +56,6 @@
 - fix substitution syntax
 - extend to full JSON
 - constant filter (string, number)
-- lowering goes from HIR to MIR:
-  - $f aritheq g$
-  - $f = g$
 - convention: error $e$, result $r$, value $v$, path part $p$, variable $var(x)$
 - error: value or break
 - specify $.[l:h]$ and $"try" f "catch" g$, $"label" var(x) | g$, $"break" var(x)$
@@ -69,8 +66,6 @@
 - is $.[var(x)]?$ equivalent to $(.[var(x)])?$?
 - is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
 - define foreach via for and clarify that latter is not part of jq
-- define $"dom"(v)$
-- xs -> $x$
 - literature research
 - try-catch and ? are different from jq, but can be simulated via label-break
 - exception = error or break
@@ -318,9 +313,9 @@ We are now going to define several functions that take values and return a value
 The domain of a value is defined as follows:
 
 $ "dom"(v) := cases(
-  [0  , ...,   n] & "if" v = [v_0, ..., v_n],
-  [k_0, ..., k_n] & "if" v = {k_0: v_0, ..., k_n: v_n},
-  "error"          & "otherwise",
+  stream(0  , ...,   n) & "if" v = [v_0, ..., v_n],
+  stream(k_0, ..., k_n) & "if" v = {k_0: v_0, ..., k_n: v_n},
+  "error"         & "otherwise",
 ) $
 
 We define the _length_ of a value as follows:
@@ -341,13 +336,12 @@ $ l + r := cases(
   n_1 + n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
   c_(l,1)...c_(l,m)c_(r,1)...c_(r,n) & "if" l = c_(l,1)...c_(l,m) "and" r = c_(r,1)...c_(r,n),
   [l_1, ..., l_m, r_1, ..., r_n] & "if" l = [l_1, ..., l_m] "and" r = [r_1, ..., r_n],
-  (union.big_(k in "dom"(l) without "dom"(r)) {k: l[k]}) union r & "if" l = {...} "and" r = {...},
+  l union r & "if" l = {...} "and" r = {...},
   "error" & "otherwise",
 ) $
 
-The most complicated case here is the addition of two objects:
-It simply states that the addition is _right-biased_; i.e.,
-if we have two objects $l$ and $r$ and $r[i] eq.not "null"$, then $(l + r)[i] = r[i]$.
+We assume here that the union of two objects is _right-biased_; i.e.,
+if we have two objects $l$ and $r$ and $i in "dom"(r)$, then $(l union r)[i] = r[i]$.
 
 == Construction, Iteration, Indexing, and Updating
 
@@ -356,8 +350,8 @@ an array if all stream elements are values, or into
 the first exception in the stream otherwise:
 
 $ [stream(v_0, ..., v_n)] = cases(
-  [v_0, ..., v_n]       & "if for all " i", " v_i eq.not bot,
-  v_(min{i | v_i = bot}) & "otherwise"
+  [v_0, ..., v_n] & "if for all " i", " v_i "is not an exception",
+  v_(min{i | v_i "is an exception"}) & "otherwise"
 ) $
 
 The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
@@ -378,6 +372,19 @@ but $v$ could be _extended_ to contain one.
 More formally, $v[i]$ is $"null"$ if $v eq.not "null"$ and
 there exists some value $v' = v + delta$ such that $v'[i] eq.not "null"$.
 
+$v[] := sum_(i in"dom"(v)) stream(v[i])$.
+
+// TODO: specify what happens if i or j > n
+$ v[i:j] := cases(
+  [v_i, ..., v_(j-1)] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
+  [] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
+  c_i...c_(j-1) & "if" v = c_0...c_n", " i","j in bb(N)", and" i <= j,
+  quote quote & "if" v = c_0...c_n", " i","j in bb(N)", and" i <= j,
+  v[(n+i):j] & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
+  v[i:(n+j)] & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
+  e & "otherwise",
+) $
+
 // TODO:
 // - define {l_k: l_v}
 // - explain that all operations on values, like $+$, can be generalised to
@@ -393,13 +400,16 @@ $ v[] update^e f = cases(
 The next function takes a value $v$ and replaces its $i$-th element by the output of $f$,
 where $f$ is a function from a value to a stream of value results:
 $ v[i] update^e f = cases(
-  [stream(v_0, ..., v_(i-1)) + f(v_i) + stream(v_(i+1), ..., v_n)]
+  v[0:i] + [f(v_i)] + v[(i+1):n]
     & "if" v = [v_0, ..., v_n]", " i in bb(N)", and" i <= n,
   v[n+i] update^e f & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
   v + {stream(i): f(v[i])} & "if" v = {...} "and" i "is a string",
 
   e & "otherwise",
 ) $
+
+Note that this diverges from jq if $v = [v_0, ..., v_n]$ and $i > n$,
+because jq fills up the array with $"null"$.
 
 // TODO: in the next function, $f$ may return multiple values - we should only consider the first, and delete the slice if no value is returned!
 // idea: helper function first(l, e) := h if l = stream(h) + t and e otherwise
@@ -408,8 +418,8 @@ $ v[i] update^e f = cases(
 // we cannot provide a default element e that would make the key disappear
 
 $ v[i:j] update^e f = cases(
-  v[(n+i):j] & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
-  v[i:(n+j)] & "if" v = [v_0, ..., v_n]", " j in bb(Z) without bb(N)", and" 0 <= n+j,
+  v[(n+i):j] update^e f & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
+  v[i:(n+j)] update^e f & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
   [v_0, ..., v_(i-1)] + f(v[i:j]) + [v_(j), ..., v_n] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
   v & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
   // TODO: strings
@@ -428,7 +438,7 @@ We assume that there is a total order on numbers and characters.
 Strings and arrays are compared lexicographically.
 Two objects $o_1$ and $o_2$ are compared as follows:
 For both objects $o_i$ ($i in {1, 2}$),
-we sort the array $"dom"(o_i)$ to obtain the ordered array of keys
+we sort the array $["dom"(o_i)]$ to obtain the ordered array of keys
 $k_i = [k_1, ..., k_n]$, from which we obtain
 $v_i = [o[k_1], ..., o[k_n]]$.
 If $k_1 = k_2$, the ordering of $o_1$ and $o_2$ is the ordering of $v_1$ and $v_2$,
