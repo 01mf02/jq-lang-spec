@@ -706,17 +706,25 @@ $sum_(y in g|^c_v) sum_(x in f|^c_v) stream(x cartesian y)$.
 //The reason will be given in [](#cloning).
 Note that the difference only shows when both $f$ and $g$ return multiple values.
 
-// TODO: show how to implement `foreach`
-
-$ fold^c_v (l, var(x), f) := cases(
-  stream(#hide("v")) + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, var(x), f) & "if" l = stream(h) + t "and" fold = "reduce",
-  stream(        v ) + sum_(x in f|^(c{var(x) |-> h})_v) fold^c_x (t, var(x), f) & "if" l = stream(h) + t "and" fold = "for",
-  stream(        v ) & "otherwise"
+$ "fold"^c_v (l, var(x), f, o) := cases(
+  o(v) + sum_(x in f|^(c{var(x) |-> h})_v) "fold"^c_x (t, var(x), f, o) & "if" l = stream(h) + t,
+  stream(        v ) & "otherwise" (l = stream())
 ) $
+
+$ "foreach"^c_v (l, var(x), f) := cases(
+  sum_(x in f|^(c{var(x) |-> h})_v) "fold"(t, var(x), f, o) & "if" l = stream(h) + t", where" o(v) = stream(v),
+  stream() & "otherwise",
+) $
+
+$ "reduce"^c_v (l, var(x), f) := "fold"(l, var(x), f, o) "where" o(v) = stream() $
+
+$ "for"^c_v (l, var(x), f) := "fold"(l, var(x), f, o) "where" o(v) = stream(v) $
 
 In addition to the filters defined in @tab:eval-semantics,
 we define the semantics of the two fold-like filters "reduce" and "for" as follows,
 where $x$ evaluates to $stream(x_0, ..., x_n)$:
+
+// TODO: give equation for "foreach"
 
 $ "reduce"   x "as" var(x) (y_0; f) =& y_0 &
   "for"      x "as" var(x) (y_0; f) =& y_0 \
