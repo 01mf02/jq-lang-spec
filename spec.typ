@@ -507,6 +507,8 @@ $o$ is an object.
 We assume that there is a total order on numbers and characters.
 Strings and arrays are compared lexicographically.
 
+// TODO: mention that jq does not have an actual total order, due to nan < nan
+
 Two objects $o_1$ and $o_2$ are compared as follows:
 For both objects $o_i$ ($i in {1, 2}$),
 we sort the array $["dom"(o_i)]$ by ascending order to obtain the ordered array of keys
@@ -740,6 +742,8 @@ $ "foreach" x "as" var(x) (y_0; f) =& y_0 \
 |& ... \
 |& ., (x_n "as" var(x) | f)...)
 $
+
+// TODO: mention that folding considers only first(f)
 
 Both filters fold $f$ over the sequence given by $x$ with the initial value $y_0$.
 Their main difference is that "reduce" returns only the final value(s),
