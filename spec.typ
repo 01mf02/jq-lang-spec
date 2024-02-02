@@ -44,6 +44,7 @@
 #let var(x) = $\$#x$
 #let cartesian = math.op($circle.small$)
 #let arith = math.op($dot.circle$)
+#let mod = math.op($\%$)
 #let aritheq = math.op($dot.circle#h(0pt)=$)
 #let fold = math.op($phi.alt$)
 #let update = $models$
@@ -296,15 +297,18 @@ if we have two objects $l$ and $r = {k |-> v, ...}$, then $(l union r)(k) = v$
 By convention, we write
 $v$ for values,
 $n$ for numbers,
-$s$ for strings,
-$a$ for arrays,
-$o$ for objects,
-$c$ for characters,
-$k$ for object keys, and
-$e$ for errors.
+$c$ for characters, and
+$k$ for object keys.
 
 A stream (or lazy list) is written as $stream(v_0, ..., v_n)$.
 The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
+
+We suppose that there exists a function $"error"(v)$ that
+converts a value into an error.
+In the remainder of this text, we will write just "error"
+to denote calling $"error"(v)$ with some value $v$.
+This is done such that this specification does not need to fix
+the precise error value that is returned when an operation fails.
 
 A value result is either a value or an exception.
 In this section, we will see several functions that take a fixed number of values.
@@ -328,7 +332,8 @@ $ {k: v} := cases(
   "error" & "otherwise",
 ) $
 
-Given streams $k_i$ and $v_i$, we can construct a stream of objects:#footnote[
+Given two streams of value results $k_i$ and $v_i$,
+we can construct a stream of objects:#footnote[
   Note that in this definition, we use the fact that functions like
   ${l: r}$ and $l union r$ yield an exception if either $l$ or $r$ is an exception,
   as mentioned in the beginning of the section.
@@ -367,6 +372,14 @@ $ |v| := cases(
   "error" & "otherwise (if" v in {"true", "false"}")",
 ) $
 
+We can draw a link between the functions here and jq:
+When called with the input value $v$,
+the jq filter `keys` yields $stream(["dom"(v)])$ and
+the jq filter `length` yields $stream(|v|)$.
+
+
+== Arithmetic operations
+
 We define addition of two values $l$ and $r$ as follows:
 
 $ l + r := cases(
@@ -398,11 +411,12 @@ $ l merge r := cases(
   l & "otherwise (if" r = {} ")",
 ) $
 
-We can draw a link between the functions here and jq:
-When called with the input value $v$,
-the jq filter `keys` yields $stream(["dom"(v)])$ and
-the jq filter `length` yields $stream(|v|)$.
-Furthermore, suppose that the jq filters
+For two values $l$ and $r$, the arithmetic operations
+$l - r$, $l div r$, and $l mod r$ (modulo) yield
+$m - n$, $m div n$, and $m mod n$ if $l$ and $r$ are numbers $m$ and $n$,
+otherwise they yield an error.
+
+Suppose that the jq filters
 `f` and `g` yield $stream(l)$ and $stream(r)$, respectively.
 Then the jq filters `f + g` and `f * g` yield
 $stream(l + r)$ and $stream(l times r)$, respectively.
@@ -542,7 +556,7 @@ A folding operation $fold$ is either "reduce" or "for".
     [Name], [Symbol], [Operators],
     [Complex], $star$, ["$|$", ",", ("=", "$update$", $aritheq$), "$alt$", "or", "and"],
     [Cartesian], $cartesian$, [($eq.quest$, $eq.not$), ($<$, $<=$, $>$, $>=$), $dot.circle$],
-    [Arithmetic], $dot.circle$, [($+$, $-$), ($times$, $div$), $\%$],
+    [Arithmetic], $dot.circle$, [($+$, $-$), ($times$, $div$), $mod$],
   ),
   caption: [
     Binary operators, given in order of increasing precedence.
