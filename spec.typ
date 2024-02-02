@@ -494,7 +494,11 @@ $ v[i:j] update^e f = cases(
 
 == Ordering
 
-We establish a total order on values:
+Now, we will establish a total order "$<$" on values.
+Recall that for any total order "$<$", we can say that
+$l = r$ iff neither $l < r$ nor $r < l$.
+
+The order "$<$" on values satisfies
 $ "null" < "false" < "true" < n < s < a < o, $ where
 $n$ is a number,
 $s$ is a string,
@@ -502,13 +506,16 @@ $a$ is an array, and
 $o$ is an object.
 We assume that there is a total order on numbers and characters.
 Strings and arrays are compared lexicographically.
+
 Two objects $o_1$ and $o_2$ are compared as follows:
 For both objects $o_i$ ($i in {1, 2}$),
-we sort the array $["dom"(o_i)]$ to obtain the ordered array of keys
+we sort the array $["dom"(o_i)]$ by ascending order to obtain the ordered array of keys
 $k_i = [k_1, ..., k_n]$, from which we obtain
 $v_i = [o[k_1], ..., o[k_n]]$.
-If $k_1 = k_2$, the ordering of $o_1$ and $o_2$ is the ordering of $v_1$ and $v_2$,
-otherwise, the ordering of $o_1$ and $o_2$ is the ordering of $k_1$ and $k_2$.
+We then have $ o_1 < o_2 <==> cases(
+  k_1 < k_2 & "if" k_1 < k_2 "or" k_1 > k_2,
+  v_1 < v_2 & "otherwise" (k_1 = k_2)
+) $
 
 #example[
   TODO: For object comparison.
