@@ -712,13 +712,13 @@ $ "fold"^c_v (l, var(x), f, o) := cases(
 ) $
 
 $ "foreach"^c_v (l, var(x), f) := cases(
-  sum_(x in f|^(c{var(x) |-> h})_v) "fold"(t, var(x), f, o) & "if" l = stream(h) + t", where" o(v) = stream(v),
+  sum_(x in f|^(c{var(x) |-> h})_v) "for"(t, var(x), f) & "if" l = stream(h) + t,
   stream() & "otherwise",
 ) $
 
-$ "reduce"^c_v (l, var(x), f) := "fold"(l, var(x), f, o) "where" o(v) = stream() $
-
-$ "for"^c_v (l, var(x), f) := "fold"(l, var(x), f, o) "where" o(v) = stream(v) $
+$ "reduce"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream() \
+     "for"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream(v)
+$
 
 In addition to the filters defined in @tab:eval-semantics,
 we define the semantics of the two fold-like filters "reduce" and "for" as follows,
