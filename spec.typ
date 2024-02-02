@@ -724,8 +724,6 @@ In addition to the filters defined in @tab:eval-semantics,
 we define the semantics of the two fold-like filters "reduce" and "for" as follows,
 where $x$ evaluates to $stream(x_0, ..., x_n)$:
 
-// TODO: give equation for "foreach"
-
 $ "reduce"   x "as" var(x) (y_0; f) =& y_0 &
   "for"      x "as" var(x) (y_0; f) =& y_0 \
 |& x_0 "as" var(x) | f &
@@ -733,7 +731,14 @@ $ "reduce"   x "as" var(x) (y_0; f) =& y_0 &
 |& ... &
 |& ... \
 |& x_n "as" var(x) | f &
-|& ., (x_n "as" var(x) | f) ...)
+|& ., (x_n "as" var(x) | f)...)
+$
+
+$ "foreach" x "as" var(x) (y_0; f) =& y_0 \
+|& x_0 "as" var(x) | f \
+|& ., (x_1 "as" var(x) | f \
+|& ... \
+|& ., (x_n "as" var(x) | f)...)
 $
 
 Both filters fold $f$ over the sequence given by $x$ with the initial value $y_0$.
