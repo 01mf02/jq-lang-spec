@@ -37,10 +37,7 @@
   ]
 ).with(numbering: none)
 
-#let stream(..xs) = {
-  let bla = xs.pos().join($, $)
-  $angle.l #bla angle.r$
-}
+#let stream(..xs) = $angle.l #xs.pos().join($, $) angle.r$
 #let var(x) = $\$#x$
 #let cartesian = math.op($circle.small$)
 #let arith = math.op($dot.circle$)
@@ -718,7 +715,7 @@ $ "foreach"^c_v (l, var(x), f) := cases(
   stream() & "otherwise",
 ) $
 
-$ "reduce"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream() \
+$ "reduce"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream(#hide[v]) \
      "for"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream(v)
 $
 
