@@ -378,12 +378,35 @@ $ l + r := cases(
   "error" & "otherwise",
 ) $
 
+#let merge = $union.dot$
+
+$ l times r := cases(
+  l + l times (r - 1) & "if" l "is a string and" r in bb(N) without {0},
+  "null" & "if" l "is a string and" r = 0,
+  r times l & "if" r "is a string and" l in bb(N),
+  l times r & "if" l "and" r "are numbers",
+  l merge r & "if" l "and" r "are objects",
+  "error" & "otherwise"
+) $
+
+Here, for two objects $l$ and $r$, their _recursive merge_ $l merge r$ is defined as:
+
+$ l merge r := cases(
+  {k |-> v_l merge v_r} union l' merge r' & "if" l = {k |-> v_l} union l'"," r = {k |-> v_r} union r'", and" v_l"," v_r "are objects",
+  {k |-> v_r} union l' merge r' & "if" l = {k |-> v_l} union l'"," r = {k |-> v_r} union r'", and" v_l "or" v_r "is not an object",
+  {k |-> v_r} union l merge r' & "if" k in.not "dom"(l) "and" r = {k |-> v_r} union r',
+  l & "otherwise (if" r = {} ")",
+) $
+
 We can draw a link between the functions here and jq:
 When called with the input value $v$,
 the jq filter `keys` yields $stream(["dom"(v)])$ and
 the jq filter `length` yields $stream(|v|)$.
-Furthermore, the jq filter `f + g` yields $stream(l + r)$ if
+Furthermore, suppose that the jq filters
 `f` and `g` yield $stream(l)$ and $stream(r)$, respectively.
+Then the jq filters `f + g` and `f * g` yield
+$stream(l + r)$ and $stream(l times r)$, respectively.
+
 
 == Accessing
 
@@ -519,7 +542,7 @@ A folding operation $fold$ is either "reduce" or "for".
     [Name], [Symbol], [Operators],
     [Complex], $star$, ["$|$", ",", ("=", "$update$", $aritheq$), "$alt$", "or", "and"],
     [Cartesian], $cartesian$, [($eq.quest$, $eq.not$), ($<$, $<=$, $>$, $>=$), $dot.circle$],
-    [Arithmetic], $dot.circle$, [($+$, $-$), ($*$, $\/$), $\%$],
+    [Arithmetic], $dot.circle$, [($+$, $-$), ($times$, $div$), $\%$],
   ),
   caption: [
     Binary operators, given in order of increasing precedence.
