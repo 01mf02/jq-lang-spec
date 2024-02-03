@@ -619,6 +619,8 @@ makes it explicit which operations are cartesian or complex.
   $f "or"  g$, $floor(f) "as" var(x') | var(x') "or"  floor(g)$,
   $f star g$, $floor(f) star floor(g)$,
   $f cartesian g$, $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
+  // TODO: report wrong documentation on $alt$
+  $f alt g$, $(floor(f) | "if" . "then" . "else" "empty") alt floor(g)$,
   $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
   $fold f_x "as" var(x) (f_y; f)$, $floor(f_y) "as" var(y') | fold floor(f_x) "as" var(x) (var(y'); floor(f))$,
   $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
