@@ -617,7 +617,7 @@ makes it explicit which operations are cartesian or complex.
   $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
   $f update g$, $floor(f) update floor(g)$,
   $f aritheq g$, $floor(f update . arith g)$,
-  $f alteq g$, $floor(f) update floor(. alt g)$,
+  $f alteq g$, $floor(f update . alt g)$,
   $f "and" g$, $floor(f) "as" var(x') | var(x') "and" floor(g)$,
   $f "or"  g$, $floor(f) "as" var(x') | var(x') "or"  floor(g)$,
   $f star g$, $floor(f) star floor(g)$,
