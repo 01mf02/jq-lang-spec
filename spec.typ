@@ -46,6 +46,7 @@
 #let fold = math.op($phi.alt$)
 #let update = $models$
 #let alt = $slash.double$
+#let alteq = math.op($alt#h(0pt)=$)
 #let breakr(x, v) = $"break"(\$#x, #v)$
 
 = TODO:
@@ -560,7 +561,7 @@ A folding operation $fold$ is either "reduce" or "for".
   table(
     columns: 3,
     [Name], [Symbol], [Operators],
-    [Complex], $star$, ["$|$", ",", ("=", "$update$", $aritheq$), "$alt$", "or", "and"],
+    [Complex], $star$, ["$|$", ",", ("=", "$update$", "$aritheq$", "$alteq$"), "$alt$", "or", "and"],
     [Cartesian], $cartesian$, [($eq.quest$, $eq.not$), ($<$, $<=$, $>$, $>=$), $dot.circle$],
     [Arithmetic], $dot.circle$, [($+$, $-$), ($times$, $div$), $mod$],
   ),
@@ -614,7 +615,9 @@ makes it explicit which operations are cartesian or complex.
   ${f_1: g_1, ..., f_n: g_n}$, ${floor(f_1): floor(g_1), ..., floor(f_n): floor(g_n)}$,
   $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
   $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
+  $f update g$, $floor(f) update floor(g)$,
   $f aritheq g$, $floor(f update . arith g)$,
+  $f alteq g$, $floor(f) update floor(. alt g)$,
   $f "and" g$, $floor(f) "as" var(x') | var(x') "and" floor(g)$,
   $f "or"  g$, $floor(f) "as" var(x') | var(x') "or"  floor(g)$,
   $f star g$, $floor(f) star floor(g)$,
