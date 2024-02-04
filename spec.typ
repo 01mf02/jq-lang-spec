@@ -861,8 +861,10 @@ By doing so, these semantics can abandon the idea of paths altogether.
   $.$, $sigma(v)$,
   $f | g$, $(f^? update sigma')|^c_v "where" sigma'(x) = (g^? update sigma)|^c_x$,
   $f, g$, $sum_(x in (f^? update sigma)|^c_v) (g^? update sigma)|^c_x$,
+  $f alt g$, $("ite"(sum_(x in f|^c_v, med x in.not {"null", "false"}) stream(x), stream(), g, f) update sigma)|^c_v$,
   // TODO: mention how to extend c to c(p)
   $.[p]$, $stream(v[c(p)] update^e sigma(v)) "where" e = cases(v & "if ? is given", "error" & "otherwise")$,
+  // add missing |^c_v
   $f "as" var(x) | g$, $"reduce"^c_v (f^?|^c_v, var(x), (g^? update sigma))$,
   $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", f^? update sigma, g^? update sigma)$,
   $"label" var(x) | f$, $"label"(var(x), f^? update sigma)$,
