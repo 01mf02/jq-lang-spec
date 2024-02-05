@@ -53,10 +53,8 @@
 = TODO:
 
 - fix QED at end of proof
-- extend to full JSON
 - constant filter (string, number)
 - convention: error $e$, result $r$, value $v$, path part $p$, variable $var(x)$
-- error: value or break
 - specify $.[l:h]$ and $"try" f "catch" g$, $"label" var(x) | g$, $"break" var(x)$
 - specify arithmetic operations for non-numeric values (recursive object merge, ...)
 - try/catch difference: allow simulation via $"label" var(x) | "try" f "catch" (g, "break" var(x))$
@@ -67,7 +65,6 @@
 - define foreach via for and clarify that latter is not part of jq
 - literature research
 - try-catch and ? are different from jq, but can be simulated via label-break
-- exception = error or break
 - evaluation for $alt$
 - remove some filter cases in proof of lemma --- it's not exhaustive anyway right now
 
