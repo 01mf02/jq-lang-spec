@@ -495,7 +495,7 @@ but $v$ could be _extended_ to contain one.
 More formally, $v[i]$ is $"null"$ if $v eq.not "null"$ and
 there exists some value $v' = v + delta$ such that $v'[i] eq.not "null"$.
 
-$v[] := sum_(i in"keys"(v)) stream(v[i])$.
+$ v[] := sum_(i in"keys"(v)) stream(v[i]) $
 
 // TODO: specify what happens if i or j > n
 $ v[i:j] := cases(
@@ -547,22 +547,22 @@ $ v[i:j] update^e f = cases(
 
 == Ordering <ordering>
 
-Now, we will establish a total order "$<$" on values.
-Recall that for any total order "$<$", we can say that
-$l = r$ iff neither $l < r$ nor $r < l$.
+In this subsection, we establish a total order on values.#footnote[
+  Note that jq does _not_ implement a _strict_ total order on values;
+  in particular, its order on (floating-point) numbers specifies $"nan" < "nan"$,
+  from which follows that $"nan" eq.not "nan"$ and $"nan" gt.not "nan"$.
+]
 
-The order "$<$" on values satisfies
+We have that
 $ "null" < "false" < "true" < n < s < a < o, $ where
 $n$ is a number,
 $s$ is a string,
 $a$ is an array, and
 $o$ is an object.
 We assume that there is a total order on numbers and characters.
-Strings and arrays are compared lexicographically.
+Strings and arrays are ordered lexicographically.
 
-// TODO: mention that jq does not have an actual strict total order, due to nan < nan
-
-Two objects $o_1$ and $o_2$ are compared as follows:
+Two objects $o_1$ and $o_2$ are ordered as follows:
 For both objects $o_i$ ($i in {1, 2}$),
 we sort the array $["keys"(o_i)]$ by ascending order to obtain the ordered array of keys
 $k_i = [k_1, ..., k_n]$, from which we obtain
