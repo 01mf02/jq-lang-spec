@@ -652,7 +652,7 @@ We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
 
 
 
-= Semantics <semantics>
+= Evaluation Semantics <semantics>
 
 The goals for creating these semantics were, in descending order of importance:
 
@@ -780,7 +780,7 @@ The semantics of jq and those shown in @tab:eval-semantics
 differ most notably in the case of updates; that is, $f update g$.
 We are going to deal with this in @updates.
 
-== Updates <updates>
+= Update Semantics <updates>
 
 jq's update mechanism works with _paths_.
 A path is a sequence of indices $i_j$ that can be written as $.[i_1]...[i_n]$.
@@ -855,39 +855,50 @@ By doing so, these semantics can abandon the idea of paths altogether.
 // - explain that sigma is now a function, not a filter
 // - make "reduce"^c_v explicit about the name of the variable $x
 
-#figure(caption: [Update semantics.], table(columns: 2,
-  $mu$, $(mu^? update sigma)|^c_v$,
+#figure(caption: [Update semantics. Here, $mu$ is a filter and $sigma(v)$ is a function from a value $v$ to a stream of value results.], table(columns: 2,
+  $mu$, $(mu update sigma)|^c_v$,
   $"empty"$, $stream(v)$,
   $.$, $sigma(v)$,
-  $f | g$, $(f^? update sigma')|^c_v "where" sigma'(x) = (g^? update sigma)|^c_x$,
-  $f, g$, $sum_(x in (f^? update sigma)|^c_v) (g^? update sigma)|^c_x$,
-  $f alt g$, $("ite"(sum_(x in f|^c_v, med x in.not {"null", "false"}) stream(x), stream(), g, f) update sigma)|^c_v$,
+  $f | g$, $(f update sigma')|^c_v "where" sigma'(x) = (g update sigma)|^c_x$,
+  $f, g$, $sum_(x in (f update sigma)|^c_v) (g update sigma)|^c_x$,
+  $f alt g$, $"ite"(sum_(x in f|^c_v, med x in.not {"null", "false"}) stream(x), stream(), (g update sigma)|^c_v, (f update sigma)|^c_v)$,
   // TODO: mention how to extend c to c(p)
-  $.[p]$, $stream(v[c(p)] update^e sigma(v)) "where" e = cases(v & "if ? is given", "error" & "otherwise")$,
-  // add missing |^c_v
-  $f "as" var(x) | g$, $"reduce"^c_v (f^?|^c_v, var(x), (g^? update sigma))$,
-  $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", f^? update sigma, g^? update sigma)$,
-  $"label" var(x) | f$, $"label"(var(x), f^? update sigma)$,
+  $.[p]$, $stream(v[c(p)] update^e sigma(v)) "where" e = "error"$,
+  $f "as" var(x) | g$, $"reduce"^c_v (f|^c_v, var(x), (g update sigma))$,
+  $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", (f update sigma)|^c_v, (g update sigma)|^c_v)$,
+  $"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c)$,
+  $"label" var(x) | f$, $"label"(var(x), f update sigma)$,
   $"break" var(x)$, $stream(breakr(x, v))$,
-  $x(f_1; ...; f_n)$, $(g^? update sigma)|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
-  $x$, $(f^? update sigma)|^c'_v "if" c(x) = (f, c')$,
+  $x(f_1; ...; f_n)$, $(g update sigma)|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
+  $x$, $(f update sigma)|^c'_v "if" c(x) = (f, c')$,
 )) <tab:update-semantics>
 
 $ "label"(var(x), l) := cases(
   stream(v) & "if" l = stream(breakr(x, v)) + t,
-  stream(h) + "label"(var(x), t) & "if" l = stream(h) + t "and" h "is a value or an error",
+  stream(h) + "label"(var(x), t) & "if" l = stream(h) + t "and" h eq.not breakr(x, v),
   stream() & "if" l = stream(),
 ) $
 
+$ "catch"(x, g, c) := cases(
+    // TODO: is "tostring" correct here?
+    sum_(e in g|^c_("tostring"(x))) stream("error"(e)) & "if" x "is an unpolarised error",
+    stream(x) & "otherwise"
+) $
+
 #figure(caption: [Update semantics properties.], table(columns: 2,
-  $mu$, $mu^? update sigma$,
+  $mu$, $mu update sigma$,
   $"empty"$, $.$,
   $.$, $sigma$,
-  $f | g$, $f^? update (g^? update sigma)$,
-  $f, g$, $(f^? update sigma) | (g^? update sigma)$,
-  $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f^? update sigma "else" g^? update sigma$,
+  $f | g$, $f update (g update sigma)$,
+  $f, g$, $(f update sigma) | (g update sigma)$,
+  $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f update sigma "else" g update sigma$,
 )) <tab:update-props>
 
+For two filters $f$ and $g$, we define
+$(f update g)|^c_v := sum_(y in (f update sigma)|^c_v) "depolarise"(y)$, where
+$sigma(x) = sum_(y in g|^c_x) "polarise"(y)$.
+The function "polarise" marks exceptions occurring in the filter $g$,
+and "depolarise" removes the marker from exceptions.
 
 The update semantics are given in @tab:update-semantics.
 The case for $f "as" var(x) | g$ is slightly tricky:
