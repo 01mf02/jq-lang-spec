@@ -381,6 +381,15 @@ If $n > 0$, then ${k_1: v_1, ..., k_n: v_n}$ is equivalent to
 $ sum_(k_1 in k_1) sum_(v_1 in v_1) ... sum_(k_n in k_n) sum_(v_n in v_n)
 stream({k_1: v_1} union ... union {k_n: v_n}). $
 
+#example[
+  ${stream(quote a quote): stream(1, 2), stream(quote b quote, quote c quote): stream(3), stream(quote d quote): stream(4)}$ yields $stream(v_0, v_1, v_2, v_3)$, where $
+  v_0 = {quote a quote |-> 1, quote b quote |-> 3, quote d quote |-> 4},\
+  v_1 = {quote a quote |-> 1, quote c quote |-> 3, quote d quote |-> 4},\
+  v_2 = {quote a quote |-> 2, quote b quote |-> 3, quote d quote |-> 4},\
+  v_3 = {quote a quote |-> 2, quote c quote |-> 3, quote d quote |-> 4}.
+  $
+]
+
 
 == Simple functions
 
