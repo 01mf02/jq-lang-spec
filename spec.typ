@@ -321,9 +321,8 @@ just like the JSON standard does not impose any representation.#footnote[
   For example, accessing the $0.5$-th element of an array yields its $0$-th element.
   In this text, we use do not document this rounding behaviour for each function.
 ]
-Instead, it just assumes that the type of numbers supports
-ordering ($=$, $<$, ...) and
-arithmetic ($+$, $-$, $times$, $div$, $mod$) operations.
+Instead, it just assumes that the type of numbers has a total order (see @ordering) and
+supports the arithmetic operations $+$, $-$, $times$, $div$, and $mod$ (modulo).
 
 We suppose that there exists a function $"error"(v)$ that
 converts a value into an error.
@@ -332,16 +331,16 @@ to denote calling $"error"(v)$ with some value $v$.
 This is done such that this specification does not need to fix
 the precise error value that is returned when an operation fails.
 
-An exception either is an error or has the shape $"break"(var(x), v)$.
+An _exception_ either is an error or has the shape $"break"(var(x), v)$.
 The latter will become relevant starting from @semantics.
 
-A value result is either a value or an exception.
+A _value result_ is either a value or an exception.
 In this text, we will see many functions that take a fixed number of values.
 For any of these functions $f(v_1, ..., v_n)$,
 we extend their domain to value results such that $f(v_1, ..., v_n)$ yields $v_i$
 if $v_i$ is an exception and for all $j < i$, $v_j$ is a value.
 
-A stream (or lazy list) is written as $stream(v_0, ..., v_n)$.
+A _stream_ (or lazy list) is written as $stream(v_0, ..., v_n)$.
 The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
 Given some stream $l = stream(x_0, ..., x_n)$, we write
 $sum_(x in l) f(x)$ to denote $f(x_0) + ... + f(x_n)$.
