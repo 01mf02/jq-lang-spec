@@ -37,6 +37,7 @@
   ]
 ).with(numbering: none)
 
+#let or_ = $quad || quad$
 #let stream(..xs) = $angle.l #xs.pos().join($, $) angle.r$
 #let var(x) = $\$#x$
 #let cartesian = math.op($circle.small$)
@@ -52,7 +53,6 @@
 = TODO:
 
 - fix QED at end of proof
-- fix substitution syntax
 - extend to full JSON
 - constant filter (string, number)
 - convention: error $e$, result $r$, value $v$, path part $p$, variable $var(x)$
@@ -272,34 +272,61 @@ that behave like jq in most typical use cases
 but eliminate corner cases like the ones shown.
 
 
-= Values & Errors
+= Data Types
 
-- JSON
-- YAML
-- numbers
-- errors
-- $"error"$
-- multiplication
-- subtraction
-- division
-- modulo
-- equality
+In this section, we will define
+JSON values, errors, exceptions, and streams.
+Furthermore, we will define several functions and operations on values.
 
-An object is a unordered map from strings to values that we write as
-${k_1 |-> v_1, ..., k_n |-> v_n}$.
-We also refer to the domain of an object as _keys_.
+A JSON value $v$ has the shape
+
+$ v := "null" #or_ "false" #or_ "true" #or_ n #or_ s #or_ [v_0, ..., v_n] #or_ {k_0 |-> v_0, ..., k_n |-> v_n}, $
+
+where $n$ is a number and $s$ is a string.
+We write a string $s$ as $c_0...c_n$, where $c$ is a character.
+A value of the shape $[v_0, ..., v_n]$ is called an _array_ and
+a value of the shape ${k_0 |-> v_0, ..., k_n |-> v_n}$ is
+an unordered map from _keys_ $k$ to values that we call an _object_.#footnote[
+  The JSON syntax uses
+  ${k_0: v_0, ..., k_n: v_n}$ instead of
+  ${k_0 |-> v_0, ..., k_n |-> v_n}$.
+  However, in this text, we will use the
+  ${k_0: v_0, ..., k_n: v_n}$ syntax to define the _construction_ of objects, and use
+  ${k_0 |-> v_0, ..., k_n |-> v_n}$ syntax to denote actual objects.
+]
+In JSON, object keys are strings.#footnote[
+  YAML is a data format similar to JSON.
+  While YAML can encode any JSON value, it additionally
+  allows any YAML values to be used as object keys, where JSON
+  allows only strings to be used as object keys.
+  This text deliberately distinguishes between object keys and strings.
+  That way, extending the given semantics to use YAML values should be relatively easy.
+]
 We assume that the union of two objects is _right-biased_; i.e.,
 if we have two objects $l$ and $r = {k |-> v, ...}$, then $(l union r)(k) = v$
 (regardless of what $l(k)$ might yield).
 
-By convention, we write
+By convention, we will write in the remainder of this text
 $v$ for values,
 $n$ for numbers,
 $c$ for characters, and
 $k$ for object keys.
 
-A stream (or lazy list) is written as $stream(v_0, ..., v_n)$.
-The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
+A number can be an integer or a decimal, optionally followed by an integer exponent.
+For example, $0$, $-42$, $3.14$, $3 times 10^8$ are valid JSON numbers.
+This text does not fix how numbers are to be represented,
+just like the JSON standard does not impose any representation.#footnote[
+  jq uses floating-point numbers to encode both integers and decimals.
+  However, several operations in this text (for example those in @accessing)
+  make only sense for natural numbers $bb(N)$ or integers $bb(Z)$.
+  In situations where integer values are expected and a number $n$ is provided,
+  jq generally substitutes $n$ by $floor(n)$ if $n >= 0$ and $ceil(n)$ if $n < 0$.
+  For example, accessing the $0.5$-th element of an array yields its $0$-th element.
+  In this text, we use do not document this rounding behaviour for each function.
+]
+Instead, it just assumes that the type of numbers supports
+ordering ($=$, $<$, ...) and
+arithmetic ($+$, $-$, $times$, $div$, $mod$) operations.
 
 We suppose that there exists a function $"error"(v)$ that
 converts a value into an error.
@@ -308,13 +335,23 @@ to denote calling $"error"(v)$ with some value $v$.
 This is done such that this specification does not need to fix
 the precise error value that is returned when an operation fails.
 
+An exception either is an error or has the shape $"break"(var(x), v)$.
+The latter will become relevant starting from @semantics.
+
 A value result is either a value or an exception.
-In this section, we will see several functions that take a fixed number of values.
+In this text, we will see many functions that take a fixed number of values.
 For any of these functions $f(v_1, ..., v_n)$,
 we extend their domain to value results such that $f(v_1, ..., v_n)$ yields $v_i$
 if $v_i$ is an exception and for all $j < i$, $v_j$ is a value.
 
-The next function $[dot]$ transforms a stream into
+A stream (or lazy list) is written as $stream(v_0, ..., v_n)$.
+The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
+Given some stream $l = stream(x_0, ..., x_n)$, we write
+$sum_(x in l) f(x)$ to denote $f(x_0) + ... + f(x_n)$.
+We use this frequently to map a function over a stream,
+by having $f(x)$ returns a stream itself.
+
+The function $[dot]$ transforms a stream into
 an array if all stream elements are values, or into
 the first exception in the stream otherwise:
 
@@ -330,7 +367,8 @@ $ {k: v} := cases(
   "error" & "otherwise",
 ) $
 
-Given two streams of value results $k_i$ and $v_i$,
+Given a number of $k_i$ and $v_i$, where for each $i$,
+$k_i$ and $v_i$ are two streams of value results,
 we can construct a stream of objects:#footnote[
   Note that in this definition, we use the fact that functions like
   ${l: r}$ and $l union r$ yield an exception if either $l$ or $r$ is an exception,
@@ -349,9 +387,9 @@ stream({k_1: v_1} union ... union {k_n: v_n}). $
 
 == Simple functions
 
-We are now going to define several functions that take values and return a value.
+We are now going to define several functions that take a value and return a value.
 
-The domain of a value is defined as follows:
+The _domain_ of a value is defined as follows:
 
 $ "dom"(v) := cases(
   stream(0  , ...,   n) & "if" v = [v_0, ..., v_n],
@@ -389,7 +427,21 @@ $ l + r := cases(
   "error" & "otherwise",
 ) $
 
-#let merge = $union.dot$
+Here, we can see that $"null"$ serves as a neutral element for addition.
+For strings and arrays, addition corresponds to their concatenation, and
+for objects, it corresponds to their union.
+
+#let merge = $union.double$
+Given two objects $l$ and $r$, we define their _recursive merge_ $l merge r$ as:
+
+$ l merge r := cases(
+  {k |-> v_l merge v_r} union l' merge r' & "if" l = {k |-> v_l} union l'"," r = {k |-> v_r} union r'", and" v_l"," v_r "are objects",
+  {k |-> v_r} union l' merge r' & "if" l = {k |-> v_l} union l'"," r = {k |-> v_r} union r'", and" v_l "or" v_r "is not an object",
+  {k |-> v_r} union l merge r' & "if" k in.not "dom"(l) "and" r = {k |-> v_r} union r',
+  l & "otherwise (if" r = {} ")",
+) $
+
+We use this in the following definition of multiplication of two values $l$ and $r$:
 
 $ l times r := cases(
   l + l times (r - 1) & "if" l "is a string and" r in bb(N) without {0},
@@ -400,14 +452,9 @@ $ l times r := cases(
   "error" & "otherwise"
 ) $
 
-Here, for two objects $l$ and $r$, their _recursive merge_ $l merge r$ is defined as:
-
-$ l merge r := cases(
-  {k |-> v_l merge v_r} union l' merge r' & "if" l = {k |-> v_l} union l'"," r = {k |-> v_r} union r'", and" v_l"," v_r "are objects",
-  {k |-> v_r} union l' merge r' & "if" l = {k |-> v_l} union l'"," r = {k |-> v_r} union r'", and" v_l "or" v_r "is not an object",
-  {k |-> v_r} union l merge r' & "if" k in.not "dom"(l) "and" r = {k |-> v_r} union r',
-  l & "otherwise (if" r = {} ")",
-) $
+We can see that multiplication of a string $s$ with a natural number $n > 0$ returns
+$sum_(i = 1)^n s$; that is, the concatenation of $n$ times the string $s$.
+The multiplication of two objects corresponds to their recursive merge as defined above.
 
 For two values $l$ and $r$, the arithmetic operations
 $l - r$, $l div r$, and $l mod r$ (modulo) yield
@@ -420,7 +467,7 @@ Then the jq filters `f + g` and `f * g` yield
 $stream(l + r)$ and $stream(l times r)$, respectively.
 
 
-== Accessing
+== Accessing <accessing>
 
 The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
 
@@ -490,7 +537,7 @@ $ v[i:j] update^e f = cases(
   e & "otherwise",
 ) $
 
-== Ordering
+== Ordering <ordering>
 
 Now, we will establish a total order "$<$" on values.
 Recall that for any total order "$<$", we can say that
@@ -505,7 +552,7 @@ $o$ is an object.
 We assume that there is a total order on numbers and characters.
 Strings and arrays are compared lexicographically.
 
-// TODO: mention that jq does not have an actual total order, due to nan < nan
+// TODO: mention that jq does not have an actual strict total order, due to nan < nan
 
 Two objects $o_1$ and $o_2$ are compared as follows:
 For both objects $o_i$ ($i in {1, 2}$),
@@ -534,8 +581,6 @@ We will start by introducing high-level intermediate representation (HIR) syntax
 This syntax is very close to actual jq syntax.
 Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @mir and provide a way to translate from HIR to MIR.
 This will simplify our semantics in @semantics.
-
-#let or_ = $quad || quad$
 
 == HIR <hir>
 
