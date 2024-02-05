@@ -395,13 +395,15 @@ stream({k_1: v_1} union ... union {k_n: v_n}). $
 
 We are now going to define several functions that take a value and return a value.
 
-The _domain_ of a value is defined as follows:
+The _keys_ of a value are defined as follows:
 
-$ "dom"(v) := cases(
+$ "keys"(v) := cases(
   stream(0  , ...,   n) & "if" v = [v_0, ..., v_n],
   stream(k_0, ..., k_n) & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
   "error"         & "otherwise",
 ) $
+
+Note that the order of the keys of an object is not defined.
 
 We define the _length_ of a value as follows:
 
@@ -416,7 +418,7 @@ $ |v| := cases(
 
 We can draw a link between the functions here and jq:
 When called with the input value $v$,
-the jq filter `keys` yields $stream(["dom"(v)])$ and
+the jq filter `keys` yields $stream(["keys"(v)])$ and
 the jq filter `length` yields $stream(|v|)$.
 
 
@@ -493,7 +495,7 @@ but $v$ could be _extended_ to contain one.
 More formally, $v[i]$ is $"null"$ if $v eq.not "null"$ and
 there exists some value $v' = v + delta$ such that $v'[i] eq.not "null"$.
 
-$v[] := sum_(i in"dom"(v)) stream(v[i])$.
+$v[] := sum_(i in"keys"(v)) stream(v[i])$.
 
 // TODO: specify what happens if i or j > n
 $ v[i:j] := cases(
@@ -562,7 +564,7 @@ Strings and arrays are compared lexicographically.
 
 Two objects $o_1$ and $o_2$ are compared as follows:
 For both objects $o_i$ ($i in {1, 2}$),
-we sort the array $["dom"(o_i)]$ by ascending order to obtain the ordered array of keys
+we sort the array $["keys"(o_i)]$ by ascending order to obtain the ordered array of keys
 $k_i = [k_1, ..., k_n]$, from which we obtain
 $v_i = [o[k_1], ..., o[k_n]]$.
 We then have $ o_1 < o_2 <==> cases(
