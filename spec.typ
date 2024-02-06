@@ -1,14 +1,27 @@
 #import "@preview/ctheorems:1.1.0": thmplain, thmrules
 #import "article.typ": article
+#import "acm.typ": acmart
 #show: thmrules
 
-#show: doc => article(
+#show: acmart.with(
+  format: "acmsmall",
   title: [A formal specification of the jq language],
   authors: (
     (
       name: "Michael Färber",
       email: "michael.faerber@gedenkt.at",
+      orcid: "0000-0003-1634-9525",
+      affiliation: none,
     ),
+  ),
+  shortauthors: "Färber",
+  ccs: (
+    ([Computer systems organization], (
+        (500, [Embedded systems]),
+        (300, [Redundancy]),
+        (0,   [Robotics]))),
+    ([Networks], (
+        (100, [Network reliability]),))
   ),
   abstract: [
     jq is a widely used tool that provides a programming language to manipulate JSON data.
@@ -18,14 +31,20 @@
     a subset of the jq language.
     In particular, the semantics provide a new way to interpret updates.
   ],
-  doc,
+  keywords: ("JSON", "semantics"),
+
+  acm: (
+    journal: "JACM",
+    volume: 37,
+    number: 4,
+    article: 1,
+    month: 8,
+    year: 2018,
+    doi: "XXXXXXX.XXXXXXX",
+  )
 )
 
-#set heading(numbering: "1.")
-#set par(
-  first-line-indent: 1em,
-  justify: true,
-)
+#set figure(placement: auto)
 #set raw(lang: "jq")
 
 #let thm(x, y, ..args) = thmplain(x, y, inset: (left: 0em, right: 0em), args)
@@ -50,7 +69,7 @@
 #let alteq = math.op($alt#h(0pt)=$)
 #let breakr(x, v) = $"break"(\$#x, #v)$
 
-= TODO:
+= TODO
 
 - fix QED at end of proof
 - constant filter (string, number)
