@@ -16,12 +16,10 @@
   ),
   shortauthors: "Färber",
   ccs: (
-    ([Computer systems organization], (
-        (500, [Embedded systems]),
-        (300, [Redundancy]),
-        (0,   [Robotics]))),
-    ([Networks], (
-        (100, [Network reliability]),))
+    ([Software and its engineering], (
+      (500, [Semantics]),
+      (500, [Functional languages]),
+    )),
   ),
   abstract: [
     jq is a widely used tool that provides a programming language to manipulate JSON data.

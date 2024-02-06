@@ -31,9 +31,9 @@
   let displayAuthor(author) = [#text(font: sfFont, size: 11pt, upper(author.name))]
   let displayAuthors(authors) = authors.map(displayAuthor).join(", ", last: " and ")
 
-  let displayAffiliation(affiliation) = [/*,#text(font: mainFont, size: 9pt)[
+  let displayAffiliation(affiliation) = [,#text(font: mainFont, size: 9pt)[
     #affiliation.institution, #affiliation.country]\
-  */]
+  ]
   par({
     let affiliation = none
     let currentAuthors = ()
@@ -48,7 +48,9 @@
       affiliation = author.affiliation
     }
     displayAuthors(currentAuthors)
-    displayAffiliation(affiliation)
+    if affiliation != none {
+      displayAffiliation(affiliation)
+    }
     footnote([Authors' addresses: #authorsAddresses(authors).])
   })
 }
@@ -63,15 +65,11 @@
   }
 }
 
-// TODO: correct spaces
-#let displayCCS(ccs) = {
-  ccs.map(concept => [
-      #box(baseline: -50%, circle(radius: 1.25pt, fill: black))
-      #strong(concept.at(0))
-      #sym.arrow.r
-      #{concept.at(1).map(subconcept => show-subconcept(subconcept.at(0), subconcept.at(1))).join("; ")
-      }
-  ]).join("; ")
+#let show-ccs(concept) = {
+  box(baseline: -50%, circle(radius: 1.25pt, fill: black)); [ ]
+  strong(concept.at(0)); [ ]
+  sym.arrow.r; [ ]
+  concept.at(1).map(subconcept => show-subconcept(subconcept.at(0), subconcept.at(1))).join("; ")
 }
 
 #let legal(acm) = [
@@ -188,7 +186,7 @@
     v(9.5pt)
 
     // Display CSS concepts:
-    par(text(size: 9pt, [CCS Concepts: #displayCCS(ccs).]))
+    par(text(size: 9pt, [CCS Concepts: #ccs.map(c => show-ccs(c)).join("; ").]))
     v(9.5pt)
 
     // Display keywords
