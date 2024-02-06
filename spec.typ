@@ -69,6 +69,7 @@
 
 = TODO
 
+- fix space after references
 - fix QED at end of proof
 - constant filter (string, number)
 - convention: error $e$, result $r$, value $v$, path part $p$, variable $var(x)$
@@ -415,11 +416,14 @@ The _keys_ of a value are defined as follows:
 
 $ "keys"(v) := cases(
   stream(0  , ...,   n) & "if" v = [v_0, ..., v_n],
-  stream(k_0, ..., k_n) & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
+  stream(k_0) + "keys"(v') & "if" v = {k_0 |-> v_0} union v' "and" k_0 = min("dom"(v)),
+  stream() & "if" v = {},
   "error"         & "otherwise",
 ) $
 
-Note that the order of the keys of an object is not defined.
+For an object $v$, $"keys"(v)$ returns
+the domain of the object sorted by ascending order.
+For the used ordering, see @ordering.
 
 We define the _length_ of a value as follows:
 
