@@ -16,18 +16,12 @@
   "December"
 ).at(month - 1)
 
-#let show-author(author) = text(font: sfFont, size: 11pt, upper(author.name))
-#let show-authors(authors) = authors.map(show-author).join(", ", last: " and ")
-#let show-affiliation(affiliation) = text(font: mainFont, size: 9pt)[
-  #affiliation.institution, #affiliation.country
-]
 #let author-address(author) = {
   author.name
   if author.at("email", default: none) != none [, #author.email]
 }
 
-// Display authors
-#let show-authors-affiliations(authors) = {
+#let author-groups(authors) = {
   let groups = ()
   // affiliation of the current group
   let affiliation = none
@@ -40,13 +34,16 @@
     if groups == () { groups.push(()) }
     groups.last().push(author)
   }
+  groups
+}
 
-  groups.map(group => {
-    show-authors(group)
-    let affiliation = group.first().affiliation
-    if affiliation != none [, #show-affiliation(affiliation)]
-  }).join("\n")
-  footnote([Authors' addresses: #authors.map(author-address).join("; ").])
+// Display a group of authors with the same affiliation
+#let show-author-group(group) = {
+  text(font: sfFont, size: 11pt, group.map(author => upper(author.name)).join(", ", last: " and "))
+  let affiliation = group.first().affiliation
+  if affiliation != none {
+    text(font: mainFont, size: 9pt)[, #affiliation.institution, #affiliation.country]
+  }
 }
 
 #let show-subconcept(priority, name) = {
@@ -169,7 +166,8 @@
     text(font: sfFont, size: 14.4pt, weight: "bold", title)
     v(7pt)
 
-    show-authors-affiliations(authors)
+    author-groups(authors).map(show-author-group).join("\n")
+    footnote([Authors' addresses: #authors.map(author-address).join("; ").])
     v(2.5pt)
 
     [
@@ -198,14 +196,14 @@
   }
 
   set text(font: mainFont, size: 10pt)
-  
-  // TODO: correct numbering (4.1) and space for refs
-  set heading(numbering: (..n) => [#n.pos().first()~~~])
-  show heading: it => {
-    set text(font: sfFont, size: 10pt, weight: "bold")
-    upper(it)
-    v(9pt - 0.555em)
-  }
+
+  set heading(numbering: "1.1")
+  show heading: it => block(text(font: sfFont, size: 10pt, weight: "bold", {
+    if it.numbering != none {
+      box(width: 15pt, counter(heading).display())
+    }
+    upper(it.body)
+  }))
 
   set par(
     justify: true,
