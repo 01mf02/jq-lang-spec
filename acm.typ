@@ -1,7 +1,7 @@
 #let mainFont = "Linux Libertine O"
 #let sfFont = "Linux Biolinum O"
 
-#let displayMonth(month) = (
+#let show-month(month) = (
   "January",
   "February",
   "March",
@@ -16,43 +16,37 @@
   "December"
 ).at(month - 1)
 
-#let authorsAddresses(authors) = {
-  authors
-    .map(author => {
-      author.name
-      if author.at("email", default: none) != none [, #author.email]
-    })
-    .join("; ")
+#let show-author(author) = text(font: sfFont, size: 11pt, upper(author.name))
+#let show-authors(authors) = authors.map(show-author).join(", ", last: " and ")
+#let show-affiliation(affiliation) = text(font: mainFont, size: 9pt)[
+  #affiliation.institution, #affiliation.country
+]
+#let author-address(author) = {
+  author.name
+  if author.at("email", default: none) != none [, #author.email]
 }
 
 // Display authors
-#let displayAuthors(authors) = {
-  set par(leading: 5.7pt)
-  let displayAuthor(author) = [#text(font: sfFont, size: 11pt, upper(author.name))]
-  let displayAuthors(authors) = authors.map(displayAuthor).join(", ", last: " and ")
-
-  let displayAffiliation(affiliation) = [,#text(font: mainFont, size: 9pt)[
-    #affiliation.institution, #affiliation.country]\
-  ]
-  par({
-    let affiliation = none
-    let currentAuthors = ()
-    for author in authors {
-      // if affiliation changes, print author list and affiliation
-      if author.affiliation != affiliation and affiliation != none {
-        displayAuthors(currentAuthors)
-        displayAffiliation(affiliation)
-        currentAuthors = ()
-      }
-      currentAuthors.push(author)
+#let show-authors-affiliations(authors) = {
+  let groups = ()
+  // affiliation of the current group
+  let affiliation = none
+  for author in authors {
+    // if affiliation changes, start a new group
+    if author.affiliation != affiliation {
+      groups.push(())
       affiliation = author.affiliation
     }
-    displayAuthors(currentAuthors)
-    if affiliation != none {
-      displayAffiliation(affiliation)
-    }
-    footnote([Authors' addresses: #authorsAddresses(authors).])
-  })
+    if groups == () { groups.push(()) }
+    groups.last().push(author)
+  }
+
+  groups.map(group => {
+    show-authors(group)
+    let affiliation = group.first().affiliation
+    if affiliation != none [, #show-affiliation(affiliation)]
+  }).join("\n")
+  footnote([Authors' addresses: #authors.map(author-address).join("; ").])
 }
 
 #let show-subconcept(priority, name) = {
@@ -65,12 +59,10 @@
   }
 }
 
-#let show-ccs(concept) = {
-  box(baseline: -50%, circle(radius: 1.25pt, fill: black)); [ ]
-  strong(concept.at(0)); [ ]
-  sym.arrow.r; [ ]
-  concept.at(1).map(subconcept => show-subconcept(subconcept.at(0), subconcept.at(1))).join("; ")
-}
+#let show-ccs(concept) = [
+  #box(baseline: -50%, circle(radius: 1.25pt, fill: black)) *#concept.at(0)* $->$
+  #concept.at(1).map(subconcept => show-subconcept(subconcept.at(0), subconcept.at(1))).join("; ")
+]
 
 #let legal(acm) = [
   Permission to make digital or hard copies of all or part of this
@@ -139,7 +131,7 @@
     Vol. #acm.volume,
     No. #acm.number,
     Article #acm.article.
-    Publication date: #displayMonth(acm.month) #acm.year.
+    Publication date: #show-month(acm.month) #acm.year.
   ]
 
   let header(loc) = {
@@ -167,51 +159,46 @@
     footer-descent: 24pt,
   )
 
-  set text(font: mainFont, size: 10pt)
-  
   // title page
   {
+    set text(size: 9pt)
     set par(justify: true, leading: 0.555em)
-    show par: set block(below: 0pt)
+    show par: set block(below: 9.5pt)
 
     // Display title
-    par(text(font: sfFont, size: 14.4pt, weight: "bold", title))
-    v(16.5pt)
+    text(font: sfFont, size: 14.4pt, weight: "bold", title)
+    v(7pt)
 
-    displayAuthors(authors)
-    v(12pt)
+    show-authors-affiliations(authors)
+    v(2.5pt)
 
-    // Display abstract
-    par(text(size: 9pt, abstract))
-    v(9.5pt)
+    [
+      #abstract
 
-    // Display CSS concepts:
-    par(text(size: 9pt, [CCS Concepts: #ccs.map(c => show-ccs(c)).join("; ").]))
-    v(9.5pt)
+      CCS Concepts: #ccs.map(c => show-ccs(c)).join("; ").
 
-    // Display keywords
-    par(text(size: 9pt)[Additional Key Words and Phrases: #keywords.join(", ")])
-    v(9.5pt)
+      Additional Key Words and Phrases: #keywords.join(", ")
 
-    // Display ACM reference format
-    par(text(size: 9pt)[
-      #strong[ACM Reference Format:]\
+      *ACM Reference Format:* \
       #authors.map(author => author.name).join(", ", last: " and ").
       #acm.year.
       #title.
       #emph(journal.nameShort)
       #acm.volume,
       #acm.number,
-      Article #acm.article (#displayMonth(acm.month) #acm.year),
+      Article #acm.article (#show-month(acm.month) #acm.year),
       #counter(page).display((..nums) => [
         #nums.pos().last() page#if(nums.pos().last() > 1) { [s] }.
       ],both: true)
       https:\/\/doi.org\/#acm.doi
       #footnote(legal(acm))
-    ])
+    ]
+
     v(1pt)
   }
 
+  set text(font: mainFont, size: 10pt)
+  
   set heading(numbering: (..n) => [#n.pos().first()~~~])
   show heading: it => {
     set text(font: sfFont, size: 10pt, weight: "bold")
