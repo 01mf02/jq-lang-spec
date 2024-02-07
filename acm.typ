@@ -58,8 +58,7 @@
 
 #let show-ccs(concept) = [
   #box(baseline: -50%, circle(radius: 1.25pt, fill: black)) *#concept.at(0)* $->$
-  #concept.at(1).map(subconcept => show-subconcept(subconcept.at(0), subconcept.at(1))).join("; ")
-]
+  #concept.at(1).map(subconcept => show-subconcept(subconcept.at(0), subconcept.at(1))).join("; ")]
 
 #let legal(acm) = [
   Permission to make digital or hard copies of all or part of this
@@ -173,7 +172,7 @@
     [
       #abstract
 
-      CCS Concepts: #ccs.map(c => show-ccs(c)).join("; ").
+      CCS Concepts: #ccs.map(show-ccs).join("; ").
 
       Additional Key Words and Phrases: #keywords.join(", ")
 
