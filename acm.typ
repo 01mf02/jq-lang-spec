@@ -199,6 +199,7 @@
 
   set text(font: mainFont, size: 10pt)
   
+  // TODO: correct numbering (4.1) and space for refs
   set heading(numbering: (..n) => [#n.pos().first()~~~])
   show heading: it => {
     set text(font: sfFont, size: 10pt, weight: "bold")
