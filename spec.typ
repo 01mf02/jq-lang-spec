@@ -11,20 +11,7 @@
       name: "Michael Färber",
       email: "michael.faerber@gedenkt.at",
       orcid: "0000-0003-1634-9525",
-      //affiliation: none,
-      affiliation: (institution: "UIBK", country: "AT"),
-    ),
-    (
-      name: "Michael Färber",
-      email: "michael.faerber@gedenkt.at",
-      orcid: "0000-0003-1634-9525",
-      affiliation: (institution: "UIBK", country: "AT"),
-    ),
-    (
-      name: "Michael Färber",
-      email: "michael.faerber@gedenkt.at",
-      orcid: "0000-0003-1634-9525",
-      affiliation: (institution: "TUM", country: "DE"),
+      affiliation: none,
     ),
   ),
   shortauthors: "Färber",
@@ -82,7 +69,6 @@
 
 = TODO
 
-- fix space after references
 - fix QED at end of proof
 - constant filter (string, number)
 - convention: error $e$, result $r$, value $v$, path part $p$, variable $var(x)$
