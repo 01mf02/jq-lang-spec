@@ -182,7 +182,8 @@
   set heading(numbering: "1.1")
   show heading: it => block(text(font: sfFont, size: 10pt, weight: "bold", {
     if it.numbering != none {
-      box(width: 15pt, counter(heading).display())
+      counter(heading).display()
+      box(width: 11pt)
     }
     upper(it.body)
   }))
