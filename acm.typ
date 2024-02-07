@@ -21,26 +21,9 @@
   if author.at("email", default: none) != none [, #author.email]
 }
 
-#let author-groups(authors) = {
-  let groups = ()
-  // affiliation of the current group
-  let affiliation = none
-  for author in authors {
-    // if affiliation changes, start a new group
-    if author.affiliation != affiliation {
-      groups.push(())
-      affiliation = author.affiliation
-    }
-    if groups == () { groups.push(()) }
-    groups.last().push(author)
-  }
-  groups
-}
-
-// Display a group of authors with the same affiliation
-#let show-author-group(group) = {
-  text(font: sfFont, size: 11pt, group.map(author => upper(author.name)).join(", ", last: " and "))
-  let affiliation = group.first().affiliation
+#let show-author(author) = {
+  text(fill: blue, font: sfFont, size: 11pt, upper(author.name))
+  let affiliation = author.affiliation
   if affiliation != none {
     text(font: mainFont, size: 9pt)[, #affiliation.institution, #affiliation.country]
   }
@@ -165,7 +148,7 @@
     text(font: sfFont, size: 14.4pt, weight: "bold", title)
     v(7pt)
 
-    author-groups(authors).map(show-author-group).join("\n")
+    authors.map(show-author).join("\n")
     footnote([Authors' addresses: #authors.map(author-address).join("; ").])
     v(2.5pt)
 
