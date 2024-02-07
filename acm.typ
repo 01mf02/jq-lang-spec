@@ -114,9 +114,9 @@
   ]
 
   let header(loc) = {
-    let article_page = [#acm.article:#counter(page).display()]
-    if even-page(loc) [#article_page #h(1fr) #shortauthors]
-    else [#shorttitle #h(1fr) #article_page]
+    let article-page = [#acm.article:#counter(page).display()]
+    if even-page(loc) [#article-page #h(1fr) #shortauthors]
+    else [#shorttitle #h(1fr) #article-page]
   }
 
   // Set document metadata
