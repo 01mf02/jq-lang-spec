@@ -546,7 +546,9 @@ an empty string if $v$ is a string.
 
 $ v[] update^e f = cases(
   [f(v_0) + ... + f(v_n)] & "if" v = [v_0, ..., v_n],
-  {stream(k_0): f(v_0), ..., stream(k_n): f(v_n)} & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
+  {k_0 |-> h} union (v'[] update^e f) & "if" v = {k_0 |-> v_0} union v' "and" f(v_0) = stream(h) + t,
+  v'[] update^e f & "if" v = {k_0 |-> v_0} union v' "and" f(v_0) = stream(),
+  {} & "if" v = {},
   e & "otherwise",
 ) $
 
