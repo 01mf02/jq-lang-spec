@@ -508,25 +508,39 @@ $ v[i] := cases(
   "error" & "otherwise",
 ) $
 
-The idea behind this indexing operator is as follows:
+The idea behind this index operator is as follows:
 It returns $"null"$ if
 the value $v$ does not contain a value at index $i$,
 but $v$ could be _extended_ to contain one.
 More formally, $v[i]$ is $"null"$ if $v eq.not "null"$ and
 there exists some value $v' = v + delta$ such that $v'[i] eq.not "null"$.
 
+Using the index operator, we can define the values $v[]$ in a value $v$ as follows:
+
 $ v[] := sum_(i in"keys"(v)) stream(v[i]) $
+
+When provided with
+an array $[v_0, ..., v_n]$ or
+an object ${k_0 |-> v_0, ..., k_n |-> v_n}$ (where $k_0 < ... < k_n$),
+this operator returns the stream $stream(v_0, ..., v_n)$.
+
+The last operator that we define here is a slice operator:
 
 // TODO: specify what happens if i or j > n
 $ v[i:j] := cases(
-  [v_i, ..., v_(j-1)] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
-  [] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
-  c_i...c_(j-1) & "if" v = c_0...c_n", " i","j in bb(N)", and" i <= j,
-  quote quote & "if" v = c_0...c_n", " i","j in bb(N)", and" i > j,
+  [sum_(k = i)^(j-1) stream(v_k)] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= n,
+  [] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > n,
+  sum_(k = i)^(j-1) c_k & "if" v = c_0...c_n", " i","j in bb(N)", and" i <= n,
+  quote quote & "if" v = c_0...c_n", " i","j in bb(N)", and" i > n,
   v[(n+i):j] & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
   v[i:(n+j)] & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
-  e & "otherwise",
+  "error" & "otherwise",
 ) $
+
+Note that unlike $v[]$ and $v[i]$, $v[i:j]$ may yield a value if $v$ is a string.
+If we have that $i, j in bb(N)$ and $i >= j$, then $v[i:j]$ yields
+an empty array  if $v$ is an array, and
+an empty string if $v$ is a string.
 
 == Updating
 
