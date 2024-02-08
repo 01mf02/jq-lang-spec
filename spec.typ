@@ -532,17 +532,15 @@ The last operator that we define here is a slice operator:
 
 // TODO: specify what happens if i or j > n
 $ v[i:j] := cases(
-  [sum_(k = i)^(j-1) stream(v_k)] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= n,
-  [] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > n,
-  sum_(k = i)^(j-1) c_k & "if" v = c_0...c_n", " i","j in bb(N)", and" i <= n,
-  quote quote & "if" v = c_0...c_n", " i","j in bb(N)", and" i > n,
+  [sum_(k = i)^(j-1) stream(v_k)] & "if" v = [v_0, ..., v_n] "and" i","j in bb(N),
+  sum_(k = i)^(j-1) c_k & "if" v = c_0...c_n "and" i","j in bb(N),
   v[(n+i):j] & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
   v[i:(n+j)] & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
   "error" & "otherwise",
 ) $
 
 Note that unlike $v[]$ and $v[i]$, $v[i:j]$ may yield a value if $v$ is a string.
-If we have that $i, j in bb(N)$ and $i >= j$, then $v[i:j]$ yields
+If we have that $i, j in bb(N)$ and either $i > n$ or $i >= j$, then $v[i:j]$ yields
 an empty array  if $v$ is an array, and
 an empty string if $v$ is a string.
 
