@@ -85,6 +85,7 @@
 - try-catch and ? are different from jq, but can be simulated via label-break
 - evaluation for $alt$
 - remove some filter cases in proof of lemma --- it's not exhaustive anyway right now
+- completeness is if we can construct any valid value
 
 
 = Introduction
@@ -497,6 +498,9 @@ $stream(l + r)$ and $stream(l times r)$, respectively.
 
 == Accessing <accessing>
 
+We will now define three _access operators_.
+These serve to extract values that are contained within other values.
+
 The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
 
 $ v[i] := cases(
@@ -520,9 +524,9 @@ Using the index operator, we can define the values $v[]$ in a value $v$ as follo
 $ v[] := sum_(i in"keys"(v)) stream(v[i]) $
 
 When provided with
-an array $[v_0, ..., v_n]$ or
-an object ${k_0 |-> v_0, ..., k_n |-> v_n}$ (where $k_0 < ... < k_n$),
-this operator returns the stream $stream(v_0, ..., v_n)$.
+an array $v = [v_0, ..., v_n]$ or
+an object $v = {k_0 |-> v_0, ..., k_n |-> v_n}$ (where $k_0 < ... < k_n$),
+$v[]$ returns the stream $stream(v_0, ..., v_n)$.
 
 The last operator that we define here is a slice operator:
 
@@ -544,13 +548,35 @@ an empty string if $v$ is a string.
 
 == Updating
 
+For each access operator in @accessing, we will now define an _updating_ counterpart.
+Intuitively, where an access operator yields some elements contained in a value $v$,
+its corresponding update operator _replaces_ these elements in $v$ by the output of a function.
+
+All update operators take at least
+a value $v$,
+a function $f$ from a value to a stream of value results, and
+an error $e$ to be returned if the update operator cannot be applied.#footnote[
+  We will see in @updates why we cannot simply return an arbitrary error here instead of $e$.
+]
+
+The first update operator will be a counterpart to $v[]$.
+For _all_ elements $x$ that are yielded by $v[]$,
+$v[] update^e f$ replaces $x$ by $f(x)$:
+
 $ v[] update^e f = cases(
-  [f(v_0) + ... + f(v_n)] & "if" v = [v_0, ..., v_n],
-  {k_0 |-> h} union (v'[] update^e f) & "if" v = {k_0 |-> v_0} union v' "and" f(v_0) = stream(h) + t,
-  v'[] update^e f & "if" v = {k_0 |-> v_0} union v' "and" f(v_0) = stream(),
-  {} & "if" v = {},
+  [sum_i f(v_i)] & "if" v = [v_0, ..., v_n],
+  union.big_i cases({k_i : h} & "if" f(v_i) = stream(h) + t, {} & "otherwise") & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
   e & "otherwise",
 ) $
+
+For an input array $v = [v_0, ..., v_n]$,
+$v[] update^e f$ replaces each $v_i$ by the output of $f(v_i)$, yielding
+$[f(v_0) + ... + f(v_n)]$.
+For an input object $v = {k_0 |-> v_0, ..., k_n |-> v_n}$,
+$v[] update^e f$ replaces each $v_i$ by the first output yielded by $f(v_i)$ if such an output exists,
+otherwise it deletes ${k_i |-> v_i}$ from the object.
+Note that updating arrays diverges from jq, because
+jq only considers the first value yielded by $f$.
 
 The next function takes a value $v$ and replaces its $i$-th element by the output of $f$,
 where $f$ is a function from a value to a stream of value results:
@@ -558,7 +584,8 @@ $ v[i] update^e f = cases(
   v[0:i] + [f(v_i)] + v[(i+1):n]
     & "if" v = [v_0, ..., v_n]", " i in bb(N)", and" i <= n,
   v[n+i] update^e f & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
-  v + {i: f(v[i])} & "if" v = {...} "and" i "is a string",
+  v + {i: h} & "if" v = {...}", " i "is a string, and" f(v[i]) = stream(h) + t,
+  union.big_(k in "dom"(v) without {i}) {k |-> v[k]} & "if" v = {...}", " i "is a string, and" f(v[i]) = stream(),
 
   e & "otherwise",
 ) $
