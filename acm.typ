@@ -16,6 +16,8 @@
   "December"
 ).at(month - 1)
 
+#let author-names(authors) = authors.map(author => author.name).join(", ", last: " and ")
+
 #let author-address(author) = {
   author.name
   if author.at("email", default: none) != none [, #author.email]
@@ -43,7 +45,7 @@
   #box(baseline: -50%, circle(radius: 1.25pt, fill: black)) *#concept.at(0)* $->$
   #concept.at(1).map(subconcept => show-subconcept(subconcept.at(0), subconcept.at(1))).join("; ")]
 
-#let legal(acm) = [
+#let legal(pub) = [
   Permission to make digital or hard copies of all or part of this
   work for personal or classroom use is granted without fee provided
   that copies are not made or distributed for profit or commercial
@@ -54,12 +56,31 @@
   redistribute to lists, requires prior specific permission
   and#h(.5pt)/or  a fee. Request permissions from
   permissions\@acm.org.\
-  #sym.copyright #acm.year Association for Computing Machinery\
+  #sym.copyright #pub.year Association for Computing Machinery\
   0004-5411/2018/8-ART1 \$15.00\
-  https:\/\/doi.org\/#acm.doi
+  https:\/\/doi.org\/#pub.doi
 ]
 
+#let total-pages(loc) = {
+  let total = counter(page).final(loc).last()
+  [#total page#if(total > 1) { [s] }]
+}
 #let even-page(loc) = calc.rem(loc.page(), 2) == 0
+
+#let header(pub, loc) = {
+  let article-page = [#{pub.article}:#counter(page).display()]
+  if even-page(loc) [#article-page #h(1fr) #{pub.authors-short}]
+  else [#{pub.title-short} #h(1fr) #article-page]
+}
+
+#let footer(pub) = [
+  #pub.journal-short,
+  Vol. #pub.volume,
+  No. #pub.number,
+  Article #pub.article.
+  Publication date: #show-month(pub.month) #pub.year.
+]
+
 
 #let acmart(
   // Currently supported formats are:
@@ -68,16 +89,17 @@
   
   // Title, subtitle, authors, abstract, ACM ccs, keywords
   title: "Title",
+  title-short: none,
   subtitle: none,
-  shorttitle: none,
   authors: (),
-  shortauthors: none,
+  authors-short: none,
   abstract: none,
   ccs: none,
   keywords: none,
 
-  acm: (
+  pub: (
     journal: none,
+    journal-short: none,
     volume: 1,
     number: 1,
     article: none,
@@ -88,36 +110,8 @@
 
   body
 ) = {
-  let journal = if acm.journal == "JACM" {
-    (
-      name: "Journal of the ACM",
-      nameShort: "J. ACM"
-    )
-  } else {
-    none
-  }
-
-  if shorttitle == none {
-    shorttitle = title
-  }
-
-  if shortauthors == none {
-    shortauthors = authors.map(author => author.name).join(", ", last: " and ")
-  }
-
-  let footer = [
-    #journal.nameShort,
-    Vol. #acm.volume,
-    No. #acm.number,
-    Article #acm.article.
-    Publication date: #show-month(acm.month) #acm.year.
-  ]
-
-  let header(loc) = {
-    let article-page = [#acm.article:#counter(page).display()]
-    if even-page(loc) [#article-page #h(1fr) #shortauthors]
-    else [#shorttitle #h(1fr) #article-page]
-  }
+  pub.title-short = if title-short == none { title } else { title-short }
+  pub.authors-short = if authors-short == none { author-names(authors) } else { authors-short }
 
   // Set document metadata
   set document(title: title, author: authors.map(author => author.name))
@@ -132,8 +126,8 @@
       left: 46pt,
       right: 46pt
     ),
-    header: text(size: 8pt, font: sfFont, locate(loc => if loc.page() > 1 { header(loc) })),
-    footer: text(size: 8pt, locate(loc => align(if even-page(loc) { left } else { right }, footer))),
+    header: text(size: 8pt, font: sfFont, locate(loc => if loc.page() > 1 { header(pub, loc) })),
+    footer: text(size: 8pt, locate(loc => align(if even-page(loc) { left } else { right }, footer(pub)))),
     header-ascent: 17pt,
     footer-descent: 24pt,
   )
@@ -160,18 +154,16 @@
       Additional Key Words and Phrases: #keywords.join(", ")
 
       *ACM Reference Format:* \
-      #authors.map(author => author.name).join(", ", last: " and ").
-      #acm.year.
+      #author-names(authors).
+      #pub.year.
       #title.
-      #emph(journal.nameShort)
-      #acm.volume,
-      #acm.number,
-      Article #acm.article (#show-month(acm.month) #acm.year),
-      #counter(page).display((..nums) => [
-        #nums.pos().last() page#if(nums.pos().last() > 1) { [s] }.
-      ],both: true)
-      https:\/\/doi.org\/#acm.doi
-      #footnote(legal(acm))
+      #emph(pub.journal-short)
+      #pub.volume,
+      #pub.number,
+      Article #pub.article (#show-month(pub.month) #pub.year),
+      #locate(total-pages).
+      https:\/\/doi.org\/#pub.doi
+      #footnote(legal(pub))
     ]
 
     v(1pt)

@@ -14,7 +14,7 @@
       affiliation: none,
     ),
   ),
-  shortauthors: "Färber",
+  authors-short: "Färber",
   ccs: (
     ([Software and its engineering], (
       (500, [Semantics]),
@@ -31,8 +31,9 @@
   ],
   keywords: ("JSON", "semantics"),
 
-  acm: (
-    journal: "JACM",
+  pub: (
+    journal: "Journal of the ACM",
+    journal-short: "J. ACM",
     volume: 37,
     number: 4,
     article: 1,
