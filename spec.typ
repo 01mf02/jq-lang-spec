@@ -71,21 +71,17 @@
 = TODO
 
 - fix QED at end of proof
-- constant filter (string, number)
-- convention: error $e$, result $r$, value $v$, path part $p$, variable $var(x)$
-- specify $.[l:h]$ and $"try" f "catch" g$, $"label" var(x) | g$, $"break" var(x)$
-- specify arithmetic operations for non-numeric values (recursive object merge, ...)
 - try/catch difference: allow simulation via $"label" var(x) | "try" f "catch" (g, "break" var(x))$
-- why is empty not definable? because of updates!
-- define inputs, keys
+- define inputs
 - is $.[var(x)]?$ equivalent to $(.[var(x)])?$?
 - is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
 - define foreach via for and clarify that latter is not part of jq
 - literature research
-- try-catch and ? are different from jq, but can be simulated via label-break
 - evaluation for $alt$
 - remove some filter cases in proof of lemma --- it's not exhaustive anyway right now
 - completeness is if we can construct any valid value
+- explain difference between $x$ and $x(...)$
+
 
 
 = Introduction
@@ -374,6 +370,11 @@ $ "head"(l, e) := cases(
   e & "otherwise",
 ) $
 
+
+== Construction <construction>
+
+In this subsection, we will introduce operators to construct arrays and objects.
+
 The function $[dot]$ transforms a stream into
 an array if all stream elements are values, or into
 the first exception in the stream otherwise:
@@ -443,6 +444,13 @@ $ |v| := cases(
   n       & "if" v = [v_1, ..., v_n],
   n       & "if" v = {k_1 |-> v_1, ..., k_n |-> v_n},
   "error" & "otherwise (if" v in {"true", "false"}")",
+) $
+
+The _boolean value_ of a value $v$ is defined as follows:
+
+$ "bool"(v) := cases(
+  "false" & "if" v = "null" "or" v = "false",
+  "true" & "otherwise",
 ) $
 
 We can draw a link between the functions here and jq:
@@ -524,8 +532,8 @@ The idea behind this index operator is as follows:
 It returns $"null"$ if
 the value $v$ does not contain a value at index $i$,
 but $v$ could be _extended_ to contain one.
-More formally, $v[i]$ is $"null"$ if $v eq.not "null"$ and
-there exists some value $v' = v + delta$ such that $v'[i] eq.not "null"$.
+More formally, $v[i]$ is $"null"$ if $v != "null"$ and
+there exists some value $v' = v + delta$ such that $v'[i] != "null"$.
 
 The behaviour of this operator for $i < 0$ is that $v[i]$ equals $v[abs(v) + i]$.
 
@@ -560,6 +568,9 @@ an empty string if $v$ is a string.
 #example[
   If $v = [0, 1, 2, 3]$, then $v[1:3] = [1, 2]$.
 ]
+
+The operator $v[]$ is the only operator in this subsection that
+returns a _stream_ of value results instead of only a value result.
 
 == Updating
 
@@ -632,7 +643,7 @@ Unlike $v[i:j]$, this operator fails when $v$ is a string.
 In this subsection, we establish a total order on values.#footnote[
   Note that jq does _not_ implement a _strict_ total order on values;
   in particular, its order on (floating-point) numbers specifies $"nan" < "nan"$,
-  from which follows that $"nan" eq.not "nan"$ and $"nan" gt.not "nan"$.
+  from which follows that $"nan" != "nan"$ and $"nan" gt.not "nan"$.
 ]
 
 We have that
@@ -697,7 +708,7 @@ A folding operation $fold$ is either "reduce" or "foreach".
     columns: 3,
     [Name], [Symbol], [Operators],
     [Complex], $star$, ["$|$", ",", ("=", "$update$", "$aritheq$", "$alteq$"), "$alt$", "or", "and"],
-    [Cartesian], $cartesian$, [($eq.quest$, $eq.not$), ($<$, $<=$, $>$, $>=$), $dot.circle$],
+    [Cartesian], $cartesian$, [($eq.quest$, $!=$), ($<$, $<=$, $>$, $>=$), $dot.circle$],
     [Arithmetic], $dot.circle$, [($+$, $-$), ($times$, $div$), $mod$],
   ),
   caption: [
@@ -713,13 +724,13 @@ A _filter definition_ has the shape
 "$f(x_1; ...; x_n) := g$".
 Here, $f$ is an $n$-ary filter where $g$ may refer to $x_i$.
 For example, this allows us to define filters that produce the booleans,
-by defining $"true" := (0 = 0)$ and $"false" := (0 eq.not 0)$.
+by defining $"true" := (0 = 0)$ and $"false" := (0 != 0)$.
 
 == MIR <mir>
 
 A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
-  #or_& [f] #or_ {f: f, ..., f: f} #or_ .[p] \
+  #or_& [] #or_ [f] #or_ {f: f, ..., f: f} #or_ .[p] \
   #or_& f star f #or_ var(x) cartesian var(x) \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (var(y_0); f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
@@ -747,6 +758,7 @@ We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
   [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
   $(f)$, $floor(f)$,
   $f?$, $"try" floor(f) "catch" "empty"$,
+  $[]$, $["empty"]$,
   $[f]$, $[floor(f)]$,
   ${f_1: g_1, ..., f_n: g_n}$, ${floor(f_1): floor(g_1), ..., floor(f_n): floor(g_n)}$,
   $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
@@ -787,6 +799,18 @@ We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
   In @semantics, we will see that its output is $stream([1], [2])$.
 ]
 
+This lowering assumes the presence of one filter in the definitions, namely $"empty"$.
+This filter returns an empty stream.
+We might be tempted to define it as $[] | .[]$,
+which constructs an empty array, then returns its contained values,
+which corresponds to an empty stream as well.
+However, such a definition relies on the temporary construction of new values
+(such as the empty array here),
+which is not admissible on the left-hand side of updates (see @updates).
+For this reason, we have to define it in a more complicated way, for example
+$"empty" := ([] | .[]) "as" var(x) | .$.
+This definition ensures that $"empty"$ can be employed also as a path expression.
+
 
 
 = Evaluation Semantics <semantics>
@@ -810,13 +834,20 @@ $ "ite"(v, i, t, e) = cases(
   e & "otherwise"
 ) $
 
+$ "label"(l, var(x)) := cases(
+  stream(h) + "label"(t, var(x)) & "if" l = stream(h) + t "and" h != "break"(var(x), v),
+  stream() & "otherwise",
+) $
+
+$ "junction"(x, v, l) := "ite"("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))) $
+
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $phi|^c_v$,
-  $"empty"$, $stream()$,
   $.$, $stream(v)$,
   $n "or" s$, $stream(phi)$,
   $var(x)$, $stream(c(var(x)))$,
   $[f]$, $stream([f|^c_v])$,
+  ${f_1: g_1, ..., f_n: g_n}$, ${(f_1|^c_v): (g_1|^c_v), ..., (f_n|^c_v): (g_n|^c_v)}$,
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
   $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
@@ -825,9 +856,11 @@ $ "ite"(v, i, t, e) = cases(
     g|^c_e & "if" x = "error"(e),
     stream(x) & "otherwise"
   )$,
-  $var(x) "and" f$, $"ite"(c(var(x)), "false", stream("false"), f|^c_v)$,
-  $var(x) "or"  f$, $"ite"(c(var(x)), "true" , stream("true" ), f|^c_v)$,
-  $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", f|^c_v, g|^c_v)$,
+  $"label" var(x) | f$, $"label"(f|^c_v, var(x))$,
+  $"break" var(x)$, $stream("break"(var(x), v))$,
+  $var(x) "and" f$, $"junction"(c(var(x)), "false", f|^c_v)$,
+  $var(x) "or"  f$, $"junction"(c(var(x)), "true" , f|^c_v)$,
+  $"if" var(x) "then" f "else" g$, $"ite"("bool"(c(var(x))), "true", f|^c_v, g|^c_v)$,
   $.[]$, $v[]$,
   $.[var(x)]$, $stream(v[c(var(x))])$,
   $.[var(x):var(y)]$, $stream(v[c(var(x)):c(var(y))])$,
@@ -846,6 +879,41 @@ One notable exception is $f cartesian g$, which jq evaluates differently as
 $sum_(y in g|^c_v) sum_(x in f|^c_v) stream(x cartesian y)$.
 //The reason will be given in [](#cloning).
 Note that the difference only shows when both $f$ and $g$ return multiple values.
+
+Let us look at the filters in more detail:
+
+- "$.$": This is the identity filter, returning its input value.
+- $n$ or $s$: Return the value corresponding to the number $n$ or string $s$.
+- $var(x)$: Returns the value currently bound to the variable $var(x)$,
+  by looking it up in the context.
+  Wellformedness of the filter ensures that such a value always exists.
+- $[f]$: Creates an array from the output of $f$,
+  using the operators defined in @construction.
+- ${f_1: g_1, ..., f_n: g_n}$: Creates objects from the output of the filters
+  $f_i$ and $g_i$, where $f_i$ yields keys and $g_i$ yields corresponding values.
+  Note that unlike $[f]$, this filter may yield multiple outputs,
+  in case that either some $f_i$ or $g_i$ yields multiple outputs.
+- $f, g$: Concatenates the outputs of $f$ and $g$.
+- $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
+- $f "as" var(x) | g$: Binds every output of $f$ to the variable $var(x)$ and
+  returns the output of $g$, where $g$ may reference $var(x)$.
+  Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
+- $var(x) cartesian var(y)$: Returns the result of a Cartesian operation "$cartesian$"
+  (such as addition or multiplication, defined in @tab:binops)
+  on the values bound to $var(x)$ and $var(y)$.
+- $"label" var(x) | f$: Returns all values yielded by $f$ until $f$ yields
+  an exception $"break"(var(x), v)$ (where $v$ is arbitrary).
+- $"break" var(x)$: Returns a value $"break"(var(x), v)$, where $v$ is the current input.
+- $var(x) "and" f$: Returns false if $var(x)$ is bound to either null or false, else
+  returns the output of $f$ mapped to boolean values.
+- $var(x) "or" f$": Similar to its "and" counterpart above.
+- $"if" var(x) "then" f "else" g$: Returns the output of $f$ if $var(x)$ is bound to either null or false, else returns the output of $g$.
+- $.[]$, $.[var(x)]$, or $.[var(x):var(y)]$: Accesses parts of the input value; see @accessing for the definitions of the operators.
+- $fold x "as" var(x) (var(y); f)$: Folds $f$ over the values returned by $x$,
+  starting with the accumulator $var(y)$.
+  The current accumulator value is provided to $f$ as input value and
+  $f$ can access the current value of $x$ by $var(x)$.
+- TODO: function calls, updates
 
 $ "fold"^c_v (l, var(x), f, o) := cases(
   o(v) + sum_(x in f|^(c{var(x) |-> h})_v) "fold"^c_x (t, var(x), f, o) & "if" l = stream(h) + t,
@@ -994,7 +1062,6 @@ By doing so, these semantics can abandon the idea of paths altogether.
 
 #figure(caption: [Update semantics. Here, $mu$ is a filter and $sigma(v)$ is a function from a value $v$ to a stream of value results.], table(columns: 2,
   $mu$, $(mu update sigma)|^c_v$,
-  $"empty"$, $stream(v)$,
   $.$, $sigma(v)$,
   $f | g$, $(f update sigma')|^c_v "where" sigma'(x) = (g update sigma)|^c_x$,
   $f, g$, $sum_(x in (f update sigma)|^c_v) (g update sigma)|^c_x$,
@@ -1012,7 +1079,7 @@ By doing so, these semantics can abandon the idea of paths altogether.
 
 $ "label"(var(x), l) := cases(
   stream(v) & "if" l = stream(breakr(x, v)) + t,
-  stream(h) + "label"(var(x), t) & "if" l = stream(h) + t "and" h eq.not breakr(x, v),
+  stream(h) + "label"(var(x), t) & "if" l = stream(h) + t "and" h != breakr(x, v),
   stream() & "if" l = stream(),
 ) $
 
