@@ -689,7 +689,7 @@ Here, $x$ is an identifier (such as "empty").
 
 By convention, we write $var(x')$ to denote a fresh variable.
 The potential instances of $star$ and $cartesian$ are given in @tab:binops.
-A folding operation $fold$ is either "reduce" or "for".
+A folding operation $fold$ is either "reduce" or "foreach".
 
 #figure(
   table(
@@ -718,7 +718,7 @@ by defining $"true" := (0 = 0)$ and $"false" := (0 eq.not 0)$.
 
 A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
-  #or_& f? #or_ [f] #or_ {f: f, ..., f: f} #or_ .[p] \
+  #or_& [f] #or_ {f: f, ..., f: f} #or_ .[p] \
   #or_& f star f #or_ var(x) cartesian var(x) \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (var(y_0); f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
@@ -735,16 +735,17 @@ Compared to HIR, MIR filters have significantly simpler path operations
 and replace certain occurrences of filters by variables
 (e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
 
-We can lower any HIR filter $phi$ to an equivalent MIR filter $floor(phi)$
+We can lower any HIR filter $phi$ to a semantically equivalent MIR filter $floor(phi)$
 using @tab:lowering.
 In particular, this desugars path operations and
 makes it explicit which operations are cartesian or complex.
+We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
 
 #figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
   $phi$, $floor(phi)$,
   [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
   $(f)$, $floor(f)$,
-  $f?$, $floor(f)?$,
+  $f?$, $"try" floor(f) "catch" "empty"$,
   $[f]$, $[floor(f)]$,
   ${f_1: g_1, ..., f_n: g_n}$, ${floor(f_1): floor(g_1), ..., floor(f_n): floor(g_n)}$,
   $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
@@ -763,17 +764,9 @@ makes it explicit which operations are cartesian or complex.
   $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
   $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
   $"label" var(x) | f$, $"label" var(x) | floor(f)$,
-  $x$, $cases(x() & "if" x := r, x & "otherwise")$,
+  $x$, $x$,
   $x(f_1; ...; f_n)$, $x(floor(f_1); ...; floor(f_n))$,
 )) <tab:lowering>
-
-#example[
-  The HIR filter $[3] | .[0] = ("length", 2)$ is lowered to the MIR filter
-  $"TODO"$.
-  Its output is $stream([1], [2])$.
-]
-
-We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
 
 #figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
   $[p  ]^?$, $floor([p]^?)_var(x)$,
@@ -783,6 +776,15 @@ We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
   $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | 0 "as" var(z') | .[var(z') : var(y')]^?$,
   $[f:g]^?$, $(var(x) | floor(f)) "as" var(y') | (var(x) | floor(g)) "as" var(z') | .[var(y') : var(z')]^?$,
 )) <tab:lower-path>
+
+#example[
+  The HIR filter $mu eq.triple .[0]$ is lowered to
+  $floor(mu) eq.triple . "as" var(x) | . | (var(x) | 0) "as" var(y) | .[var(y)]$.
+  Semantically, we will see that $floor(mu)$ is equivalent to $0 "as" var(y) | .[var(y)]$.
+  The HIR filter $phi eq.triple [3] | .[0] = ("length", 2)$ is lowered to the MIR filter
+  $floor(phi) eq.triple [3] | . "as" var(z) | floor(mu) update (var(z) | ("length", 2))$.
+  In @semantics, we will see that its output is $stream([1], [2])$.
+]
 
 
 
