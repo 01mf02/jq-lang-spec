@@ -343,8 +343,9 @@ just like the JSON standard does not impose any representation.#footnote[
 Instead, it just assumes that the type of numbers has a total order (see @ordering) and
 supports the arithmetic operations $+$, $-$, $times$, $div$, and $mod$ (modulo).
 
-We suppose that there exists a function $"error"(v)$ that
-converts a value into an error.
+An _error_ can be constructed from a value by the function $"error"(v)$.
+The $"error"$ function is bijective; that is,
+if we have an error $e$, then there is a unique value $v$ with $e = "error"(v)$.
 In the remainder of this text, we will write just "error"
 to denote calling $"error"(v)$ with some value $v$.
 This is done such that this specification does not need to fix
@@ -800,7 +801,7 @@ Let us start with a few definitions.
 A context $c$ is a mapping
 from variables $var(x)$ to values and
 from identifiers $x$ to pairs $(f, c)$, where $f$ is a filter and $c$ is a context.
-Contexts store to what variables and filter arguments are bound.
+Contexts store what variables and filter arguments are bound to.
 
 We are now going to introduce a few helper functions.
 The next function helps define filters such as if-then-else, conjunction, and disjunction:
@@ -813,15 +814,15 @@ $ "ite"(v, i, t, e) = cases(
   $phi$, $phi|^c_v$,
   $"empty"$, $stream()$,
   $.$, $stream(v)$,
-  [$n$ (where $n in bb(Z)$)], $stream(n)$,
+  $n "or" s$, $stream(phi)$,
   $var(x)$, $stream(c(var(x)))$,
   $[f]$, $stream([f|^c_v])$,
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
   $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
   $var(x) cartesian var(y)$, $stream(c(var(x)) cartesian c(var(y)))$,
-  $f?$, $sum_(x in f|^c_v) cases(
-    stream() & "if" x "is an error",
+  $"try" f "catch" g$, $sum_(x in f|^c_v) cases(
+    g|^c_e & "if" x = "error"(e),
     stream(x) & "otherwise"
   )$,
   $var(x) "and" f$, $"ite"(c(var(x)), "false", stream("false"), f|^c_v)$,
