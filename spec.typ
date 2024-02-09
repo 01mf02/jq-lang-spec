@@ -366,6 +366,13 @@ $sum_(x in l) f(x)$ to denote $f(x_0) + ... + f(x_n)$.
 We use this frequently to map a function over a stream,
 by having $f(x)$ returns a stream itself.
 
+The following function $"head"(l, e)$ returns the head of a list $l$ if it is not empty, otherwise $e$:
+
+$ "head"(l, e) := cases(
+  h & "if" l = stream(h) + t,
+  e & "otherwise",
+) $
+
 The function $[dot]$ transforms a stream into
 an array if all stream elements are values, or into
 the first exception in the stream otherwise:
@@ -519,6 +526,12 @@ but $v$ could be _extended_ to contain one.
 More formally, $v[i]$ is $"null"$ if $v eq.not "null"$ and
 there exists some value $v' = v + delta$ such that $v'[i] eq.not "null"$.
 
+The behaviour of this operator for $i < 0$ is that $v[i]$ equals $v[abs(v) + i]$.
+
+#example[
+  If $v = [0, 1, 2]$, then $v[1] = 1$ and $v[-1] = v[3 - 1] = 2$.
+]
+
 Using the index operator, we can define the values $v[]$ in a value $v$ as follows:
 
 $ v[] := sum_(i in"keys"(v)) stream(v[i]) $
@@ -530,7 +543,6 @@ $v[]$ returns the stream $stream(v_0, ..., v_n)$.
 
 The last operator that we define here is a slice operator:
 
-// TODO: specify what happens if i or j > n
 $ v[i:j] := cases(
   [sum_(k = i)^(j-1) stream(v_k)] & "if" v = [v_0, ..., v_n] "and" i","j in bb(N),
   sum_(k = i)^(j-1) c_k & "if" v = c_0...c_n "and" i","j in bb(N),
@@ -544,6 +556,10 @@ If we have that $i, j in bb(N)$ and either $i > n$ or $i >= j$, then $v[i:j]$ yi
 an empty array  if $v$ is an array, and
 an empty string if $v$ is a string.
 
+#example[
+  If $v = [0, 1, 2, 3]$, then $v[1:3] = [1, 2]$.
+]
+
 == Updating
 
 For each access operator in @accessing, we will now define an _updating_ counterpart.
@@ -554,8 +570,10 @@ All update operators take at least
 a value $v$,
 a function $f$ from a value to a stream of value results, and
 an error $e$ to be returned if the update operator cannot be applied.#footnote[
-  We will see in @updates why we cannot simply return an arbitrary error here instead of $e$.
+  We will see in @updates why we do not simply return an arbitrary error here instead of $e$.
 ]
+We extend the domain of $f$ to value results such that
+$f(e) = stream(e)$ if $e$ is an error.
 
 The first update operator will be a counterpart to $v[]$.
 For _all_ elements $x$ that are yielded by $v[]$,
@@ -579,11 +597,11 @@ jq only considers the first value yielded by $f$.
 The next function takes a value $v$ and replaces its $i$-th element by the output of $f$,
 where $f$ is a function from a value to a stream of value results:
 $ v[i] update^e f = cases(
-  v[0:i] + [f(v_i)] + v[(i+1):n]
+  v[0:i] + ["head"(f(v[i]), stream())] + v[(i+1):n]
     & "if" v = [v_0, ..., v_n]", " i in bb(N)", and" i <= n,
   v[n+i] update^e f & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
-  v + {i: h} & "if" v = {...}", " i "is a string, and" f(v[i]) = stream(h) + t,
-  union.big_(k in "dom"(v) without {i}) {k |-> v[k]} & "if" v = {...}", " i "is a string, and" f(v[i]) = stream(),
+  v + {i: h} & "if" v = {...} "and" f(v[i]) = stream(h) + t,
+  union.big_(k in "dom"(v) without {i}) {k |-> v[k]} & "if" v = {...} "and" f(v[i]) = stream(),
 
   e & "otherwise",
 ) $
@@ -591,20 +609,22 @@ $ v[i] update^e f = cases(
 Note that this diverges from jq if $v = [v_0, ..., v_n]$ and $i > n$,
 because jq fills up the array with $"null"$.
 
-// TODO: in the next function, $f$ may return multiple values - we should only consider the first, and delete the slice if no value is returned!
-// idea: helper function first(l, e) := h if l = stream(h) + t and e otherwise
-// that way, we can do first(l, []) here
 // but we unfortunately cannot use it to define {k: f}, because if f returns the empty list,
 // we cannot provide a default element e that would make the key disappear
 
 $ v[i:j] update^e f = cases(
+  v[0:i] + "head"(f(v[i:j]), []) + v[j:n] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
+  v & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
   v[(n+i):j] update^e f & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
   v[i:(n+j)] update^e f & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
-  [v_0, ..., v_(i-1)] + f(v[i:j]) + [v_(j), ..., v_n] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
-  v & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
-  // TODO: strings
   e & "otherwise",
 ) $
+
+Unlike $v[i:j]$, this operator fails when $v$ is a string.
+
+#example[
+  If $v = [0, 1, 2, 3]$ and $f(v) = [4, 5, 6]$, then $v[1:3] update^e f = [0, 4, 5, 6, 3]$.
+]
 
 == Ordering <ordering>
 
