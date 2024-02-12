@@ -611,6 +611,12 @@ or deletes it if $f$ yields no output:
 $ v[i] update f = cases(
   v[0:i] + ["head"(f(v[i]), stream())] + v[(i+1):n]
     & "if" v = [v_0, ..., v_n]", " i in bb(N)", and" i <= n,
+  /*
+  v[0:i] + [h] + v[(i+1):n]
+    & "if" v = [v_0, ..., v_n]", " i in bb(N)"," i <= n", and" f(v[i]) = stream(h) + t,
+  v[0:i] + v[(i+1):n]
+    & "if" v = [v_0, ..., v_n]", " i in bb(N)"," i <= n", and" f(v[i]) = stream(),
+  */
   v[n+i] update f & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
   v + {i: h} & "if" v = {...} "and" f(v[i]) = stream(h) + t,
   union.big_(k in "dom"(v) without {i}) {k |-> v[k]} & "if" v = {...} "and" f(v[i]) = stream(),
