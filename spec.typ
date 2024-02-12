@@ -457,9 +457,9 @@ $ "bool"(v) := cases(
 
 We can draw a link between the functions here and jq:
 When called with the input value $v$,
-the jq filter `keys` yields $stream(["keys"(v)])$ and
-the jq filter `length` yields $stream(|v|)$.
-
+the jq filter `keys` yields $stream(["keys"(v)])$,
+the jq filter `length` yields $stream(|v|)$, and
+the jq filter `true and .` yields $stream("bool"(v))$.
 
 == Arithmetic operations
 
