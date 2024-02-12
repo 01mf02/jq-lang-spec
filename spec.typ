@@ -420,7 +420,7 @@ stream({k_1: v_1} union ... union {k_n: v_n}). $
 ]
 
 
-== Simple functions
+== Simple functions <simple-fns>
 
 We are now going to define several functions that take a value and return a value.
 
@@ -581,43 +581,41 @@ Intuitively, where an access operator yields some elements contained in a value 
 its corresponding update operator _replaces_ these elements in $v$ by the output of a function.
 
 All update operators take at least
-a value $v$,
-a function $f$ from a value to a stream of value results, and
-an error $e$ to be returned if the update operator cannot be applied.#footnote[
-  We will see in @updates why we do not simply return an arbitrary error here instead of $e$.
-]
+a value $v$ and
+a function $f$ from a value to a stream of value results.
 We extend the domain of $f$ to value results such that
 $f(e) = stream(e)$ if $e$ is an error.
 
 The first update operator will be a counterpart to $v[]$.
 For _all_ elements $x$ that are yielded by $v[]$,
-$v[] update^e f$ replaces $x$ by $f(x)$:
+$v[] update f$ replaces $x$ by $f(x)$:
 
-$ v[] update^e f = cases(
+$ v[] update f = cases(
   [sum_i f(v_i)] & "if" v = [v_0, ..., v_n],
   union.big_i cases({k_i : h} & "if" f(v_i) = stream(h) + t, {} & "otherwise") & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
-  e & "otherwise",
+  "error" & "otherwise",
 ) $
 
 For an input array $v = [v_0, ..., v_n]$,
-$v[] update^e f$ replaces each $v_i$ by the output of $f(v_i)$, yielding
+$v[] update f$ replaces each $v_i$ by the output of $f(v_i)$, yielding
 $[f(v_0) + ... + f(v_n)]$.
 For an input object $v = {k_0 |-> v_0, ..., k_n |-> v_n}$,
-$v[] update^e f$ replaces each $v_i$ by the first output yielded by $f(v_i)$ if such an output exists,
+$v[] update f$ replaces each $v_i$ by the first output yielded by $f(v_i)$ if such an output exists,
 otherwise it deletes ${k_i |-> v_i}$ from the object.
 Note that updating arrays diverges from jq, because
 jq only considers the first value yielded by $f$.
 
-The next function takes a value $v$ and replaces its $i$-th element by the output of $f$,
-where $f$ is a function from a value to a stream of value results:
-$ v[i] update^e f = cases(
+The next function takes a value $v$ and
+replaces its $i$-th element by the first output of $f$,
+or deletes it if $f$ yields no output:
+$ v[i] update f = cases(
   v[0:i] + ["head"(f(v[i]), stream())] + v[(i+1):n]
     & "if" v = [v_0, ..., v_n]", " i in bb(N)", and" i <= n,
-  v[n+i] update^e f & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
+  v[n+i] update f & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
   v + {i: h} & "if" v = {...} "and" f(v[i]) = stream(h) + t,
   union.big_(k in "dom"(v) without {i}) {k |-> v[k]} & "if" v = {...} "and" f(v[i]) = stream(),
 
-  e & "otherwise",
+  "error" & "otherwise",
 ) $
 
 Note that this diverges from jq if $v = [v_0, ..., v_n]$ and $i > n$,
@@ -626,18 +624,18 @@ because jq fills up the array with $"null"$.
 // but we unfortunately cannot use it to define {k: f}, because if f returns the empty list,
 // we cannot provide a default element e that would make the key disappear
 
-$ v[i:j] update^e f = cases(
+$ v[i:j] update f = cases(
   v[0:i] + "head"(f(v[i:j]), []) + v[j:n] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
   v & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
-  v[(n+i):j] update^e f & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
-  v[i:(n+j)] update^e f & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
-  e & "otherwise",
+  v[(n+i):j] update f & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
+  v[i:(n+j)] update f & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
+  "error" & "otherwise",
 ) $
 
 Unlike $v[i:j]$, this operator fails when $v$ is a string.
 
 #example[
-  If $v = [0, 1, 2, 3]$ and $f(v) = [4, 5, 6]$, then $v[1:3] update^e f = [0, 4, 5, 6, 3]$.
+  If $v = [0, 1, 2, 3]$ and $f(v) = [4, 5, 6]$, then $v[1:3] update f = [0, 4, 5, 6, 3]$.
 ]
 
 == Ordering <ordering>
@@ -1158,9 +1156,10 @@ By doing so, these semantics can abandon the idea of paths altogether.
   $.$, $sigma(v)$,
   $f | g$, $(f update sigma')|^c_v "where" sigma'(x) = (g update sigma)|^c_x$,
   $f, g$, $sum_(x in (f update sigma)|^c_v) (g update sigma)|^c_x$,
-  $f alt g$, $"ite"({x | x in f|^c_v, "bool"(x) = "true"}, {}, (g update sigma)|^c_v, (f update sigma)|^c_v)$,
-  // TODO: mention how to extend c to c(p)
-  $.[p]$, $stream(v[c(p)] update^e sigma(v)) "where" e = "error"$,
+  $f alt g$, $"ite"({x | x in f|^c_v, "bool"(x) != "false"}, {}, (g update sigma)|^c_v, (f update sigma)|^c_v)$,
+  $.[]$, $stream(v[] update sigma(v))$,
+  $.[var(x)]$, $stream(v[c(var(x))] update sigma(v))$,
+  $.[var(x):var(y)]$, $stream(v[c(var(x)):c(var(y))] update sigma(v))$,
   $f "as" var(x) | g$, $"reduce"^c_v (f|^c_v, var(x), (g update sigma))$,
   $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", (f update sigma)|^c_v, (g update sigma)|^c_v)$,
   $"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
@@ -1199,21 +1198,55 @@ and "depolarise" removes the marker from exceptions.
 
 The update semantics are given in @tab:update-semantics.
 
-- $f alt g$: Here, $f$ is called as a "probe" first.
-  If it yields at least one output whose boolean value is true,
+- $f alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
+  Here, $f$ is called as a "probe" first.
+  If it yields at least one output whose boolean value (see @simple-fns) is not false#footnote[
+    We do not write "whose boolean value is false" because that would exclude exceptions.
+    That is because for any exception $e$, it holds that $"bool"(e) = e$.
+  ],
   then we update at $f$, else at $g$.
   This filter is unusual because is the only kind where a subexpression is both
-  evaluated ($f|^c_v$) and updated ($(f update sigma)|^c_v$).
+  updated with ($(f update sigma)|^c_v$) and evaluated ($f|^c_v$).
 
 #let qs(s) = $quote #s quote$
 #let oat(k) = $.[#qs(k)]$
 
-#example[
-  - ${} | (oat(a) alt oat(b)) update 1$ yields ${qs(b) |-> 1}$.
-  - ${} | ("false" alt oat(b)) update 1$ yields ${qs(b) |-> 1}$.
-  - ${qs(a): "false"} | (oat(a) alt oat(b)) update 1$ yields ${qs(a): "false", qs(b): 1}$.
-  - ${qs(a): "true"} | (oat(a) alt oat(b)) update 1$ yields ${qs(a): 1}$.
-  - $[] | (.[] alt "error") update 1$ yields an error.
+#example("The Curious Case of Alternation")[
+  The semantics of $(f alt g) update sigma$ can be rather surprising:
+  For the input
+  ${qs(a) |-> "true"}$, the filter
+  $(oat(a) alt oat(b)) update 1$ yields
+  ${qs(a) |-> 1}$.
+  This is what we might expect, because the input has an entry for $qs(a)$.
+  Now let us evaluate the same filter on the input
+  ${qs(a) |-> "false"}$, which yields ${qs(a) |-> "false", qs(b) |-> 1}$.
+  Here, while the input still has an entry for $qs(a)$ like above,
+  its boolean value is _not_ true, so $oat(b) update 1$ is executed.
+  In the same spirit, for the input ${}$ the filter yields ${qs(b) |-> 1}$,
+  because $oat(a)$ yields $"null"$ for the input,
+  which also has the boolean value $"false"$, therefore $oat(b) update 1$ is executed.
+
+  For the input
+  ${}$, the filter
+  $("false" alt oat(b)) update 1$ yields
+  ${qs(b) |-> 1}$.
+  This is remarkable insofar as $"false"$ is not a valid path expression
+  because it returns a value that does not refer to any part of the original input,
+  yet the filter does not return an error.
+  This is because
+  $"false"$ triggers $oat(b) update 1$, so
+  $"false"$ is never used as path expression.
+  However, running the filter $("true" alt oat(b)) update 1$
+  _does_ yield an error, because
+  $"true"$ triggers $"true" update 1$, and
+  $"true"$ is not a valid path expression.
+
+  Finally, on the input
+  $[]$, the filter
+  $(.[] alt "error") update 1$ yields
+  $"error"([])$.
+  That is because $.[]$ does not yield any value for the input,
+  so $"error" update 1$ is executed, which yields an error.
 ]
 
 The case for $f "as" var(x) | g$ is slightly tricky:
