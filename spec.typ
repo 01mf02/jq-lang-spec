@@ -392,6 +392,7 @@ $ {k: v} := cases(
   "error" & "otherwise",
 ) $
 
+// TODO: this is not needed anymore!
 Given a number of $k_i$ and $v_i$, where for each $i$,
 $k_i$ and $v_i$ are two streams of value results,
 we can construct a stream of objects:#footnote[
@@ -690,6 +691,12 @@ We will now create a bridge between the concrete jq syntax and the
 high-level intermediate representation that we will introduce in @hir.
 In particular, we will simplify the following constructions of the jq syntax:
 
+- Shadowed definitions:
+  We can define a filter with the same name and arity multiple times; for example,
+  if we define `def one: 1; def two: one + one; def one: [1]`,
+  then `two` will yield `2` and `one` will yield `[1]`.
+  We can always rename definitions to eliminate such shadowing; e.g. by
+  `def one: 1; def two: one + one; def one_: [1]`.
 - Definitions with variable bindings:
   The jq language allows for definitions of the shape
   `def x(a_1; ...; a_n): g`, where for any `i`, `a_i` may be either
@@ -704,12 +711,6 @@ In particular, we will simplify the following constructions of the jq syntax:
   For example, this could replace
   `def f($x; g): $x + g` by
   `def f( x; g): x as $x | $x + g`.
-- Shadowed definitions:
-  We can define a filter with the same name and arity multiple times; for example,
-  if we define `def one: 1; def two: one + one; def one: [1]`,
-  then `two` will yield `2` and `one` will yield `[1]`.
-  We can always rename definitions to eliminate such shadowing; e.g. by
-  `def one: 1; def two: one + one; def one_: [1]`.
 - Nested definitions:
   We can nest filter definitions.
   This is more than just syntactic sugar to limit the scope of an auxiliary filter;
@@ -819,7 +820,7 @@ For this, we consider a definition $x(x_1; ...; x_n) := phi$:
 
 A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
-  #or_& [] #or_ [f] #or_ {f: f, ..., f: f} #or_ .[p] \
+  #or_& [f] #or_ {} #or_ {f: f} #or_ .[p] \
   #or_& f star f #or_ var(x) cartesian var(x) \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (var(y_0); f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
@@ -849,7 +850,9 @@ We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
   $f?$, $"try" floor(f) "catch" "empty"$,
   $[]$, $["empty"]$,
   $[f]$, $[floor(f)]$,
-  ${f_1: g_1, ..., f_n: g_n}$, ${floor(f_1): floor(g_1), ..., floor(f_n): floor(g_n)}$,
+  ${}$, ${}$,
+  ${f: g}$, $floor(f) "as" var(x') | floor(g) "as" var(y') | {var(x'): var(y')}$,
+  ${f_1: g_1, ..., f_n: g_n}$, $floor(sum_i {f_i: g_i})$,
   $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
   $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
   $f update g$, $floor(f) update floor(g)$,
@@ -936,7 +939,8 @@ $ "junction"(x, v, l) := "ite"("bool"(x), v, stream(v), sum_(y in l) stream("boo
   $n "or" s$, $stream(phi)$,
   $var(x)$, $stream(c(var(x)))$,
   $[f]$, $stream([f|^c_v])$,
-  ${f_1: g_1, ..., f_n: g_n}$, ${(f_1|^c_v): (g_1|^c_v), ..., (f_n|^c_v): (g_n|^c_v)}$,
+  ${}$, $stream({})$,
+  ${var(x): var(y)}$, ${c(var(x)): c(var(y))}$,
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
   $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
