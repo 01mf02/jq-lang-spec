@@ -1205,6 +1205,17 @@ The update semantics are given in @tab:update-semantics.
   This filter is unusual because is the only kind where a subexpression is both
   evaluated ($f|^c_v$) and updated ($(f update sigma)|^c_v$).
 
+#let qs(s) = $quote #s quote$
+#let oat(k) = $.[#qs(k)]$
+
+#example[
+  - ${} | (oat(a) alt oat(b)) update 1$ yields ${qs(b) |-> 1}$.
+  - ${} | ("false" alt oat(b)) update 1$ yields ${qs(b) |-> 1}$.
+  - ${qs(a): "false"} | (oat(a) alt oat(b)) update 1$ yields ${qs(a): "false", qs(b): 1}$.
+  - ${qs(a): "true"} | (oat(a) alt oat(b)) update 1$ yields ${qs(a): 1}$.
+  - $[] | (.[] alt "error") update 1$ yields an error.
+]
+
 The case for $f "as" var(x) | g$ is slightly tricky:
 Here, the intent is that $g$ has access to $var(x)$, but $sigma$ does not.
 This is to ensure compatibility with jq's original semantics,
