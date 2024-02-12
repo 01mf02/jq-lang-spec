@@ -1158,12 +1158,12 @@ By doing so, these semantics can abandon the idea of paths altogether.
   $.$, $sigma(v)$,
   $f | g$, $(f update sigma')|^c_v "where" sigma'(x) = (g update sigma)|^c_x$,
   $f, g$, $sum_(x in (f update sigma)|^c_v) (g update sigma)|^c_x$,
-  $f alt g$, $"ite"(sum_(x in f|^c_v, med x in.not {"null", "false"}) stream(x), stream(), (g update sigma)|^c_v, (f update sigma)|^c_v)$,
+  $f alt g$, $"ite"({x | x in f|^c_v, "bool"(x) = "true"}, {}, (g update sigma)|^c_v, (f update sigma)|^c_v)$,
   // TODO: mention how to extend c to c(p)
   $.[p]$, $stream(v[c(p)] update^e sigma(v)) "where" e = "error"$,
   $f "as" var(x) | g$, $"reduce"^c_v (f|^c_v, var(x), (g update sigma))$,
   $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", (f update sigma)|^c_v, (g update sigma)|^c_v)$,
-  $"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c)$,
+  $"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
   $"label" var(x) | f$, $"label"(var(x), f update sigma)$,
   $"break" var(x)$, $stream(breakr(x, v))$,
   $x(f_1; ...; f_n)$, $(g update sigma)|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
@@ -1176,9 +1176,9 @@ $ "label"(var(x), l) := cases(
   stream() & "if" l = stream(),
 ) $
 
-$ "catch"(x, g, c) := cases(
-    // TODO: is "tostring" correct here?
-    sum_(e in g|^c_("tostring"(x))) stream("error"(e)) & "if" x "is an unpolarised error",
+$ "catch"(x, g, c, v) := cases(
+    sum_(e in g|^c_(x)) stream("error"(e)) & "if" x "is an unpolarised error and" g|^c_x != stream(),
+    stream(v) & "if" x "is an unpolarised error and" g|^c_x = stream(),
     stream(x) & "otherwise"
 ) $
 
@@ -1198,6 +1198,13 @@ The function "polarise" marks exceptions occurring in the filter $g$,
 and "depolarise" removes the marker from exceptions.
 
 The update semantics are given in @tab:update-semantics.
+
+- $f alt g$: Here, $f$ is called as a "probe" first.
+  If it yields at least one output whose boolean value is true,
+  then we update at $f$, else at $g$.
+  This filter is unusual because is the only kind where a subexpression is both
+  evaluated ($f|^c_v$) and updated ($(f update sigma)|^c_v$).
+
 The case for $f "as" var(x) | g$ is slightly tricky:
 Here, the intent is that $g$ has access to $var(x)$, but $sigma$ does not.
 This is to ensure compatibility with jq's original semantics,
