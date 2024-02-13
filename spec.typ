@@ -71,7 +71,6 @@
 = TODO
 
 - fix QED at end of proof
-- try/catch difference: allow simulation via $"label" var(x) | "try" f "catch" (g, "break" var(x))$
 - define inputs
 - is $.[var(x)]?$ equivalent to $(.[var(x)])?$?
 - is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
@@ -392,32 +391,7 @@ $ {k: v} := cases(
   "error" & "otherwise",
 ) $
 
-// TODO: this is not needed anymore!
-Given a number of $k_i$ and $v_i$, where for each $i$,
-$k_i$ and $v_i$ are two streams of value results,
-we can construct a stream of objects:#footnote[
-  Note that in this definition, we use the fact that functions like
-  ${l: r}$ and $l union r$ yield an exception if either $l$ or $r$ is an exception,
-  as mentioned in the beginning of the section.
-]
-
-$ {k_1: v_1, ..., k_n: v_n} := cases(
-  sum_(k in k_1) sum_(v in v_1) sum_(r in {k_2: v_2, ..., k_n: v_n}) stream({k: v} union r) & "if" n > 0,
-  stream({}) & "otherwise"
-) $
-
-If $n > 0$, then ${k_1: v_1, ..., k_n: v_n}$ is equivalent to
-$ sum_(k_1 in k_1) sum_(v_1 in v_1) ... sum_(k_n in k_n) sum_(v_n in v_n)
-stream({k_1: v_1} union ... union {k_n: v_n}). $
-
-#example[
-  ${stream(quote a quote): stream(1, 2), stream(quote b quote, quote c quote): stream(3), stream(quote d quote): stream(4)}$ yields $stream(v_0, v_1, v_2, v_3)$, where $
-  v_0 = {quote a quote |-> 1, quote b quote |-> 3, quote d quote |-> 4},\
-  v_1 = {quote a quote |-> 1, quote c quote |-> 3, quote d quote |-> 4},\
-  v_2 = {quote a quote |-> 2, quote b quote |-> 3, quote d quote |-> 4},\
-  v_3 = {quote a quote |-> 2, quote c quote |-> 3, quote d quote |-> 4}.
-  $
-]
+We can construct objects with multiple keys by adding objects, see @arithmetic.
 
 
 == Simple functions <simple-fns>
@@ -461,7 +435,7 @@ the jq filter `keys` yields $stream(["keys"(v)])$,
 the jq filter `length` yields $stream(|v|)$, and
 the jq filter `true and .` yields $stream("bool"(v))$.
 
-== Arithmetic operations
+== Arithmetic operations <arithmetic>
 
 We define addition of two values $l$ and $r$ as follows:
 
@@ -812,6 +786,11 @@ For this, we consider a definition $x(x_1; ...; x_n) := phi$:
 
 - Arguments must be bound:
   The only filter arguments that $phi$ can refer to are $x_1, ..., x_n$.
+- Labels must be bound:
+  If $phi$ contains a statement $"break" var(x)$,
+  then it must occur as a subterm of $g$, where
+  $"label" var(x) | g$
+  is a subterm of $phi$.
 - Variables must be bound:
   If $phi$ contains any occurrence of a variable $var(x)$,
   then it must occur as a subterm of $g$, where either
@@ -984,12 +963,10 @@ Let us look at the filters in more detail:
 - $var(x)$: Returns the value currently bound to the variable $var(x)$,
   by looking it up in the context.
   Wellformedness of the filter ensures that such a value always exists.
-- $[f]$: Creates an array from the output of $f$,
-  using the operators defined in @construction.
-- ${f_1: g_1, ..., f_n: g_n}$: Creates objects from the output of the filters
-  $f_i$ and $g_i$, where $f_i$ yields keys and $g_i$ yields corresponding values.
-  Note that unlike $[f]$, this filter may yield multiple outputs,
-  in case that either some $f_i$ or $g_i$ yields multiple outputs.
+- $[f]$: Creates an array from the output of $f$, using the operator defined in @construction.
+- ${}$: Creates an empty object.
+- ${var(x): var(y)}$: Creates an object from the values bound to $var(x)$ and $var(y)$,
+  using the operator defined in @construction.
 - $f, g$: Concatenates the outputs of $f$ and $g$.
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
 - $f "as" var(x) | g$: Binds every output of $f$ to the variable $var(x)$ and
@@ -998,6 +975,12 @@ Let us look at the filters in more detail:
 - $var(x) cartesian var(y)$: Returns the result of a Cartesian operation "$cartesian$"
   (such as addition or multiplication, defined in @tab:binops)
   on the values bound to $var(x)$ and $var(y)$.
+- $"try" f "catch" g$: Returns the output of $f$ where
+  all outputs $"error"(v)$ are replaced by the output of $g$ on the input $v$.
+  Note that this diverges from jq, which aborts the evaluation of $f$ after the first error.
+  This behaviour can be simulated in our semantics, by replacing
+  $"try" f "catch" g$ with
+  $"label" var(x') | "try" f "catch" (g, "break" var(x'))$.
 - $"label" var(x) | f$: Returns all values yielded by $f$ until $f$ yields
   an exception $"break"(var(x), v)$ (where $v$ is arbitrary).
 - $"break" var(x)$: Returns a value $"break"(var(x), v)$, where $v$ is the current input.
@@ -1011,6 +994,31 @@ Let us look at the filters in more detail:
   The current accumulator value is provided to $f$ as input value and
   $f$ can access the current value of $x$ by $var(x)$.
 - TODO: function calls, updates
+
+== Object Construction
+
+In @tab:lowering, we showed how to lower a HIR filter
+${k_1: v_1, ..., k_n: v_n}$ into a sum of smaller filters
+${k_1: v_1} + ... + {k_n: v_n}$.
+
+From the lowering and the semantics defined in this section, we can conclude the following:
+If $n > 0$, then $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
+$ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
+stream({k_1: v_1} union ... union {k_n: v_n}). $
+
+#example[
+  The evaluation of
+  ${quote a quote: (1, 2), (quote b quote, quote c quote): 3, quote d quote: 4}$
+  //(with arbitrary context and input)
+  yields $stream(v_0, v_1, v_2, v_3)$, where $
+  v_0 = {quote a quote |-> 1, quote b quote |-> 3, quote d quote |-> 4},\
+  v_1 = {quote a quote |-> 1, quote c quote |-> 3, quote d quote |-> 4},\
+  v_2 = {quote a quote |-> 2, quote b quote |-> 3, quote d quote |-> 4},\
+  v_3 = {quote a quote |-> 2, quote c quote |-> 3, quote d quote |-> 4}.
+  $
+]
+
+== Folding
 
 $ "fold"^c_v (l, var(x), f, o) := cases(
   o(v) + sum_(x in f|^(c{var(x) |-> h})_v) "fold"^c_x (t, var(x), f, o) & "if" l = stream(h) + t,
@@ -1194,7 +1202,11 @@ $ "catch"(x, g, c, v) := cases(
   $f | g$, $f update (g update sigma)$,
   $f, g$, $(f update sigma) | (g update sigma)$,
   $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f update sigma "else" g update sigma$,
+  $f alt g$, $"if" "first"(f alt "null") "then" f update sigma "else" g update sigma$,
 )) <tab:update-props>
+
+Here, we have that $"first"(f) := "label" var(x) | f | (., "break" var(x))$.
+This filter returns the first output of $f$ if $f$ yields any output, else nothing.
 
 For two filters $f$ and $g$, we define
 $(f update g)|^c_v := sum_(y in (f update sigma)|^c_v) "depolarise"(y)$, where
