@@ -731,7 +731,7 @@ In particular, we will simplify the following constructions of the jq syntax:
   ```
   if c_0 then t_0 else if c_1 then t_1 ... else if c_n then t_n else e end ... end end
   ```
-  When `else e` is not given, then it is assumed that `else .` was given.
+  When `else e` is not given, then we assume that `else .` was given.
   Finally, in HIR, we omit the trailing `end`.
 
 
@@ -751,6 +751,7 @@ where $p$ is a path part of the shape
 $ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f]. $
 Here, $x$ is an identifier (such as "empty").
 
+// TODO: explain meaning of $^?$
 By convention, we write $var(x')$ to denote a fresh variable.
 The potential instances of $star$ and $cartesian$ are given in @tab:binops.
 A folding operation $fold$ is either "reduce" or "foreach".
