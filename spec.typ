@@ -72,7 +72,6 @@
 
 - fix QED at end of proof
 - define inputs
-- is $.[var(x)]?$ equivalent to $(.[var(x)])?$?
 - is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
 - define foreach via for and clarify that latter is not part of jq
 - literature research
@@ -916,6 +915,8 @@ $ "label"(l, var(x)) := cases(
 
 $ "junction"(x, v, l) := "ite"("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))) $
 
+$ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
+
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $phi|^c_v$,
   $.$, $stream(v)$,
@@ -926,6 +927,7 @@ $ "junction"(x, v, l) := "ite"("bool"(x), v, stream(v), sum_(y in l) stream("boo
   ${var(x): var(y)}$, ${c(var(x)): c(var(y))}$,
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
+  $f alt g$, $"ite"("trues"(f|^c_v), stream(), g|^c_v, "trues"(f|^c_v))$,
   $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
   $var(x) cartesian var(y)$, $stream(c(var(x)) cartesian c(var(y)))$,
   $"try" f "catch" g$, $sum_(x in f|^c_v) cases(
@@ -969,6 +971,7 @@ Let us look at the filters in more detail:
   using the operator defined in @construction.
 - $f, g$: Concatenates the outputs of $f$ and $g$.
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
+- $f alt g$: TODO
 - $f "as" var(x) | g$: Binds every output of $f$ to the variable $var(x)$ and
   returns the output of $g$, where $g$ may reference $var(x)$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
@@ -1170,7 +1173,7 @@ By doing so, these semantics can abandon the idea of paths altogether.
   $.$, $sigma(v)$,
   $f | g$, $(f update sigma')|^c_v "where" sigma'(x) = (g update sigma)|^c_x$,
   $f, g$, $sum_(x in (f update sigma)|^c_v) (g update sigma)|^c_x$,
-  $f alt g$, $"ite"({x | x in f|^c_v, "bool"(x) != "false"}, {}, (g update sigma)|^c_v, (f update sigma)|^c_v)$,
+  $f alt g$, $"ite"("trues"(f|^c_v), stream(), (g update sigma)|^c_v, (f update sigma)|^c_v)$,
   $.[]$, $stream(v[] update sigma(v))$,
   $.[var(x)]$, $stream(v[c(var(x))] update sigma(v))$,
   $.[var(x):var(y)]$, $stream(v[c(var(x)):c(var(y))] update sigma(v))$,
