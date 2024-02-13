@@ -826,7 +826,7 @@ and replace certain occurrences of filters by variables
 We can lower any HIR filter $phi$ to a semantically equivalent MIR filter $floor(phi)$
 using @tab:lowering.
 In particular, this desugars path operations and
-makes it explicit which operations are cartesian or complex.
+makes it explicit which operations are Cartesian or complex.
 We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
 
 #figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
@@ -848,8 +848,6 @@ We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
   $f "or"  g$, $floor(f) "as" var(x') | var(x') "or"  floor(g)$,
   $f star g$, $floor(f) star floor(g)$,
   $f cartesian g$, $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
-  // TODO: report wrong documentation on $alt$
-  $f alt g$, $(floor(f) | "if" . "then" . "else" "empty") alt floor(g)$,
   $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
   $fold f_x "as" var(x) (f_y; f)$, $floor(f_y) "as" var(y') | fold floor(f_x) "as" var(x) (var(y'); floor(f))$,
   $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
@@ -886,9 +884,25 @@ However, such a definition relies on the temporary construction of new values
 (such as the empty array here),
 which is not admissible on the left-hand side of updates (see @updates).
 For this reason, we have to define it in a more complicated way, for example
-$"empty" := ([] | .[]) "as" var(x) | .$.
+$ "empty" := ([] | .[]) "as" var(x) | . $
 This definition ensures that $"empty"$ can be employed also as a path expression.
 
+This lowering is compatible with the semantics of the jq implementation,
+with one notable exception:
+In jq, Cartesian operations $f cartesian g$ would be lowered to
+$floor(g) "as" var(y') | floor(f) "as" var(x') | var(x) cartesian var(y)$, whereas we lower it to
+$floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
+thus inverting the binding order.
+Our lowering of Cartesian operations is consistent with that of
+other operators, such as ${f: g}$, where
+the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
+Note that the difference only shows when both $f$ and $g$ return multiple values.
+
+#example[
+  The filter $(0, 2) + (0, 1)$ yields
+  $stream(0, 1, 2, 3)$ using our lowering, and
+  $stream(0, 2, 1, 3)$ in jq.
+]
 
 
 = Evaluation Semantics <semantics>
@@ -956,11 +970,13 @@ The evaluation semantics are given in @tab:eval-semantics.
 We suppose that the Cartesian operator $cartesian$ is defined on pairs of values,
 yielding a value result.
 We have seen examples of the shown filters in @preliminaries.
-The semantics diverge relatively little from the implementation in jq.
-One notable exception is $f cartesian g$, which jq evaluates differently as
-$sum_(y in g|^c_v) sum_(x in f|^c_v) stream(x cartesian y)$.
-//The reason will be given in [](#cloning).
-Note that the difference only shows when both $f$ and $g$ return multiple values.
+
+An implementation may also define custom semantics for named filters.
+For example, an implementation may define
+$"keys"|^c_v := "keys"(v)$ and
+$"length"|^c_v := |v|$.
+In the case of $"keys"$, for example, this is useful because
+it would be extremely complicated to define this filter by definition.
 
 Let us look at the filters in more detail:
 
@@ -975,7 +991,8 @@ Let us look at the filters in more detail:
   using the operator defined in @construction.
 - $f, g$: Concatenates the outputs of $f$ and $g$.
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
-- $f alt g$: TODO
+- $f alt g$: Returns $l$ if $l$ is not empty, else the outputs of $g$, where
+  $l$ are the outputs of $f$ whose boolean values are not false.
 - $f "as" var(x) | g$: Binds every output of $f$ to the variable $var(x)$ and
   returns the output of $g$, where $g$ may reference $var(x)$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
