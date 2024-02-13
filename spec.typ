@@ -71,20 +71,14 @@
 #let qs(s) = $quote #s quote$
 #let oat(k) = $.[#qs(k)]$
 
-
-= TODO
-
+/*
+TODO:
 - fix QED at end of proof
-- define inputs
-- is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
-- define foreach via for and clarify that latter is not part of jq
 - literature research
-- evaluation for $alt$
-- remove some filter cases in proof of lemma --- it's not exhaustive anyway right now
 - completeness is if we can construct any valid value
 - explain difference between $x$ and $x(...)$
 - explain `main`
-
+*/
 
 
 = Introduction
@@ -1058,6 +1052,8 @@ $ "reduce"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream(
      "for"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream(v)
 $
 
+// TODO: clarify that "for" is not part of jq
+
 In addition to the filters defined in @tab:eval-semantics,
 we define the semantics of the two fold-like filters "reduce" and "for" as follows,
 where $x$ evaluates to $stream(x_0, ..., x_n)$:
@@ -1080,6 +1076,7 @@ $ "foreach" x "as" var(x) (y_0; f) =& y_0 \
 $
 
 // TODO: mention that folding considers only first(f)
+// is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
 
 Both filters fold $f$ over the sequence given by $x$ with the initial value $y_0$.
 Their main difference is that "reduce" returns only the final value(s),
@@ -1093,6 +1090,7 @@ The following property can be used to eliminate bindings.
   Then $phi(f)$ is equivalent to "$f "as" var(x) | phi(var(x))$".
 ]
 
+// TODO: remove some filter cases in proof of lemma --- it's not exhaustive anyway right now
 #proof[
   We have to prove the statement for $phi(f)$ set to
   "$f | g$", "$f "as" var(x) | g$", "$f cartesian g$", "$f?$",
