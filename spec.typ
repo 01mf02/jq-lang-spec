@@ -68,6 +68,10 @@
 #let alteq = math.op($alt#h(0pt)=$)
 #let breakr(x, v) = $"break"(\$#x, #v)$
 
+#let qs(s) = $quote #s quote$
+#let oat(k) = $.[#qs(k)]$
+
+
 = TODO
 
 - fix QED at end of proof
@@ -1011,13 +1015,13 @@ stream({k_1: v_1} union ... union {k_n: v_n}). $
 
 #example[
   The evaluation of
-  ${quote a quote: (1, 2), (quote b quote, quote c quote): 3, quote d quote: 4}$
+  ${qs(a): (1, 2), (qs(b), qs(c): 3, qs(d): 4}$
   //(with arbitrary context and input)
   yields $stream(v_0, v_1, v_2, v_3)$, where $
-  v_0 = {quote a quote |-> 1, quote b quote |-> 3, quote d quote |-> 4},\
-  v_1 = {quote a quote |-> 1, quote c quote |-> 3, quote d quote |-> 4},\
-  v_2 = {quote a quote |-> 2, quote b quote |-> 3, quote d quote |-> 4},\
-  v_3 = {quote a quote |-> 2, quote c quote |-> 3, quote d quote |-> 4}.
+  v_0 = {qs(a) |-> 1, qs(b) |-> 3, qs(d) |-> 4},\
+  v_1 = {qs(a) |-> 1, qs(c) |-> 3, qs(d) |-> 4},\
+  v_2 = {qs(a) |-> 2, qs(b) |-> 3, qs(d) |-> 4},\
+  v_3 = {qs(a) |-> 2, qs(c) |-> 3, qs(d) |-> 4}.
   $
 ]
 
@@ -1228,9 +1232,6 @@ The update semantics are given in @tab:update-semantics.
   then we update at $f$, else at $g$.
   This filter is unusual because is the only kind where a subexpression is both
   updated with ($(f update sigma)|^c_v$) and evaluated ($f|^c_v$).
-
-#let qs(s) = $quote #s quote$
-#let oat(k) = $.[#qs(k)]$
 
 #example("The Curious Case of Alternation")[
   The semantics of $(f alt g) update sigma$ can be rather surprising:
