@@ -113,16 +113,17 @@ I refer to the program jq as "jq" and to its language as "the jq language".
 
 The semantics of the jq language are only
 informally specified in the jq manual @jq-manual.
-However, the documentation frequently does not cover certain cases,
-or the implementation downright contradicts the documentation.
-For example, the documentation states that the filter `limit(n; f)`
+However, the documentation frequently does not cover certain cases, and
+historically, the implementation often downright contradicted the documentation.
+/*
+For example, the documentation stated that the filter `limit(n; f)`
 "extracts up to `n` outputs from `f`".
 However, `limit(0; f)` extracts up to 1 outputs from `f`, and
 for negative values of `n`, `limit(n; f)` extracts all outputs of `f`.
-While this particular example could easily be corrected,
-the underlying issue of having no formally specified semantics to rely on remains.
-Having such semantics also allows to determine whether
-certain behaviour of the implementation is accidental or intended.
+*/
+The underlying issue is that there existed no formally specified semantics to rely on.
+Having such semantics allows to determine whether
+certain behaviour of a jq implementation is accidental or intended.
 
 However, a formal specification of the behaviour of jq would be very verbose,
 because jq has many special cases whose merit is not apparent.
@@ -134,9 +135,28 @@ are simpler to describe and implement,
 eliminate a range a potential errors, and
 allow for more performant execution.
 
-#figure(caption: [Evaluation of a jq program with an input value.], diagraph.render(read("structure.dot")))
+The structure of this text is as follows:
+@tour introduces jq by a series of examples that
+give a glimpse of actual jq syntax and behaviour.
+From that point on, the structure of the text follows
+the execution of a jq program as shown in @fig:structure.
+@syntax formalises a subset of jq syntax and shows how jq syntax can be
+transformed to increasingly low-level intermediate representations called
+HIR (@hir) and MIR (@mir).
+After this, the semantics part starts:
+@values defines the type of JSON values and the elementary operations that jq provides for it.
+Furthermore, it defines other basic data types such as errors, exceptions, and streams.
+@semantics shows how to evaluate jq filters on a given input value.
+@updates then shows how to evaluate a class of jq filters that update values using
+a filter called _path_ that defines which parts of the input to update, and
+a filter that defines what the values matching the path should be replaced with.
 
-= Preliminaries <preliminaries>
+#figure(caption: [Evaluation of a jq program with an input value.
+  Solid lines indicate data flow, whereas a dashed line indicates that
+  a component is defined in terms of another.
+], diagraph.render(read("structure.dot"))) <fig:structure>
+
+= Tour of jq <tour>
 
 This goal of this section is to convey an intuition about how jq functions.
 The official documentation of jq is @jq-manual.
@@ -283,7 +303,246 @@ that behave like jq in most typical use cases
 but eliminate corner cases like the ones shown.
 
 
-= Data Types
+
+= Syntax <syntax>
+
+This section describes the syntax for a subset of the jq language
+that will be used later to define the semantics in @semantics.
+To set the formal syntax apart from
+the concrete syntax introduced in @tour,
+we use cursive font (as in "$f$", "$v$") for the specification
+instead of the previously used typewriter font (as in "`f`", "`v`").
+
+We will start by introducing high-level intermediate representation (HIR) syntax in @hir.
+This syntax is very close to actual jq syntax.
+Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @mir and provide a way to translate from HIR to MIR.
+This will simplify our semantics in @semantics.
+
+== HIR <hir>
+
+A _filter_ $f$ is defined by
+
+$ f :=& n #or_ s #or_ . \
+  #or_& (f) #or_ f? #or_ [f] #or_ {f: f, ..., f: f} #or_ f[p]^?...[p]^? \
+  #or_& f star f #or_ f cartesian f \
+  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (f; f) #or_ var(x) \
+  #or_& "label" var(x) | f #or_ "break" var(x) \
+  #or_& "if" f "then" f "else" f #or_ "try" f "catch" f \
+  #or_& x #or_ x(f; ...; f)
+$
+where $p$ is a path part of the shape
+$ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f]. $
+Here, $x$ is an identifier (such as "empty").
+
+// TODO: explain meaning of $^?$
+By convention, we write $var(x')$ to denote a fresh variable.
+The potential instances of $star$ and $cartesian$ are given in @tab:binops.
+A folding operation $fold$ is either "reduce" or "foreach".
+
+#figure(
+  table(
+    columns: 3,
+    [Name], [Symbol], [Operators],
+    [Complex], $star$, ["$|$", ",", ("=", "$update$", "$aritheq$", "$alteq$"), "$alt$", "or", "and"],
+    [Cartesian], $cartesian$, [($eq.quest$, $!=$), ($<$, $<=$, $>$, $>=$), $dot.circle$],
+    [Arithmetic], $dot.circle$, [($+$, $-$), ($times$, $div$), $mod$],
+  ),
+  caption: [
+    Binary operators, given in order of increasing precedence.
+    Operators surrounded by parentheses have equal precedence.
+  ],
+) <tab:binops>
+
+All operators $star$ and $cartesian$ are left-associative, except for
+"$|$", "$=$", "$update$", and "$aritheq$".
+
+A _filter definition_ has the shape
+"$f(x_1; ...; x_n) := g$".
+Here, $f$ is an $n$-ary filter where $g$ may refer to $x_i$.
+For example, this allows us to define filters that produce the booleans,
+by defining $"true" := (0 = 0)$ and $"false" := (0 != 0)$.
+
+We are assuming a few preconditions that must be fulfilled for a filter to be well-formed.
+For this, we consider a definition $x(x_1; ...; x_n) := phi$:
+
+- Arguments must be bound:
+  The only filter arguments that $phi$ can refer to are $x_1, ..., x_n$.
+- Labels must be bound:
+  If $phi$ contains a statement $"break" var(x)$,
+  then it must occur as a subterm of $g$, where
+  $"label" var(x) | g$
+  is a subterm of $phi$.
+- Variables must be bound:
+  If $phi$ contains any occurrence of a variable $var(x)$,
+  then it must occur as a subterm of $g$, where either
+  $f "as" var(x) | g$ or
+  $fold x "as" var(x) (y; g)$
+  is a subterms of $phi$.
+
+== MIR <mir>
+
+A MIR filter $f$ has the shape
+$ f :=& n #or_ s #or_ . \
+  #or_& [f] #or_ {} #or_ {f: f} #or_ .[p] \
+  #or_& f star f #or_ var(x) cartesian var(x) \
+  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (var(y_0); f) #or_ var(x) \
+  #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
+  #or_& "label" var(x) | f #or_ "break" var(x) \
+  #or_& x(f; ...; f)
+$
+where $p$ is a path part of the shape
+$ p := [] #or_ [var(x)] #or_ [var(x):var(x)]. $
+Furthermore, the set of complex operators $star$ in MIR
+does not include "$=$" and "$aritheq$" anymore.
+
+Compared to HIR, MIR filters have significantly simpler path operations
+($.[p]$ versus $f[p]^?...[p]^?$)
+and replace certain occurrences of filters by variables
+(e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
+
+We can lower any HIR filter $phi$ to a semantically equivalent MIR filter $floor(phi)$
+using @tab:lowering.
+In particular, this desugars path operations and
+makes it explicit which operations are Cartesian or complex.
+We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
+
+#figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
+  $phi$, $floor(phi)$,
+  [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
+  $(f)$, $floor(f)$,
+  $f?$, $"try" floor(f) "catch" "empty"$,
+  $[]$, $["empty"]$,
+  $[f]$, $[floor(f)]$,
+  ${}$, ${}$,
+  ${f: g}$, $floor(f) "as" var(x') | floor(g) "as" var(y') | {var(x'): var(y')}$,
+  ${f_1: g_1, ..., f_n: g_n}$, $floor(sum_i {f_i: g_i})$,
+  $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
+  $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
+  $f update g$, $floor(f) update floor(g)$,
+  $f aritheq g$, $floor(f update . arith g)$,
+  $f alteq g$, $floor(f update . alt g)$,
+  $f "and" g$, $floor(f) "as" var(x') | var(x') "and" floor(g)$,
+  $f "or"  g$, $floor(f) "as" var(x') | var(x') "or"  floor(g)$,
+  $f star g$, $floor(f) star floor(g)$,
+  $f cartesian g$, $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
+  $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
+  $fold f_x "as" var(x) (f_y; f)$, $floor(f_y) "as" var(y') | fold floor(f_x) "as" var(x) (var(y'); floor(f))$,
+  $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
+  $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
+  $"label" var(x) | f$, $"label" var(x) | floor(f)$,
+  $x$, $x$,
+  $x(f_1; ...; f_n)$, $x(floor(f_1); ...; floor(f_n))$,
+)) <tab:lowering>
+
+#figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
+  $[p  ]^?$, $floor([p]^?)_var(x)$,
+  $[   ]^?$, $.[]^?$,
+  $[f  ]^?$, $(var(x) | floor(f)) "as" var(y') | .[var(y')]^?$,
+  $[f: ]^?$, $(var(x) | floor(f)) "as" var(y') | "length"^? "as" var(z') | .[var(y') : var(z')]^?$,
+  $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | 0 "as" var(z') | .[var(z') : var(y')]^?$,
+  $[f:g]^?$, $(var(x) | floor(f)) "as" var(y') | (var(x) | floor(g)) "as" var(z') | .[var(y') : var(z')]^?$,
+)) <tab:lower-path>
+
+#example[
+  The HIR filter $mu eq.triple .[0]$ is lowered to
+  $floor(mu) eq.triple . "as" var(x) | . | (var(x) | 0) "as" var(y) | .[var(y)]$.
+  Semantically, we will see that $floor(mu)$ is equivalent to $0 "as" var(y) | .[var(y)]$.
+  The HIR filter $phi eq.triple [3] | .[0] = ("length", 2)$ is lowered to the MIR filter
+  $floor(phi) eq.triple [3] | . "as" var(z) | floor(mu) update (var(z) | ("length", 2))$.
+  In @semantics, we will see that its output is $stream([1], [2])$.
+]
+
+This lowering assumes the presence of one filter in the definitions, namely $"empty"$.
+This filter returns an empty stream.
+We might be tempted to define it as $[] | .[]$,
+which constructs an empty array, then returns its contained values,
+which corresponds to an empty stream as well.
+However, such a definition relies on the temporary construction of new values
+(such as the empty array here),
+which is not admissible on the left-hand side of updates (see @updates).
+For this reason, we have to define it in a more complicated way, for example
+$ "empty" := ([] | .[]) "as" var(x) | . $
+This definition ensures that $"empty"$ can be employed also as a path expression.
+
+This lowering is compatible with the semantics of the jq implementation,
+with one notable exception:
+In jq, Cartesian operations $f cartesian g$ would be lowered to
+$floor(g) "as" var(y') | floor(f) "as" var(x') | var(x) cartesian var(y)$, whereas we lower it to
+$floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
+thus inverting the binding order.
+Our lowering of Cartesian operations is consistent with that of
+other operators, such as ${f: g}$, where
+the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
+Note that the difference only shows when both $f$ and $g$ return multiple values.
+
+#example[
+  The filter $(0, 2) + (0, 1)$ yields
+  $stream(0, 1, 2, 3)$ using our lowering, and
+  $stream(0, 2, 1, 3)$ in jq.
+]
+
+== Concrete jq syntax
+
+Let us now go a level above HIR, namely concrete jq syntax, and
+show how to evaluate a jq program with the help of the semantics given in this text.
+
+A _program_ is a (possibly empty) sequence of definitions, followed by a single filter `f`.
+A _definition_ has the shape `def x(x1; ...; xn): g;` or `def x: g`; where
+`x` is an identifier,
+`x1` to `xn` is a non-empty sequence of semicolon-separated identifiers, and
+`g` is a filter.
+In HIR, we write the corresponding definition as $x(x_1; ...; x_n) := g$.
+
+The syntax of filters in concrete jq syntax is nearly the same as in HIR.
+To see translate between the operators in @tab:binops, see @tab:op-correspondence.
+The arithmetic update operators in jq, namely
+`+=`,
+`-=`,
+`*=`,
+`/=`, and
+`%=`,
+correspond to the operators $aritheq$ in HIR, namely
+$+#h(0pt)=$,
+$-#h(0pt)=$,
+$times#h(0pt)=$,
+$div#h(0pt)=$, and
+$mod#h(0pt)=$.
+
+#let correspondence = (
+  (`|`, $|$),
+  (`,`, $,$),
+  (  `=`, $=$),
+  ( `|=`, $update$),
+  (`//=`, $alteq$),
+  (`//`, $alt$),
+  (`==`, $eq.quest$),
+  (`!=`, $!=$),
+  (`<` , $< $),
+  (`<=`, $<=$),
+  (`>` , $> $),
+  (`>=`, $>=$),
+  (`+`, $+$),
+  (`-`, $-$),
+  (`*`, $times$),
+  (`/`, $div$),
+  (`%`, $mod$),
+)
+#figure(caption: [Operators in concrete jq syntax and their corresponding MIR operators.], table(columns: 1+correspondence.len(),
+  [jq],  ..correspondence.map(c => c.at(0)),
+  [HIR], ..correspondence.map(c => c.at(1)),
+)) <tab:op-correspondence>
+
+To evaluate a jq program with a given input value $v$, we do the following:
+
++ For each definition, convert it to a HIR definition.
++ Convert the filter `f` to a HIR filter $f$.
++ Replace the right-hand sides of definitions and $f$ by
+  their lowered MIR counterparts, using @tab:lowering.
++ Evaluate $f|^c_v$, where $c$ is an empty context.
+
+
+
+= Values <values>
 
 In this section, we will define
 JSON values, errors, exceptions, and streams.
@@ -360,7 +619,7 @@ The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
 Given some stream $l = stream(x_0, ..., x_n)$, we write
 $sum_(x in l) f(x)$ to denote $f(x_0) + ... + f(x_n)$.
 We use this frequently to map a function over a stream,
-by having $f(x)$ returns a stream itself.
+by having $f(x)$ return a stream itself.
 
 The following function $"head"(l, e)$ returns the head of a list $l$ if it is not empty, otherwise $e$:
 
@@ -648,242 +907,6 @@ We then have $ o_1 < o_2 <==> cases(
   TODO: For object comparison.
 ]
 
-= Syntax
-
-This section describes the syntax for a subset of the jq language
-that will be used later to define the semantics in @semantics.
-To set the formal syntax apart from
-the concrete syntax introduced in @preliminaries,
-we use cursive font (as in "$f$", "$v$") for the specification
-instead of the previously used typewriter font (as in "`f`", "`v`").
-
-We will start by introducing high-level intermediate representation (HIR) syntax in @hir.
-This syntax is very close to actual jq syntax.
-Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @mir and provide a way to translate from HIR to MIR.
-This will simplify our semantics in @semantics.
-
-== HIR <hir>
-
-A _filter_ $f$ is defined by
-
-$ f :=& n #or_ s #or_ . \
-  #or_& (f) #or_ f? #or_ [f] #or_ {f: f, ..., f: f} #or_ f[p]^?...[p]^? \
-  #or_& f star f #or_ f cartesian f \
-  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (f; f) #or_ var(x) \
-  #or_& "label" var(x) | f #or_ "break" var(x) \
-  #or_& "if" f "then" f "else" f #or_ "try" f "catch" f \
-  #or_& x #or_ x(f; ...; f)
-$
-where $p$ is a path part of the shape
-$ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f]. $
-Here, $x$ is an identifier (such as "empty").
-
-// TODO: explain meaning of $^?$
-By convention, we write $var(x')$ to denote a fresh variable.
-The potential instances of $star$ and $cartesian$ are given in @tab:binops.
-A folding operation $fold$ is either "reduce" or "foreach".
-
-#figure(
-  table(
-    columns: 3,
-    [Name], [Symbol], [Operators],
-    [Complex], $star$, ["$|$", ",", ("=", "$update$", "$aritheq$", "$alteq$"), "$alt$", "or", "and"],
-    [Cartesian], $cartesian$, [($eq.quest$, $!=$), ($<$, $<=$, $>$, $>=$), $dot.circle$],
-    [Arithmetic], $dot.circle$, [($+$, $-$), ($times$, $div$), $mod$],
-  ),
-  caption: [
-    Binary operators, given in order of increasing precedence.
-    Operators surrounded by parentheses have equal precedence.
-  ],
-) <tab:binops>
-
-All operators $star$ and $cartesian$ are left-associative, except for
-"$|$", "$=$", "$update$", and "$aritheq$".
-
-A _filter definition_ has the shape
-"$f(x_1; ...; x_n) := g$".
-Here, $f$ is an $n$-ary filter where $g$ may refer to $x_i$.
-For example, this allows us to define filters that produce the booleans,
-by defining $"true" := (0 = 0)$ and $"false" := (0 != 0)$.
-
-We are assuming a few preconditions that must be fulfilled for a filter to be well-formed.
-For this, we consider a definition $x(x_1; ...; x_n) := phi$:
-
-- Arguments must be bound:
-  The only filter arguments that $phi$ can refer to are $x_1, ..., x_n$.
-- Labels must be bound:
-  If $phi$ contains a statement $"break" var(x)$,
-  then it must occur as a subterm of $g$, where
-  $"label" var(x) | g$
-  is a subterm of $phi$.
-- Variables must be bound:
-  If $phi$ contains any occurrence of a variable $var(x)$,
-  then it must occur as a subterm of $g$, where either
-  $f "as" var(x) | g$ or
-  $fold x "as" var(x) (y; g)$
-  is a subterms of $phi$.
-
-== MIR <mir>
-
-A MIR filter $f$ has the shape
-$ f :=& n #or_ s #or_ . \
-  #or_& [f] #or_ {} #or_ {f: f} #or_ .[p] \
-  #or_& f star f #or_ var(x) cartesian var(x) \
-  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (var(y_0); f) #or_ var(x) \
-  #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
-  #or_& "label" var(x) | f #or_ "break" var(x) \
-  #or_& x(f; ...; f)
-$
-where $p$ is a path part of the shape
-$ p := [] #or_ [var(x)] #or_ [var(x):var(x)]. $
-Furthermore, the set of complex operators $star$ in MIR
-does not include "$=$" and "$aritheq$" anymore.
-
-Compared to HIR, MIR filters have significantly simpler path operations
-($.[p]$ versus $f[p]^?...[p]^?$)
-and replace certain occurrences of filters by variables
-(e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
-
-We can lower any HIR filter $phi$ to a semantically equivalent MIR filter $floor(phi)$
-using @tab:lowering.
-In particular, this desugars path operations and
-makes it explicit which operations are Cartesian or complex.
-We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
-
-#figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
-  $phi$, $floor(phi)$,
-  [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
-  $(f)$, $floor(f)$,
-  $f?$, $"try" floor(f) "catch" "empty"$,
-  $[]$, $["empty"]$,
-  $[f]$, $[floor(f)]$,
-  ${}$, ${}$,
-  ${f: g}$, $floor(f) "as" var(x') | floor(g) "as" var(y') | {var(x'): var(y')}$,
-  ${f_1: g_1, ..., f_n: g_n}$, $floor(sum_i {f_i: g_i})$,
-  $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
-  $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
-  $f update g$, $floor(f) update floor(g)$,
-  $f aritheq g$, $floor(f update . arith g)$,
-  $f alteq g$, $floor(f update . alt g)$,
-  $f "and" g$, $floor(f) "as" var(x') | var(x') "and" floor(g)$,
-  $f "or"  g$, $floor(f) "as" var(x') | var(x') "or"  floor(g)$,
-  $f star g$, $floor(f) star floor(g)$,
-  $f cartesian g$, $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
-  $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
-  $fold f_x "as" var(x) (f_y; f)$, $floor(f_y) "as" var(y') | fold floor(f_x) "as" var(x) (var(y'); floor(f))$,
-  $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
-  $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
-  $"label" var(x) | f$, $"label" var(x) | floor(f)$,
-  $x$, $x$,
-  $x(f_1; ...; f_n)$, $x(floor(f_1); ...; floor(f_n))$,
-)) <tab:lowering>
-
-#figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
-  $[p  ]^?$, $floor([p]^?)_var(x)$,
-  $[   ]^?$, $.[]^?$,
-  $[f  ]^?$, $(var(x) | floor(f)) "as" var(y') | .[var(y')]^?$,
-  $[f: ]^?$, $(var(x) | floor(f)) "as" var(y') | "length"^? "as" var(z') | .[var(y') : var(z')]^?$,
-  $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | 0 "as" var(z') | .[var(z') : var(y')]^?$,
-  $[f:g]^?$, $(var(x) | floor(f)) "as" var(y') | (var(x) | floor(g)) "as" var(z') | .[var(y') : var(z')]^?$,
-)) <tab:lower-path>
-
-#example[
-  The HIR filter $mu eq.triple .[0]$ is lowered to
-  $floor(mu) eq.triple . "as" var(x) | . | (var(x) | 0) "as" var(y) | .[var(y)]$.
-  Semantically, we will see that $floor(mu)$ is equivalent to $0 "as" var(y) | .[var(y)]$.
-  The HIR filter $phi eq.triple [3] | .[0] = ("length", 2)$ is lowered to the MIR filter
-  $floor(phi) eq.triple [3] | . "as" var(z) | floor(mu) update (var(z) | ("length", 2))$.
-  In @semantics, we will see that its output is $stream([1], [2])$.
-]
-
-This lowering assumes the presence of one filter in the definitions, namely $"empty"$.
-This filter returns an empty stream.
-We might be tempted to define it as $[] | .[]$,
-which constructs an empty array, then returns its contained values,
-which corresponds to an empty stream as well.
-However, such a definition relies on the temporary construction of new values
-(such as the empty array here),
-which is not admissible on the left-hand side of updates (see @updates).
-For this reason, we have to define it in a more complicated way, for example
-$ "empty" := ([] | .[]) "as" var(x) | . $
-This definition ensures that $"empty"$ can be employed also as a path expression.
-
-This lowering is compatible with the semantics of the jq implementation,
-with one notable exception:
-In jq, Cartesian operations $f cartesian g$ would be lowered to
-$floor(g) "as" var(y') | floor(f) "as" var(x') | var(x) cartesian var(y)$, whereas we lower it to
-$floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
-thus inverting the binding order.
-Our lowering of Cartesian operations is consistent with that of
-other operators, such as ${f: g}$, where
-the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
-Note that the difference only shows when both $f$ and $g$ return multiple values.
-
-#example[
-  The filter $(0, 2) + (0, 1)$ yields
-  $stream(0, 1, 2, 3)$ using our lowering, and
-  $stream(0, 2, 1, 3)$ in jq.
-]
-
-== Concrete jq syntax
-
-Let us now go a level above HIR, namely concrete jq syntax, and
-show how to evaluate a jq program with the help of the semantics given in this text.
-
-A _program_ is a (possibly empty) sequence of definitions, followed by a single filter `f`.
-A _definition_ has the shape `def x(x1; ...; xn): g;` or `def x: g`; where
-`x` is an identifier,
-`x1` to `xn` is a non-empty sequence of semicolon-separated identifiers, and
-`g` is a filter.
-In HIR, we write the corresponding definition as $x(x_1; ...; x_n) := g$.
-
-The syntax of filters in concrete jq syntax is nearly the same as in HIR.
-To see translate between the operators in @tab:binops, see @tab:op-correspondence.
-The arithmetic update operators in jq, namely
-`+=`,
-`-=`,
-`*=`,
-`/=`, and
-`%=`,
-correspond to the operators $aritheq$ in HIR, namely
-$+#h(0pt)=$,
-$-#h(0pt)=$,
-$times#h(0pt)=$,
-$div#h(0pt)=$, and
-$mod#h(0pt)=$.
-
-#let correspondence = (
-  (`|`, $|$),
-  (`,`, $,$),
-  (  `=`, $=$),
-  ( `|=`, $update$),
-  (`//=`, $alteq$),
-  (`//`, $alt$),
-  (`==`, $eq.quest$),
-  (`!=`, $!=$),
-  (`<` , $< $),
-  (`<=`, $<=$),
-  (`>` , $> $),
-  (`>=`, $>=$),
-  (`+`, $+$),
-  (`-`, $-$),
-  (`*`, $times$),
-  (`/`, $div$),
-  (`%`, $mod$),
-)
-#figure(caption: [Operators in concrete jq syntax and their corresponding MIR operators.], table(columns: 1+correspondence.len(),
-  [jq],  ..correspondence.map(c => c.at(0)),
-  [HIR], ..correspondence.map(c => c.at(1)),
-)) <tab:op-correspondence>
-
-To evaluate a jq program with a given input value $v$, we do the following:
-
-+ For each definition, convert it to a HIR definition.
-+ Convert the filter `f` to a HIR filter $f$.
-+ Replace the right-hand sides of definitions and $f$ by
-  their lowered MIR counterparts, using @tab:lowering.
-+ Evaluate $f|^c_v$, where $c$ is an empty context.
-
 
 
 = Evaluation Semantics <semantics>
@@ -950,7 +973,7 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
 The evaluation semantics are given in @tab:eval-semantics.
 We suppose that the Cartesian operator $cartesian$ is defined on pairs of values,
 yielding a value result.
-We have seen examples of the shown filters in @preliminaries.
+We have seen examples of the shown filters in @tour.
 
 An implementation may also define custom semantics for named filters.
 For example, an implementation may define
