@@ -543,7 +543,7 @@ that is, in HIR, the final `end` is omitted.
   (`/`, $div$),
   (`%`, $mod$),
 )
-#figure(caption: [Operators in concrete jq syntax and their corresponding MIR operators.], table(columns: 1+correspondence.len(),
+#figure(caption: [Operators in concrete jq syntax and their corresponding HIR operators.], table(columns: 1+correspondence.len(),
   [jq],  ..correspondence.map(c => c.at(0)),
   [HIR], ..correspondence.map(c => c.at(1)),
 )) <tab:op-correspondence>
@@ -1017,6 +1017,7 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
 The evaluation semantics are given in @tab:eval-semantics.
 We suppose that the Cartesian operator $cartesian$ is defined on pairs of values,
 yielding a value result.
+// TODO: how to interpret $=?$
 We have seen examples of the shown filters in @tour.
 
 An implementation may also define custom semantics for named filters.
