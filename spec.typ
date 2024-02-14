@@ -660,81 +660,6 @@ This syntax is very close to actual jq syntax.
 Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @mir and provide a way to translate from HIR to MIR.
 This will simplify our semantics in @semantics.
 
-== jq
-
-We will now create a bridge between the concrete jq syntax and the
-high-level intermediate representation that we will introduce in @hir.
-In particular, we will simplify the following constructions of the jq syntax:
-
-- Shadowed definitions:
-  We can define a filter with the same name and arity multiple times; for example,
-  if we define `def one: 1; def two: one + one; def one: [1]`,
-  then `two` will yield `2` and `one` will yield `[1]`.
-  We can always rename definitions to eliminate such shadowing; e.g. by
-  `def one: 1; def two: one + one; def one_: [1]`.
-- Definitions with variable bindings:
-  The jq language allows for definitions of the shape
-  `def x(a_1; ...; a_n): g`, where for any `i`, `a_i` may be either
-  an identifier (without a leading `$`) or
-  a variable (with leading `$`).
-  We can always transform definitions to a semantically equivalent form where
-  all arguments are non-variables by the following procedure:
-  We repeat the following as long as there is a largest `i` such that `a_i` is a variable:
-  We come up with a fresh identifier `b_i`,
-  replace `g` by `b_i as a_i | g`, and
-  replace the argument `a_i` by `b_i`.
-  For example, this could replace
-  `def f($x; g): $x + g` by
-  `def f( x; g): x as $x | $x + g`.
-- Nested definitions:
-  We can nest filter definitions.
-  This is more than just syntactic sugar to limit the scope of an auxiliary filter;
-  for example, consider the definition `def repeat(f): f, repeat(f)`,
-  which repeats the output of the filter `f` ad infinitem.
-  Most jq implementations to date take quadratic time to evaluate $n$ outputs of `repeat(0)`,
-  because every time that `repeat(f)` calls `repeat(f)`,
-  it creates a new closure around `f` to yield the `f` for the recursive call.#footnote[
-    In principle, such calls could be detected and optimized.
-    For example, in Haskell, we can express `repeat` by
-    #set raw(lang: "haskell")
-    `f x = x () : f (\ () -> x ())` and see that
-    `f (\ () -> 0)` executes in linear time.
-    However, when we change the definition of `f` to
-    `f x = x () : f (\ () -> 1 + x ())` (adding 1 to every call of `x ()`), then
-    `f (\ () -> 0)` executes in quadratic time.
-    This is because when the $n$-th recursive call of `f` calls `x()`, it evaluates to
-    `1 + ... + 1 + 0`, where this sum consists of $n$ summands.
-  ]
-  However, nested definitions allow the same filter to be written as
-  `def repeat(f): def rec: f, rec; rec`.
-  This makes it clear that `f` remains the same for all recursive calls,
-  and allows evaluation of $n$ outputs of `repeat(0)` in linear time.
-  For the sake of this specification, however,
-  we assume that no nested definitions are present.
-  We can always extract a nested definition from its parent definition by
-  adding all arguments from ancestor definitions to its arguments.
-  For our improved `repeat` example, this would yield
-  `def repeat_rec(f): f, repeat_rec(f); def repeat(f): repeat_rec(f)`.
-- Conditional expressions with multiple branches:
-  if-then-else expressions have the shape
-  - `if c then t`, followed by arbitrarily many instances of
-  - `elif c then t`, potentially followed by
-  - `else e`, and terminated by
-  - `end`.
-  Here, `c`, `t`, and `e` denote expressions.
-  For example:
-
-  ```
-  if c_0 then t_0 elif c_1 then t_1 ... elif c_n then t_n else e end
-  ```
-  We write such an expression equivalently as:
-  ```
-  if c_0 then t_0 else if c_1 then t_1 ... else if c_n then t_n else e end ... end end
-  ```
-  When `else e` is not given, then we assume that `else .` was given.
-  Finally, in HIR, we omit the trailing `end`.
-
-
 == HIR <hir>
 
 A _filter_ $f$ is defined by
@@ -795,7 +720,6 @@ For this, we consider a definition $x(x_1; ...; x_n) := phi$:
   $f "as" var(x) | g$ or
   $fold x "as" var(x) (y; g)$
   is a subterms of $phi$.
-
 
 == MIR <mir>
 
@@ -898,6 +822,66 @@ Note that the difference only shows when both $f$ and $g$ return multiple values
   $stream(0, 1, 2, 3)$ using our lowering, and
   $stream(0, 2, 1, 3)$ in jq.
 ]
+
+== Concrete jq syntax
+
+Let us now go a level above HIR, namely concrete jq syntax, and
+show how to evaluate a jq program with the help of the semantics given in this text.
+
+A _program_ is a (possibly empty) sequence of definitions, followed by a single filter `f`.
+A _definition_ has the shape `def x(x1; ...; xn): g;` or `def x: g`; where
+`x` is an identifier,
+`x1` to `xn` is a non-empty sequence of semicolon-separated identifiers, and
+`g` is a filter.
+In HIR, we write the corresponding definition as $x(x_1; ...; x_n) := g$.
+
+The syntax of filters in concrete jq syntax is nearly the same as in HIR.
+To see translate between the operators in @tab:binops, see @tab:op-correspondence.
+The arithmetic update operators in jq, namely
+`+=`,
+`-=`,
+`*=`,
+`/=`, and
+`%=`,
+correspond to the operators $aritheq$ in HIR, namely
+$+#h(0pt)=$,
+$-#h(0pt)=$,
+$times#h(0pt)=$,
+$div#h(0pt)=$, and
+$mod#h(0pt)=$.
+
+#let correspondence = (
+  (`|`, $|$),
+  (`,`, $,$),
+  (  `=`, $=$),
+  ( `|=`, $update$),
+  (`//=`, $alteq$),
+  (`//`, $alt$),
+  (`==`, $eq.quest$),
+  (`!=`, $!=$),
+  (`<` , $< $),
+  (`<=`, $<=$),
+  (`>` , $> $),
+  (`>=`, $>=$),
+  (`+`, $+$),
+  (`-`, $-$),
+  (`*`, $times$),
+  (`/`, $div$),
+  (`%`, $mod$),
+)
+#figure(caption: [Operators in concrete jq syntax and their corresponding MIR operators.], table(columns: 1+correspondence.len(),
+  [jq],  ..correspondence.map(c => c.at(0)),
+  [HIR], ..correspondence.map(c => c.at(1)),
+)) <tab:op-correspondence>
+
+To evaluate a jq program with a given input value $v$, we do the following:
+
++ For each definition, convert it to a HIR definition.
++ Convert the filter `f` to a HIR filter $f$.
++ Replace the right-hand sides of definitions and $f$ by
+  their lowered MIR counterparts, using @tab:lowering.
++ Evaluate $f|^c_v$, where $c$ is an empty context.
+
 
 
 = Evaluation Semantics <semantics>
