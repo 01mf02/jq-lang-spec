@@ -386,6 +386,9 @@ For this, we consider a definition $x(x_1; ...; x_n) := phi$:
 
 == MIR <mir>
 
+We are now going to identify a subset of HIR called MIR and
+show how to _lower_ a HIR filter to a semantically equivalent MIR filter.
+
 A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
   #or_& [f] #or_ {} #or_ {f: f} #or_ .[p] \
@@ -488,8 +491,12 @@ Note that the difference only shows when both $f$ and $g$ return multiple values
 
 == Concrete jq syntax <jq-syntax>
 
-Let us now go a level above HIR, namely concrete jq syntax, and
-show how to evaluate a jq program with the help of the semantics given in this text.
+Let us now go a level above HIR, namely a subset of actual jq syntax#footnote[
+  Actual jq syntax has a few more constructions to offer, including
+  nested definitions, string interpolation, modules, etc.
+  However, these constructions can be transformed into
+  semantically equivalent syntax as treated in this text.
+] as it is found in the wild, and show how to transform jq programs to HIR and to MIR.
 
 A _program_ is a (possibly empty) sequence of definitions, followed by a single filter `f`.
 A _definition_ has the shape `def x(x1; ...; xn): g;` or `def x: g`; where
@@ -499,7 +506,7 @@ A _definition_ has the shape `def x(x1; ...; xn): g;` or `def x: g`; where
 In HIR, we write the corresponding definition as $x(x_1; ...; x_n) := g$.
 
 The syntax of filters in concrete jq syntax is nearly the same as in HIR.
-To see translate between the operators in @tab:binops, see @tab:op-correspondence.
+To translate between the operators in @tab:binops, see @tab:op-correspondence.
 The arithmetic update operators in jq, namely
 `+=`,
 `-=`,
@@ -512,6 +519,10 @@ $-#h(0pt)=$,
 $times#h(0pt)=$,
 $div#h(0pt)=$, and
 $mod#h(0pt)=$.
+Filters of the shape
+`if f then g else h end` correspond to the filter
+$"if" f "then" g "else" h$ in HIR;
+that is, in HIR, the final `end` is omitted.
 
 #let correspondence = (
   (`|`, $|$),
@@ -537,15 +548,42 @@ $mod#h(0pt)=$.
   [HIR], ..correspondence.map(c => c.at(1)),
 )) <tab:op-correspondence>
 
-To evaluate a jq program with a given input value $v$, we do the following:
+To convert a jq program to MIR, we do the following:
 
 + For each definition, convert it to a HIR definition.
 + Convert the filter `f` to a HIR filter $f$.
-+ Replace the right-hand sides of definitions and $f$ by
++ Replace the right-hand sides of HIR definitions and $f$ by
   their lowered MIR counterparts, using @tab:lowering.
-+ Evaluate $f|^c_v$, where $c$ is an empty context.
-  We will show this in @semantics.
 
+#example[
+  Consider the jq program `def recurse(f): ., (f | recurse(f)); recurse(. + 1)`,
+  which returns the infinite stream of output values $n, n+1, ...$
+  when provided with an input number $n$.
+  The definition in this example can be converted to the HIR definition
+  $"recurse"(f) := ., (f | "recurse"(f))$ and the main filter can be converted to the HIR filter
+  $"recurse"(. + 1)$.
+  The lowering of the definition to MIR yields the same as the HIR definition, and
+  the lowering of the main filter to MIR yields
+  $"recurse"(. "as" var(x') | 1 "as" var(y') | var(x') + var(y'))$.
+]
+
+#example[
+  Consider the jq program `def select(f): if f then . else empty end; def negative: . < 0; .[] | select(negative)`.
+  When given an array as an input, it yields
+  those elements of the array that are smaller than $0$.
+  Here, the definitions in the example are converted to the HIR definitions
+  $"select"(f) := "if" f "then" . "else" "empty"$ and
+  $"negative"(f) := . < 0$, and
+  the main filter is converted to the HIR filter
+  $.[] | "select"("negative")$.
+  Both the definition of $"select"(f)$ and the main filter are already in MIR;
+  the MIR version of the remaining definition is
+  $"negative"(f) := . "as" var(x') | 0 "as" var(y') | var(x') < var(y')$.
+]
+
+We will show in @semantics how to run the resulting MIR filter $f$
+in the presence of a set of MIR definitions.
+For a given input value $v$, the output of $f$ will be given by $f|^{}_v$.
 
 
 = Values <values>
