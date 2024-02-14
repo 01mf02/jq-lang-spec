@@ -26,9 +26,10 @@
     jq is a widely used tool that provides a programming language to manipulate JSON data.
     However, it is currently only specified by its implementation,
     making it difficult to reason about its behaviour.
-    To this end, I provide a syntax and denotational semantics for
-    a subset of the jq language.
-    In particular, the semantics provide a new way to interpret updates.
+    To this end, we provide a syntax and denotational semantics for
+    a large subset of the jq language.
+    Our most significant contribution is to provide a new way to interpret updates
+    that allows for more predictable and performant execution.
   ],
   keywords: ("JSON", "semantics"),
 
@@ -202,9 +203,12 @@ returns the output of `g` if `v` is true and the output of `h` otherwise.
 For example, given the input `1`,
 the filter "`if (. < 1, . == 1, . >= 1) then . else [] end`" returns `[], 1, 1`.
 
-Fix points are calculated as follows:
-Given a filter `f`, "`recurse(f)`" returns the output of "`., (f | recurse(f))`".
-This way, we can define a filter to calculate the factorial function, for example.
+We can define filters by using the syntax "`def f(x1; ...; xn): g;`",
+which defines an filter `f` taking `n` arguments by `g`,
+where `g` can refer to `x1` to `xn`.
+For example, jq provides the filter "`recurse(f)`" to calculate fix points,
+which could be defined by "`def recurse(f): ., (f | recurse(f));`".
+Using this, we can define a filter to calculate the factorial function, for example.
 
 #example("Factorial")[
   Let us define a filter `fac` that should return $n!$ for any input number $n$.
@@ -222,7 +226,6 @@ This way, we can define a filter to calculate the factorial function, for exampl
   "`last(f)`" is a filter that outputs the last output of `f`.
   This then yields a single value `24` as result.
 ] <ex:fac>
-
 
 Composition can also be used to bind values to _variables_.
 The filter "`f as $x | g`" performs the following:
@@ -317,6 +320,7 @@ We will start by introducing high-level intermediate representation (HIR) syntax
 This syntax is very close to actual jq syntax.
 Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @mir and provide a way to translate from HIR to MIR.
 This will simplify our semantics in @semantics.
+Finally, in @jq-syntax, we will show how HIR relates to actual jq syntax.
 
 == HIR <hir>
 
@@ -329,10 +333,11 @@ $ f :=& n #or_ s #or_ . \
   #or_& "label" var(x) | f #or_ "break" var(x) \
   #or_& "if" f "then" f "else" f #or_ "try" f "catch" f \
   #or_& x #or_ x(f; ...; f)
-$
-where $p$ is a path part of the shape
-$ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f]. $
-Here, $x$ is an identifier (such as "empty").
+$ where
+$p$ is a path part of the shape $ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f], $
+$x$ is an identifier (such as "empty"),
+$n$ is a number (such as $42$ or $3.14$), and
+$s$ is a string (such as "Hello world!").
 
 // TODO: explain meaning of $^?$
 By convention, we write $var(x')$ to denote a fresh variable.
@@ -454,14 +459,14 @@ We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
 
 This lowering assumes the presence of one filter in the definitions, namely $"empty"$.
 This filter returns an empty stream.
-We might be tempted to define it as $[] | .[]$,
-which constructs an empty array, then returns its contained values,
+We might be tempted to define it as ${} | .[]$,
+which constructs an empty object, then returns its contained values,
 which corresponds to an empty stream as well.
 However, such a definition relies on the temporary construction of new values
-(such as the empty array here),
+(such as the empty object here),
 which is not admissible on the left-hand side of updates (see @updates).
 For this reason, we have to define it in a more complicated way, for example
-$ "empty" := ([] | .[]) "as" var(x) | . $
+$ "empty" := ({} | .[]) "as" var(x) | . $
 This definition ensures that $"empty"$ can be employed also as a path expression.
 
 This lowering is compatible with the semantics of the jq implementation,
@@ -481,7 +486,7 @@ Note that the difference only shows when both $f$ and $g$ return multiple values
   $stream(0, 2, 1, 3)$ in jq.
 ]
 
-== Concrete jq syntax
+== Concrete jq syntax <jq-syntax>
 
 Let us now go a level above HIR, namely concrete jq syntax, and
 show how to evaluate a jq program with the help of the semantics given in this text.
@@ -539,6 +544,7 @@ To evaluate a jq program with a given input value $v$, we do the following:
 + Replace the right-hand sides of definitions and $f$ by
   their lowered MIR counterparts, using @tab:lowering.
 + Evaluate $f|^c_v$, where $c$ is an empty context.
+  We will show this in @semantics.
 
 
 
