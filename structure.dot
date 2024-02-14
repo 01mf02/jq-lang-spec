@@ -1,0 +1,33 @@
+digraph {
+  rankdir=LR
+  splines=ortho
+  ranksep=0.3
+  nodesep=0.3
+  node [shape=none margin=0 width=0.75 height=0.2]
+  { rank=same; input [label="input value"]; program [label="jq program"]; }
+  output [label="output values & errors"]
+
+  node [shape=box margin=0.1 width=0 height=0]
+  subgraph cluster_syntax {
+    label="Syntax"
+    hir [label="HIR"]
+    mir [label="MIR"]
+  }
+  subgraph cluster_semantics {
+    label = "Semantics"
+    { rank=same; above_eval [width=0 shape=point label=""]; eval [label="Evaluation"] }
+    { rank=same; update_eval [label="Update evaluation"]; value_ops [label="Value operations"] }
+  }
+
+  edge [arrowsize=0.5]
+  program -> hir
+  hir -> mir
+  mir -> eval
+  input -> above_eval [arrowhead=none]
+  above_eval -> eval [tailport=center]
+  eval -> output
+
+  edge [style=dashed]
+  eval -> {update_eval, value_ops}
+  update_eval -> value_ops
+}

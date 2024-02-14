@@ -1,4 +1,5 @@
 #import "@preview/ctheorems:1.1.0": thmplain, thmrules
+#import "@preview/diagraph:0.2.1"
 #import "article.typ": article
 #import "acm.typ": acmart
 #show: thmrules
@@ -133,6 +134,7 @@ are simpler to describe and implement,
 eliminate a range a potential errors, and
 allow for more performant execution.
 
+#figure(caption: [Evaluation of a jq program with an input value.], diagraph.render(read("structure.dot")))
 
 = Preliminaries <preliminaries>
 
