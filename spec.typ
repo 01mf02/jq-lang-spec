@@ -131,6 +131,12 @@ because jq has many special cases whose merit is not apparent.
 Therefore, I have striven to create
 denotational semantics (@semantics) that closely resemble those of jq such that
 in most cases, their behaviour coincides, whereas they may differ in more exotic cases.
+The goals for creating these semantics were, in descending order of importance:
+
+- Simplicity: The semantics should be easy to describe, understand, and implement.
+- Performance: The semantics should allow for performant execution.
+- Compatibility: The semantics should be consistent with jq.
+
 One particular improvement over jq are the new update semantics (@updates), which
 are simpler to describe and implement,
 eliminate a range a potential errors, and
@@ -493,10 +499,11 @@ Note that the difference only shows when both $f$ and $g$ return multiple values
 
 Let us now go a level above HIR, namely a subset of actual jq syntax#footnote[
   Actual jq syntax has a few more constructions to offer, including
-  nested definitions, string interpolation, modules, etc.
+  nested definitions, variable arguments, string interpolation, modules, etc.
   However, these constructions can be transformed into
   semantically equivalent syntax as treated in this text.
-] as it is found in the wild, and show how to transform jq programs to HIR and to MIR.
+] of which we have seen examples in @tour, and
+show how to transform jq programs to HIR and to MIR.
 
 A _program_ is a (possibly empty) sequence of definitions, followed by a single filter `f`.
 A _definition_ has the shape `def x(x1; ...; xn): g;` or `def x: g`; where
@@ -955,11 +962,8 @@ We then have $ o_1 < o_2 <==> cases(
 
 = Evaluation Semantics <semantics>
 
-The goals for creating these semantics were, in descending order of importance:
-
-- Simplicity: The semantics should be easy to describe and implement.
-- Performance: The semantics should allow for performant execution.
-- Compatibility: The semantics should be consistent with jq.
+In this section, we will define a function $phi|^c_v$ that returns
+the output of the evaluation of the filter $phi$ on the input value $v$.
 
 Let us start with a few definitions.
 A context $c$ is a mapping
@@ -968,20 +972,38 @@ from identifiers $x$ to pairs $(f, c)$, where $f$ is a filter and $c$ is a conte
 Contexts store what variables and filter arguments are bound to.
 
 We are now going to introduce a few helper functions.
-The next function helps define filters such as if-then-else, conjunction, and disjunction:
+The first function helps define filters such as if-then-else and alternation ($f alt g$):
 $ "ite"(v, i, t, e) = cases(
   t & "if" v = i,
   e & "otherwise"
 ) $
 
+We use the newly defined $"ite"$ function for another function that
+we will use to define conjunction and disjunction:
+
+If the boolean value of $x$ is $v$ (where $v$ will be true or false), then
+$"junction"(x, v, l)$ returns just $v$, otherwise the boolean values of the values in $l$.
+Here, $"bool"(v)$ returns the boolean value as given in @simple-fns.
+
+$ "junction"(x, v, l) := "ite"("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))) $
+
+Next, we define a function that is used to define alternation.
+$"trues"(l)$ returns those elements of $l$ whose boolean values are not false.
+Note that in our context, "not false" is _not_ the same as "true", because
+the former includes exceptions, whereas the latter excludes them,
+and $"bool"(x)$ _can_ return exceptions, in particular if $x$ is an exception.
+
+$ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
+
+The last helper function will be used to define the behaviour of label-break expressions.
+$"label"(l, var(x))$ returns all elements of $l$ until
+the current element is an exception of the form $"break"(var(x), v)$,
+where $v$ is arbitrary.
+
 $ "label"(l, var(x)) := cases(
   stream(h) + "label"(t, var(x)) & "if" l = stream(h) + t "and" h != "break"(var(x), v),
   stream() & "otherwise",
 ) $
-
-$ "junction"(x, v, l) := "ite"("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))) $
-
-$ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $phi|^c_v$,
@@ -1015,25 +1037,13 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
 )) <tab:eval-semantics>
 
 The evaluation semantics are given in @tab:eval-semantics.
-We suppose that the Cartesian operator $cartesian$ is defined on pairs of values,
-yielding a value result.
-// TODO: how to interpret $=?$
-We have seen examples of the shown filters in @tour.
+Let us discuss the filters in detail:
 
-An implementation may also define custom semantics for named filters.
-For example, an implementation may define
-$"keys"|^c_v := "keys"(v)$ and
-$"length"|^c_v := |v|$.
-In the case of $"keys"$, for example, this is useful because
-it would be extremely complicated to define this filter by definition.
-
-Let us look at the filters in more detail:
-
-- "$.$": This is the identity filter, returning its input value.
-- $n$ or $s$: Return the value corresponding to the number $n$ or string $s$.
+- "$.$": Returns its input value. This is the identity filter.
+- $n$ or $s$: Returns the value corresponding to the number $n$ or string $s$.
 - $var(x)$: Returns the value currently bound to the variable $var(x)$,
   by looking it up in the context.
-  Wellformedness of the filter ensures that such a value always exists.
+  Wellformedness of the filter (as defined in @hir) ensures that such a value always exists.
 - $[f]$: Creates an array from the output of $f$, using the operator defined in @construction.
 - ${}$: Creates an empty object.
 - ${var(x): var(y)}$: Creates an object from the values bound to $var(x)$ and $var(y)$,
@@ -1045,9 +1055,13 @@ Let us look at the filters in more detail:
 - $f "as" var(x) | g$: Binds every output of $f$ to the variable $var(x)$ and
   returns the output of $g$, where $g$ may reference $var(x)$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
-- $var(x) cartesian var(y)$: Returns the result of a Cartesian operation "$cartesian$"
-  (such as addition or multiplication, defined in @tab:binops)
-  on the values bound to $var(x)$ and $var(y)$.
+- $var(x) cartesian var(y)$: Returns the output of a Cartesian operation "$cartesian$"
+  (any of $eq.quest$, $eq.not$, $<$, $<=$, $>$, $>=$, $+$, $-$, $times$, $div$, and $mod$,
+  as given in @tab:binops) on the values bound to $var(x)$ and $var(y)$.
+  The semantics of the arithmetic operators are given in @arithmetic,
+  the comparison operators are defined by the ordering given in @ordering,
+  $l eq.quest r$ returns whether $l$ equals $r$, and
+  $l eq.not r$ returns its negation.
 - $"try" f "catch" g$: Returns the output of $f$ where
   all outputs $"error"(v)$ are replaced by the output of $g$ on the input $v$.
   Note that this diverges from jq, which aborts the evaluation of $f$ after the first error.
@@ -1066,30 +1080,16 @@ Let us look at the filters in more detail:
   starting with the accumulator $var(y)$.
   The current accumulator value is provided to $f$ as input value and
   $f$ can access the current value of $x$ by $var(x)$.
+  We will give a definition of the 
 - TODO: function calls, updates
 
-== Object Construction
+An implementation may also define custom semantics for named filters.
+For example, an implementation may define
+$"keys"|^c_v := "keys"(v)$ and
+$"length"|^c_v := |v|$.
+In the case of $"keys"$, for example, this is useful because
+it would be extremely complicated to define this filter by definition.
 
-In @tab:lowering, we showed how to lower a HIR filter
-${k_1: v_1, ..., k_n: v_n}$ into a sum of smaller filters
-${k_1: v_1} + ... + {k_n: v_n}$.
-
-From the lowering and the semantics defined in this section, we can conclude the following:
-If $n > 0$, then $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
-$ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
-stream({k_1: v_1} union ... union {k_n: v_n}). $
-
-#example[
-  The evaluation of
-  ${qs(a): (1, 2), (qs(b), qs(c): 3, qs(d): 4}$
-  //(with arbitrary context and input)
-  yields $stream(v_0, v_1, v_2, v_3)$, where $
-  v_0 = {qs(a) |-> 1, qs(b) |-> 3, qs(d) |-> 4},\
-  v_1 = {qs(a) |-> 1, qs(c) |-> 3, qs(d) |-> 4},\
-  v_2 = {qs(a) |-> 2, qs(b) |-> 3, qs(d) |-> 4},\
-  v_3 = {qs(a) |-> 2, qs(c) |-> 3, qs(d) |-> 4}.
-  $
-]
 
 == Folding
 
@@ -1166,6 +1166,32 @@ The following property can be used to eliminate bindings.
 The semantics of jq and those shown in @tab:eval-semantics
 differ most notably in the case of updates; that is, $f update g$.
 We are going to deal with this in @updates.
+
+
+== Object Construction
+
+In @tab:lowering, we showed how to lower a HIR filter
+${k_1: v_1, ..., k_n: v_n}$ into a sum of smaller filters
+${k_1: v_1} + ... + {k_n: v_n}$.
+
+From the lowering and the semantics defined in this section, we can conclude the following:
+If $n > 0$, then $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
+$ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
+stream({k_1: v_1} union ... union {k_n: v_n}). $
+
+#example[
+  The evaluation of
+  ${qs(a): (1, 2), (qs(b), qs(c): 3, qs(d): 4}$
+  //(with arbitrary context and input)
+  yields $stream(v_0, v_1, v_2, v_3)$, where $
+  v_0 = {qs(a) |-> 1, qs(b) |-> 3, qs(d) |-> 4},\
+  v_1 = {qs(a) |-> 1, qs(c) |-> 3, qs(d) |-> 4},\
+  v_2 = {qs(a) |-> 2, qs(b) |-> 3, qs(d) |-> 4},\
+  v_3 = {qs(a) |-> 2, qs(c) |-> 3, qs(d) |-> 4}.
+  $
+]
+
+
 
 = Update Semantics <updates>
 
@@ -1295,10 +1321,8 @@ The update semantics are given in @tab:update-semantics.
 
 - $f alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
   Here, $f$ is called as a "probe" first.
-  If it yields at least one output whose boolean value (see @simple-fns) is not false#footnote[
-    We do not write "whose boolean value is false" because that would exclude exceptions.
-    That is because for any exception $e$, it holds that $"bool"(e) = e$.
-  ],
+  If it yields at least one output that is considered "true"
+  (see @semantics for the definition of $"trues"$),
   then we update at $f$, else at $g$.
   This filter is unusual because is the only kind where a subexpression is both
   updated with ($(f update sigma)|^c_v$) and evaluated ($f|^c_v$).
