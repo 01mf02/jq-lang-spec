@@ -417,7 +417,14 @@ and replace certain occurrences of filters by variables
 @tab:lowering shows how to lower an HIR filter $phi$ to
 a semantically equivalent MIR filter $floor(phi)$.
 In particular, this desugars path operations and
-makes it explicit which operations are Cartesian or complex.#footnote[
+makes it explicit which operations are Cartesian or complex.
+Notice that for some complex operators $star$, namely
+"$=$", "$aritheq$", "$alteq$", "$"and"$", and "$"or"$",
+@tab:lowering specifies individual lowerings, whereas
+for the remaining complex operators $star$, namely
+"$|$", "$,$", "$update$", and "$alt$",
+@tab:lowering specifies a uniform lowering $floor(f star g) = floor(f) star floor(g)$.
+#footnote[
   We could actually also lower $f | g$ to $floor(f) "as" var(x') | var(x') | floor(g)$
   to replace all occurrences of $f | g$ by $var(x') | g$,
   thus simplifying the semantics a bit.
@@ -426,7 +433,7 @@ makes it explicit which operations are Cartesian or complex.#footnote[
   Therefore, we omit this lowering and lower $f | g$ to $floor(f) | floor(g)$ instead,
   like most other $star$ operators.
 ]
-We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
+@tab:lower-path shows how to lower path parts $[p]^?$ to MIR filters.
 
 #figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
   $phi$, $floor(phi)$,
