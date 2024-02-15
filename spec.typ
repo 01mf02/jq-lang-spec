@@ -399,10 +399,10 @@ A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
   #or_& [f] #or_ {} #or_ {f: f} #or_ .[p] \
   #or_& f star f #or_ var(x) cartesian var(x) \
-  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (var(y_0); f) #or_ var(x) \
+  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (var(x); f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
   #or_& "label" var(x) | f #or_ "break" var(x) \
-  #or_& x(f; ...; f)
+  #or_& x #or_ x(f; ...; f)
 $
 where $p$ is a path part of the shape
 $ p := [] #or_ [var(x)] #or_ [var(x):var(x)]. $
@@ -1040,7 +1040,7 @@ $ "label"(l, var(x)) := cases(
   $.[var(x)]$, $stream(v[c(var(x))])$,
   $.[var(x):var(y)]$, $stream(v[c(var(x)):c(var(y))])$,
   $fold x "as" var(x) (var(y); f)$, $fold^c_c(var(y)) (x|^c_v, var(x), f)$,
-  $x(f_1; ...; f_n)$, $g|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
+  $x(f_1; ...; f_n)$, $f|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
   $x$, $f|^c'_v "if" c(x) = (f, c')$,
   $f update g$, [see @updates]
 )) <tab:eval-semantics>
@@ -1089,41 +1089,101 @@ Let us discuss the filters in detail:
   starting with the accumulator $var(y)$.
   The current accumulator value is provided to $f$ as input value and
   $f$ can access the current value of $x$ by $var(x)$.
-  We will give a definition of the 
-- TODO: function calls, updates
+  If $fold = "reduce" $, this returns only the final        values of the accumulator, whereas
+  if $fold = "foreach"$, this returns also the intermediate values of the accumulator.
+  We will define the functions
+  $"reduce" ^c_v (l, var(x), f)$ and
+  $"foreach"^c_v (l, var(x), f)$ in @folding.
+- $x(f_1; ...; f_n)$: Calls an $n$-ary filter $x$ that is defined by $x(x_1; ...; x_n) := f$.
+  The output is that of the filter $f$, where
+  each filter argument $x_i$ is bound to $(f_i, c)$.
+  This also handles the case of calling nullary filters such as $"empty"$.
+- $x$: Calls a filter argument.
+  By the well-formedness requirements given in @hir,
+  this must occur within the right-hand side of a definition whose arguments include $x$.
+  This requirement also ensures that $x in "dom"(c)$,
+  because an $x$ can only be evaluated as part of a call to the filter where it was bound, and
+  by the semantics of filter calls above, this adds a binding for $x$ to the context.
+- $f update g$: Updates the input at positions returned by $f$ by $g$.
+  We will discuss this in @updates.
 
 An implementation may also define custom semantics for named filters.
 For example, an implementation may define
-$"keys"|^c_v := "keys"(v)$ and
+$"error"|^c_v := "error"(v)$,
+$"keys"|^c_v := "keys"(v)$, and
 $"length"|^c_v := |v|$.
-In the case of $"keys"$, for example, this is useful because
-it would be extremely complicated to define this filter by definition.
+In the case of $"keys"$, for example, there is no obvious way to implement it by definition,
+in particular because there is no simple way to obtain the domain of an object ${...}$
+using only the filters for which we gave semantics in @tab:eval-semantics.
+For $"length"$, we could give a definition, using
+$"reduce" .[] "as" var(x) (0; . + 1)$ to obtain the length of arrays and objects, but
+this would inherently require linear time to yield a result, instead of
+constant time that can be achieved by a proper jq implementation.
 
 
-== Folding
+== Folding <folding>
+
+In this subsection, we will define the functions $fold^c_v (l, var(x), f)$
+(where $fold$ is either $"foreach"$ or $"reduce"$),
+which underlie the semantics for the folding operators
+$fold x "as" var(x) (var(y); f)$.
+
+Let us start by defining a general folding function $"fold"^c_v (l, var(x), f, o)$: It takes
+a stream of value results $l$,
+a variable $var(x)$,
+a filter $f$, and
+a function $o(x)$ from a value $x$ to a stream of values.
+This function folds over the elements in $l$, starting from the accumulator value $v$.
+It yields the next accumulator value(s) by evaluating $f$
+with the current accumulator value as input and
+with the variable $var(x)$ bound to the first element in $l$.
+If $l$ is empty, then
+$v$ is called a  _final_        accumulator value and is returned, otherwise
+$v$ is called an _intermediate_ accumulator value and $o(v)$ is returned.
 
 $ "fold"^c_v (l, var(x), f, o) := cases(
   o(v) + sum_(x in f|^(c{var(x) |-> h})_v) "fold"^c_x (t, var(x), f, o) & "if" l = stream(h) + t,
   stream(        v ) & "otherwise" (l = stream())
 ) $
 
-$ "foreach"^c_v (l, var(x), f) := cases(
-  sum_(x in f|^(c{var(x) |-> h})_v) "for"(t, var(x), f) & "if" l = stream(h) + t,
-  stream() & "otherwise",
-) $
+We use two different functions for $o(v)$;
+the first returns nothing,  corresponding to $"reduce" $ which does not return intermediate values, and
+the other returns just $v$, corresponding to $"foreach"$ which returns intermediate values.
+Instantiating $"fold"$ with these two functions, we obtain the following:
 
 $ "reduce"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream(#hide[v]) \
      "for"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream(v)
 $
 
-// TODO: clarify that "for" is not part of jq
+Here, $"reduce"^c_v (l, var(x), f)$ is the function that is used in @tab:eval-semantics.
+However, $"for"^c_v (l, var(x), f)$ does _not_ implement the semantics of $"foreach"$,
+because it yields the initial accumulator value, whereas $"foreach"$ omits it.
 
-In addition to the filters defined in @tab:eval-semantics,
-we define the semantics of the two fold-like filters "reduce" and "for" as follows,
-where $x$ evaluates to $stream(x_0, ..., x_n)$:
+#example[
+  If we would set $"foreach"^c_v (l, var(x), f) := "for"^c_v (l, var(x), f)$, then evaluating
+  $"foreach" (1, 2, 3) "as" var(x) (0; . + var(x))$ would yield
+  $stream(0, 1, 3, 6)$, but jq evaluates it to
+  $stream(   1, 3, 6)$.
+]
 
-$ "reduce"   x "as" var(x) (y_0; f) =& y_0 &
-  "for"      x "as" var(x) (y_0; f) =& y_0 \
+For that reason, we define $"foreach"$ in terms of $"for"$,
+but with a special treatment for the initial accumulator:
+
+$ "foreach"^c_v (l, var(x), f) := cases(
+  sum_(x in f|^(c{var(x) |-> h})_v) "for"(t, var(x), f) & "if" l = stream(h) + t,
+  stream() & "otherwise",
+) $
+
+We will now look at what the evaluation of the various folding filters expands to.
+Apart from $"reduce"$ and $"foreach"$, we will also consider a hypothetical filter
+$"for" x "as" var(x) (var(y); f)$ that is defined by the function
+$"for"^c_v (l, var(x), f)$, analogously to the other folding filters.
+
+Assuming that the filter $x$ evaluates to $stream(x_0, ..., x_n)$,
+$"reduce"$ and $"for"$ expand to
+
+$ "reduce"   x "as" var(x) (var(y); f) =& var(y) &
+  "for"      x "as" var(x) (var(y); f) =& var(y) \
 |& x_0 "as" var(x) | f &
 |& ., (x_0 "as" var(x) | f \
 |& ... &
@@ -1131,20 +1191,19 @@ $ "reduce"   x "as" var(x) (y_0; f) =& y_0 &
 |& x_n "as" var(x) | f &
 |& ., (x_n "as" var(x) | f)...)
 $
-
-$ "foreach" x "as" var(x) (y_0; f) =& y_0 \
+and $"foreach"$ expands to
+$ "foreach" x "as" var(x) (var(y); f) =& var(y) \
 |& x_0 "as" var(x) | f \
 |& ., (x_1 "as" var(x) | f \
 |& ... \
-|& ., (x_n "as" var(x) | f)...)
+|& ., (x_n "as" var(x) | f)...).
 $
+
+We can see that the special treatment of the initial accumulator value also shows up
+in the expansion of $"foreach"$.
 
 // TODO: mention that folding considers only first(f)
 // is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
-
-Both filters fold $f$ over the sequence given by $x$ with the initial value $y_0$.
-Their main difference is that "reduce" returns only the final value(s),
-whereas "for" also returns all intermediate ones.
 
 The following property can be used to eliminate bindings.
 
