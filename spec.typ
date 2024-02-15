@@ -157,6 +157,8 @@ Furthermore, it defines other basic data types such as errors, exceptions, and s
 @updates then shows how to evaluate a class of jq filters that update values using
 a filter called _path_ that defines which parts of the input to update, and
 a filter that defines what the values matching the path should be replaced with.
+The semantics of jq and those that will be shown in this text
+differ most notably in the case of updates.
 
 #figure(caption: [Evaluation of a jq program with an input value.
   Solid lines indicate data flow, whereas a dashed line indicates that
@@ -1060,7 +1062,7 @@ $ "label"(l, var(x)) := cases(
 )) <tab:eval-semantics>
 
 The evaluation semantics are given in @tab:eval-semantics.
-Let us discuss the filters in detail:
+Let us discuss its different cases:
 
 - "$.$": Returns its input value. This is the identity filter.
 - $n$ or $s$: Returns the value corresponding to the number $n$ or string $s$.
@@ -1085,8 +1087,8 @@ Let us discuss the filters in detail:
   the comparison operators are defined by the ordering given in @ordering,
   $l eq.quest r$ returns whether $l$ equals $r$, and
   $l eq.not r$ returns its negation.
-- $"try" f "catch" g$: Returns the output of $f$ where
-  all outputs $"error"(v)$ are replaced by the output of $g$ on the input $v$.
+- $"try" f "catch" g$: Replaces all outputs of $f$ that equal $"error"(e)$ for some $e$
+  by the output of $g$ on the input $e$.
   Note that this diverges from jq, which aborts the evaluation of $f$ after the first error.
   This behaviour can be simulated in our semantics, by replacing
   $"try" f "catch" g$ with
@@ -1215,10 +1217,12 @@ $
 
 We can see that the special treatment of the initial accumulator value also shows up
 in the expansion of $"foreach"$.
+In contrast, the hypothetical $"for"$ filter looks more symmetrical to $"reduce"$.
 
 // TODO: mention that folding considers only first(f)
 // is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
 
+/*
 The following property can be used to eliminate bindings.
 
 #lemma[
@@ -1244,10 +1248,7 @@ The following property can be used to eliminate bindings.
   $
   The other cases for $phi(f)$ can be proved similarly.
 ]
-
-The semantics of jq and those shown in @tab:eval-semantics
-differ most notably in the case of updates; that is, $f update g$.
-We are going to deal with this in @updates.
+*/
 
 
 == Object Construction
@@ -1256,6 +1257,7 @@ In @tab:lowering, we showed how to lower a HIR filter
 ${k_1: v_1, ..., k_n: v_n}$ into a sum of smaller filters
 ${k_1: v_1} + ... + {k_n: v_n}$.
 
+// TODO: make this into a proper lemma + proof?
 From the lowering and the semantics defined in this section, we can conclude the following:
 If $n > 0$, then $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
 $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
