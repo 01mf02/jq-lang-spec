@@ -913,6 +913,10 @@ because jq fills up the array with $"null"$.
 // but we unfortunately cannot use it to define {k: f}, because if f returns the empty list,
 // we cannot provide a default element e that would make the key disappear
 
+The final function here is the update counterpart of the operator $v[i:j]$.
+It replaces the slice $v[i:j]$
+by the first output of $f$ on $v[i:j]$, or
+by the empty array if $f$ yields no output.
 $ v[i:j] update f = cases(
   v[0:i] + "head"(f(v[i:j]), []) + v[j:n] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
   v & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
@@ -922,6 +926,9 @@ $ v[i:j] update f = cases(
 ) $
 
 Unlike $v[i:j]$, this operator fails when $v$ is a string.
+This operator diverges from jq if $f$ yields $"null"$, in which case
+jq returns an error, whereas
+this operator treats this as equivalent to $f$ returning $[]$.
 
 #example[
   If $v = [0, 1, 2, 3]$ and $f(v) = [4, 5, 6]$, then $v[1:3] update f = [0, 4, 5, 6, 3]$.
@@ -954,9 +961,11 @@ We then have $ o_1 < o_2 <==> cases(
   v_1 < v_2 & "otherwise" (k_1 = k_2)
 ) $
 
+/*
 #example[
   TODO: For object comparison.
 ]
+*/
 
 
 
@@ -1285,6 +1294,8 @@ By doing so, these semantics can abandon the idea of paths altogether.
   $x(f_1; ...; f_n)$, $(g update sigma)|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
   $x$, $(f update sigma)|^c'_v "if" c(x) = (f, c')$,
 )) <tab:update-semantics>
+
+// TODO: note which filters are _not_ defined
 
 $ "label"(var(x), l) := cases(
   stream(v) & "if" l = stream(breakr(x, v)) + t,
