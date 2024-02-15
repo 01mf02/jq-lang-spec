@@ -414,10 +414,18 @@ Compared to HIR, MIR filters have significantly simpler path operations
 and replace certain occurrences of filters by variables
 (e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
 
-We can lower any HIR filter $phi$ to a semantically equivalent MIR filter $floor(phi)$
-using @tab:lowering.
+@tab:lowering shows how to lower an HIR filter $phi$ to
+a semantically equivalent MIR filter $floor(phi)$.
 In particular, this desugars path operations and
-makes it explicit which operations are Cartesian or complex.
+makes it explicit which operations are Cartesian or complex.#footnote[
+  We could actually also lower $f | g$ to $floor(f) "as" var(x') | var(x') | floor(g)$
+  to replace all occurrences of $f | g$ by $var(x') | g$,
+  thus simplifying the semantics a bit.
+  However, $f | g$ is such a frequently used operation that this
+  would significantly increase the size of MIR filters compared to HIR filters.
+  Therefore, we omit this lowering and lower $f | g$ to $floor(f) | floor(g)$ instead,
+  like most other $star$ operators.
+]
 We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
 
 #figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
@@ -432,7 +440,6 @@ We can lower path parts $[p]^?$ to MIR filters using @tab:lower-path.
   ${f_1: g_1, ..., f_n: g_n}$, $floor(sum_i {f_i: g_i})$,
   $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
   $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
-  $f update g$, $floor(f) update floor(g)$,
   $f aritheq g$, $floor(f update . arith g)$,
   $f alteq g$, $floor(f update . alt g)$,
   $f "and" g$, $floor(f) "as" var(x') | var(x') "and" floor(g)$,
