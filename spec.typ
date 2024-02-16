@@ -371,10 +371,11 @@ All operators $star$ and $cartesian$ are left-associative, except for
 
 A _filter definition_ has the shape
 "$f(x_1; ...; x_n) := g$".
-Here, $f$ is an $n$-ary filter where $g$ may refer to $x_i$.
+Here, $f$ is an $n$-ary filter with _filter arguments_ $x_i$, where $g$ may refer to $x_i$.
 For example, this allows us to define filters that produce the booleans,
-by defining $"true" := (0 = 0)$ and $"false" := (0 != 0)$.
+by defining $"true()" := (0 = 0)$ and $"false()" := (0 != 0)$.
 
+// TODO: these must also hold for the main filter!
 We are assuming a few preconditions that must be fulfilled for a filter to be well-formed.
 For this, we consider a definition $x(x_1; ...; x_n) := phi$:
 
@@ -432,8 +433,8 @@ for the remaining complex operators $star$, namely
   $phi$, $floor(phi)$,
   [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
   $(f)$, $floor(f)$,
-  $f?$, $"try" floor(f) "catch" "empty"$,
-  $[]$, $["empty"]$,
+  $f?$, $"try" floor(f) "catch" "empty"()$,
+  $[]$, $["empty"()]$,
   $[f]$, $[floor(f)]$,
   ${}$, ${}$,
   ${f: g}$, $floor(f) "as" var(x') | floor(g) "as" var(y') | {var(x'): var(y')}$,
@@ -482,7 +483,7 @@ However, such a definition relies on the temporary construction of new values
 (such as the empty object here),
 which is not admissible on the left-hand side of updates (see @updates).
 For this reason, we have to define it in a more complicated way, for example
-$ "empty" := ({} | .[]) "as" var(x) | . $
+$ "empty"() := ({} | .[]) "as" var(x) | . $
 This definition ensures that $"empty"$ can be employed also as a path expression.
 
 This lowering is compatible with the semantics of the jq implementation,
@@ -538,6 +539,15 @@ Filters of the shape
 $"if" f "then" g "else" h$ in HIR;
 that is, in HIR, the final `end` is omitted.
 
+In jq, it is invalid syntax to
+call a nullary filter as `x()` instead of `x`, or to
+define a nullary filter as `def x(): f;` instead of `def x: f;`.
+On the other hand, on the right-hand side of a definition, `x` may refer either to
+a filter argument `x` or a nullary filter `x`.
+To ease our lives when defining the semantics, we allow the syntax $x()$ in HIR.
+We unambiguously interpret $x$ as call to a filter argument and
+$x()$ as call to a filter that was defined as $x() := f$.
+
 #let correspondence = (
   (`|`, $|$),
   (`,`, $,$),
@@ -586,13 +596,13 @@ To convert a jq program to MIR, we do the following:
   When given an array as an input, it yields
   those elements of the array that are smaller than $0$.
   Here, the definitions in the example are converted to the HIR definitions
-  $"select"(f) := "if" f "then" . "else" "empty"$ and
-  $"negative"(f) := . < 0$, and
+  $"select"(f) := "if" f "then" . "else" "empty"()$ and
+  $"negative"() := . < 0$, and
   the main filter is converted to the HIR filter
-  $.[] | "select"("negative")$.
+  $.[] | "select"("negative"())$.
   Both the definition of $"select"(f)$ and the main filter are already in MIR;
   the MIR version of the remaining definition is
-  $"negative"(f) := . "as" var(x') | 0 "as" var(y') | var(x') < var(y')$.
+  $"negative"() := . "as" var(x') | 0 "as" var(y') | var(x') < var(y')$.
 ]
 
 We will show in @semantics how to run the resulting MIR filter $f$
@@ -1187,7 +1197,7 @@ $"for" x "as" var(x) (var(y); f)$ that is defined by the function
 $"for"^c_v (l, var(x), f)$, analogously to the other folding filters.
 
 Assuming that the filter $x$ evaluates to $stream(x_0, ..., x_n)$,
-$"reduce"$ and $"for"$ expand to
+then $"reduce"$ and $"for"$ expand to
 
 $ "reduce"   x "as" var(x) (var(y); f) =& var(y) &
   "for"      x "as" var(x) (var(y); f) =& var(y) \
@@ -1297,7 +1307,7 @@ the collected paths may point to values that do not exist any more.
 
 #example[
   Consider the input value $[1, 2, 2, 3]$ and the filter
-  "$.[] update g$", where $g$ is "$"if" . = 2 "then" "empty" "else" .$",
+  "$.[] update g$", where $g$ is "$"if" . = 2 "then" "empty"() "else" .$",
   which we might suppose to delete all values equal to 2 from the input list.
   However, the output of jq is $[1, 2, 3]$.
   What happens here is perhaps unexpected,
@@ -1377,7 +1387,7 @@ $ "catch"(x, g, c, v) := cases(
 
 #figure(caption: [Update semantics properties.], table(columns: 2,
   $mu$, $mu update sigma$,
-  $"empty"$, $.$,
+  $"empty"()$, $.$,
   $.$, $sigma$,
   $f | g$, $f update (g update sigma)$,
   $f, g$, $(f update sigma) | (g update sigma)$,
