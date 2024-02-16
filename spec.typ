@@ -68,7 +68,6 @@
 #let update = $models$
 #let alt = $slash.double$
 #let alteq = math.op($alt#h(0pt)=$)
-#let breakr(x, v) = $"break"(\$#x, #v)$
 
 #let qs(s) = $quote #s quote$
 #let oat(k) = $.[#qs(k)]$
@@ -673,7 +672,7 @@ to denote calling $"error"(v)$ with some value $v$.
 This is done such that this specification does not need to fix
 the precise error value that is returned when an operation fails.
 
-An _exception_ either is an error or has the shape $"break"(var(x), v)$.
+An _exception_ either is an error or has the shape $"break"(var(x))$.
 The latter will become relevant starting from @semantics.
 
 A _value result_ is either a value or an exception.
@@ -890,11 +889,31 @@ The first update operator will be a counterpart to $v[]$.
 For _all_ elements $x$ that are yielded by $v[]$,
 $v[] update f$ replaces $x$ by $f(x)$:
 
-$ v[] update f = cases(
+$ v[] update f := cases(
   [sum_i f(v_i)] & "if" v = [v_0, ..., v_n],
   union.big_i cases({k_i : h} & "if" f(v_i) = stream(h) + t, {} & "otherwise") & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
+  /*
+  "bla"([], stream(), v, f) & "if" v "is an array",
+  "blu"({},           v, f) & "if" v "is an object",
+  */
   "error" & "otherwise",
 ) $
+
+/*
+$ "bla"(l, y, r, f) := cases(
+  "break"(var(x), l + [v] + r) & "if" y = stream(h) + t "and" h = "break"(var(x), v),
+  "bla"(l + [h], t, r, f) & "if" y = stream(h) + t "and" h != "break"(var(x), v),
+  "bla"(l, f(v_0), [v_1, ..., v_n], f) & "if" y = stream() "and" r = [v_0, ..., v_n],
+  l & "otherwise",
+) $
+
+$ "blu"(l, r, f) := cases(
+  "break"(var(x), l + {k |-> v} + r) & "if" r = {k |-> v_0} union r'", " f(v_0) = stream(h) + t", and" h = "break"(var(x), v),
+  "blu"(l + {k |-> h}, r', f) & "if" r = {k |-> v_0} union r'", " f(v_0) = stream(h) + t", and" h != "break"(var(x), v),
+  "blu"(l, r', f) & "if" r = {k |-> v_0} union r'", " f(v_0) = stream(),
+  l & "if" r = {},
+) $
+*/
 
 For an input array $v = [v_0, ..., v_n]$,
 $v[] update f$ replaces each $v_i$ by the output of $f(v_i)$, yielding
@@ -908,7 +927,7 @@ jq only considers the first value yielded by $f$.
 The next function takes a value $v$ and
 replaces its $i$-th element by the first output of $f$,
 or deletes it if $f$ yields no output:
-$ v[i] update f = cases(
+$ v[i] update f := cases(
   v[0:i] + ["head"(f(v[i]), stream())] + v[(i+1):n]
     & "if" v = [v_0, ..., v_n]", " i in bb(N)", and" i <= n,
   /*
@@ -934,7 +953,7 @@ The final function here is the update counterpart of the operator $v[i:j]$.
 It replaces the slice $v[i:j]$
 by the first output of $f$ on $v[i:j]$, or
 by the empty array if $f$ yields no output.
-$ v[i:j] update f = cases(
+$ v[i:j] update f := cases(
   v[0:i] + "head"(f(v[i:j]), []) + v[j:n] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
   v & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
   v[(n+i):j] update f & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
@@ -1023,11 +1042,10 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
 
 The last helper function will be used to define the behaviour of label-break expressions.
 $"label"(l, var(x))$ returns all elements of $l$ until
-the current element is an exception of the form $"break"(var(x), v)$,
-where $v$ is arbitrary.
+the current element is an exception of the form $"break"(var(x))$.
 
 $ "label"(l, var(x)) := cases(
-  stream(h) + "label"(t, var(x)) & "if" l = stream(h) + t "and" h != "break"(var(x), v),
+  stream(h) + "label"(t, var(x)) & "if" l = stream(h) + t "and" h != "break"(var(x)),
   stream() & "otherwise",
 ) $
 
@@ -1049,7 +1067,7 @@ $ "label"(l, var(x)) := cases(
     stream(x) & "otherwise"
   )$,
   $"label" var(x) | f$, $"label"(f|^c_v, var(x))$,
-  $"break" var(x)$, $stream("break"(var(x), v))$,
+  $"break" var(x)$, $stream("break"(var(x)))$,
   $var(x) "and" f$, $"junction"(c(var(x)), "false", f|^c_v)$,
   $var(x) "or"  f$, $"junction"(c(var(x)), "true" , f|^c_v)$,
   $"if" var(x) "then" f "else" g$, $"ite"("bool"(c(var(x))), "true", f|^c_v, g|^c_v)$,
@@ -1095,8 +1113,8 @@ Let us discuss its different cases:
   $"try" f "catch" g$ with
   $"label" var(x') | "try" f "catch" (g, "break" var(x'))$.
 - $"label" var(x) | f$: Returns all values yielded by $f$ until $f$ yields
-  an exception $"break"(var(x), v)$ (where $v$ is arbitrary).
-- $"break" var(x)$: Returns a value $"break"(var(x), v)$, where $v$ is the current input.
+  an exception $"break"(var(x))$.
+- $"break" var(x)$: Returns a value $"break"(var(x))$.
 - $var(x) "and" f$: Returns false if $var(x)$ is bound to either null or false, else
   returns the output of $f$ mapped to boolean values.
 - $var(x) "or" f$": Similar to its "and" counterpart above.
@@ -1365,19 +1383,23 @@ By doing so, these semantics can abandon the idea of paths altogether.
   $f "as" var(x) | g$, $"reduce"^c_v (f|^c_v, var(x), (g update sigma))$,
   $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", (f update sigma)|^c_v, (g update sigma)|^c_v)$,
   $"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
+  /*
   $"label" var(x) | f$, $"label"(var(x), f update sigma)$,
   $"break" var(x)$, $stream(breakr(x, v))$,
+  */
   $x(f_1; ...; f_n)$, $(g update sigma)|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
   $x$, $(f update sigma)|^c'_v "if" c(x) = (f, c')$,
 )) <tab:update-semantics>
 
 // TODO: note which filters are _not_ defined
 
+/*
 $ "label"(var(x), l) := cases(
   stream(v) & "if" l = stream(breakr(x, v)) + t,
   stream(h) + "label"(var(x), t) & "if" l = stream(h) + t "and" h != breakr(x, v),
   stream() & "if" l = stream(),
 ) $
+*/
 
 $ "catch"(x, g, c, v) := cases(
     sum_(e in g|^c_(x)) stream("error"(e)) & "if" x "is an unpolarised error and" g|^c_x != stream(),
