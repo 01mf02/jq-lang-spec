@@ -426,15 +426,6 @@ Notice that for some complex operators $star$, namely
 for the remaining complex operators $star$, namely
 "$|$", "$,$", "$update$", and "$alt$",
 @tab:lowering specifies a uniform lowering $floor(f star g) = floor(f) star floor(g)$.
-#footnote[
-  We could actually also lower $f | g$ to $floor(f) "as" var(x') | var(x') | floor(g)$
-  to replace all occurrences of $f | g$ by $var(x') | g$,
-  thus simplifying the semantics a bit.
-  However, $f | g$ is such a frequently used operation that this
-  would significantly increase the size of MIR filters compared to HIR filters.
-  Therefore, we omit this lowering and lower $f | g$ to $floor(f) | floor(g)$ instead,
-  like most other $star$ operators.
-]
 @tab:lower-path shows how to lower path parts $[p]^?$ to MIR filters.
 
 #figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
@@ -1474,6 +1465,13 @@ substitute $var(x)$ by $var(x')$ in $g$.
 ]
 
 /*
+We could be tempted to also lower $f | g$ to $floor(f) "as" var(x') | var(x') | floor(g)$
+to replace all occurrences of $f | g$ by $var(x') | g$,
+thus simplifying the semantics a bit.
+However, this does not hold for updates! ...
+*/
+
+/*
 We can define the plain assignment filter "$f = g$" by
 "$. \as var(x) \mid f \update (var(x) \mid g)$", where
 $var(x)$ may not occur free in $f$ or $g$.
@@ -1485,12 +1483,39 @@ namely the input value of "$f = g$".
 
 = Conclusion
 
-In summary, the given semantics are easier to define and to reason about,
-while keeping compatibility with the original semantics in most use cases.
-/*
-Furthermore, avoiding to construct paths also appears to
-be more performant, as I will show in [](#evaluation).
-*/
+We have shown formal syntax and semantics of
+a large subset of the jq programming language.
 
+On the syntax side, we first defined
+formal syntax (HIR) that closely corresponds to actual jq syntax.
+We then gave a lowering that reduces HIR to a simpler subset (MIR),
+in order to simplify the semantics later.
+We finally showed how a subset of actual jq syntax can be translated into HIR and thus MIR.
+
+On the semantics side, we gave formal semantics based on MIR.
+First, we defined values and basic operations on them.
+Then, we used this to define the semantics of jq programs,
+by specifying the outcome of the execution of a jq program.
+A large part of this was dedicated to the evaluation of updates:
+In particular, we showed a new approach to evaluate updates.
+This approach, unlike the previous approach implemented in jq,
+does not depend on separating path building and updating, but interweaves them.
+This allows update operations to cleanly handle multiple output values
+in cases where this was not possible before.
+Furthermore, in practice, this avoids creating temporary data to store paths,
+thus improving performance.
+This approach is also mostly compatible with the original jq behaviour,
+yet it is unavoidable that it diverges in some corner cases.
+
+We hope that our work is useful in several ways:
+For users of the jq programming language, it provides
+a succinct reference that precisely documents the language.
+Our work should also benefit implementers of tools that process jq programs,
+such as compilers, interpreters, or linters.
+In particular, this specification should be sufficient to
+implement the core of a jq compiler or interpreter.
+Finally, our work enables equational reasoning about jq programs.
+This makes it possible to prove correctness of jq programs or to
+implement provably correct optimisations in jq compilers/interpreters.
 
 #bibliography("literature.bib")
