@@ -874,7 +874,7 @@ an empty string if $v$ is a string.
 The operator $v[]$ is the only operator in this subsection that
 returns a _stream_ of value results instead of only a value result.
 
-== Updating
+== Updating <updating>
 
 For each access operator in @accessing, we will now define an _updating_ counterpart.
 Intuitively, where an access operator yields some elements contained in a value $v$,
@@ -1571,11 +1571,7 @@ $ "label"(var(x), l) := cases(
 ) $
 */
 
-$ "catch"(x, g, c, v) := cases(
-    sum_(e in g|^c_(x)) stream("error"(e)) & "if" x "is an unpolarised error and" g|^c_x != stream(),
-    stream(v) & "if" x "is an unpolarised error and" g|^c_x = stream(),
-    stream(x) & "otherwise"
-) $
+
 
 @tab:update-semantics shows the definition of $(mu update sigma)|^c_v$.
 Several of the cases for $mu$, like
@@ -1589,6 +1585,50 @@ We discuss the remaining cases for $mu$:
   then we update at $f$, else at $g$.
   This filter is unusual because is the only kind where a subexpression is both
   updated with ($(f update sigma)|^c_v$) and evaluated ($f|^c_v$).
+- $.[]$, $.[var(x)]$, $.[var(x) : var(y)]$:
+  Applies $sigma$ to the current value using the operators defined in @updating.
+- $f "as" var(x) | g$:
+  Folds over all outputs of $f$, using the input value $v$ as initial accumulator and
+  updating the accumulator by $g update sigma$, where
+  $var(x)$ is bound to the current output of $f$.
+  The definition of $"reduce"$ is given in @folding.
+- $"try" f "catch" g$: Returns the output of $f update sigma$,
+  mapping errors occurring in $f$ to $g$. The definition of the function $"catch"$ is
+  $ "catch"(x, g, c, v) := cases(
+    sum_(y in g|^c_(e)) stream("error"(y)) & "if" x = "error"(e)", " x "is unpolarised, and" g|^c_x != stream(),
+    stream(v) & "if" x = "error"(e)", " x "is unpolarised, and" g|^c_x = stream(),
+    stream(x) & "otherwise".
+) $
+  $"catch"(x, g, c, v)$ analyses $x$ (the current output of $f$):
+  If $x$ is no unpolarised error, $x$ is returned.
+  For example, that is the case if the original right-hand side of the update
+  returns an error, in which case we do not want this error to be caught here.
+  However, if $x$ is an unpolarised error, that is,
+  an error that was caused on the left-hand side of the update,
+  it has to be caught here.
+  In that case, $"catch"$ analyses the output of $g$ with input $x$:
+  If $g$ yields no output, then it returns the original input value $v$,
+  and if $g$ yields output, all its output is mapped to errors!
+  The reason for this peculiar behaviour is the following:
+  If $x$ is an error, it cannot refer to any part of the input value $v$.
+  Therefore we cannot output, for example, $(g update sigma)|^c_e$ here,
+  because we want updates only to occur on parts of the original input value.
+  (We can also think about it that way that $e$ does not have a valid path in
+  the original jq update semantics shown in @jq-updates.)
+  The only way, therefore, to get out alive from a try-catch is to return ... nothing!
+- $"break"(var(x))$: Break out from the update.#footnote[
+    Note that unlike in @semantics, we do not define the update semantics of
+    $"label" var(x) | f$, which could be used to resume an update after a $"break"$.
+    The reason for this is that this requires
+    an additional $"break"$ exception that carries the current value alongside the variable,
+    as well as
+    variants of the value update operators in @updating that can handle unpolarised breaks.
+    As break-aware update operators are considerably more complex than what we showed and
+    we estimate that label expressions are rarely used in the left-hand side of updates anyway,
+    we think it more beneficial for the presentation to forgo label expressions here.
+  ]
+- $x(f_1; ...; f_n)$, $x$: Call filters.
+  This is defined analogously to @tab:eval-semantics.
 
 #example("The Curious Case of Alternation")[
   The semantics of $(f alt g) update sigma$ can be rather surprising:
