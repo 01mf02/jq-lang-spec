@@ -1496,8 +1496,8 @@ $(f update g)|^c_v$ as referred to in @semantics.
   $"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
   /*
   $"label" var(x) | f$, $"label"(var(x), f update sigma)$,
-  $"break" var(x)$, $stream(breakr(x, v))$,
   */
+  $"break" var(x)$, $stream("break"(var(x)))$,
   $x(f_1; ...; f_n)$, $(f update sigma)|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
   $x$, $(f update sigma)|^c'_v "if" c(x) = (f, c')$,
 )) <tab:update-semantics>
