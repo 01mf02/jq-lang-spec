@@ -16,6 +16,7 @@
     ),
   ),
   authors-short: "Färber",
+  anonymous: true,
   ccs: (
     ([Software and its engineering], (
       (500, [Semantics]),

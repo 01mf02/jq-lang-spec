@@ -25,7 +25,7 @@
 
 #let show-author(author) = {
   text(fill: blue, font: sfFont, size: 11pt, upper(author.name))
-  let affiliation = author.affiliation
+  let affiliation = author.at("affiliation", default: none)
   if affiliation != none {
     text(font: mainFont, size: 9pt)[, #affiliation.institution, #affiliation.country]
   }
@@ -93,6 +93,7 @@
   subtitle: none,
   authors: (),
   authors-short: none,
+  anonymous: false,
   abstract: none,
   ccs: none,
   keywords: none,
@@ -110,6 +111,10 @@
 
   body
 ) = {
+  if anonymous {
+    authors = ((name: "Anonymous Author(s)"),)
+    authors-short = "Anon."
+  }
   pub.title-short = if title-short == none { title } else { title-short }
   pub.authors-short = if authors-short == none { author-names(authors) } else { authors-short }
 
@@ -143,7 +148,9 @@
     v(7pt)
 
     authors.map(show-author).join("\n")
-    footnote([Authors' addresses: #authors.map(author-address).join("; ").])
+    if not(anonymous) {
+      footnote([Authors' addresses: #authors.map(author-address).join("; ").])
+    }
     v(2.5pt)
 
     [
