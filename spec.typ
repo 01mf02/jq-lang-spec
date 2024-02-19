@@ -31,7 +31,7 @@
     Our most significant contribution is to provide a new way to interpret updates
     that allows for more predictable and performant execution.
   ],
-  keywords: ("JSON", "semantics"),
+  keywords: ("jq", "JSON", "semantics"),
 
   pub: (
     journal: "Journal of the ACM",
@@ -1440,11 +1440,13 @@ there are several filters $mu$ which cannot be defined this way.
 We will therefore give the actual update semantics of $mu update sigma$ by defining
 $(mu update sigma)|^c_v$, not by defining simpler equivalent filters.
 
-== Limiting interactions
+== Limiting interactions <limiting-interactions>
 
-To define $(mu update sigma)|^c_v$, we have to understand
+To define $(mu update sigma)|^c_v$, we first have to understand
 how to prevent unwanted interactions between $mu$ and $sigma$.
 In particular, we have to look at variable bindings and error catching.
+
+=== Variable bindings <var-bindings>
 
 We can bind variables in $mu$; that is, $mu$ can have the shape $f "as" var(x) | g$.
 Here, the intent is that $g$ has access to $var(x)$, whereas $sigma$ does not!
@@ -1453,25 +1455,71 @@ which execute $mu$ and $sigma$ independently,
 so $sigma$ should not be able to access variables bound in $mu$.
 
 #example[
-  Consider the filter $0 "as" var(x) | (1 "as" var(x) | .[var(x)]) update var(x)$.
+  Consider the filter $0 "as" var(x) | mu update sigma$, where
+  $mu$ is $(1 "as" var(x) | .[var(x)])$ and $sigma$ is $var(x)$.
   This updates the input array at index $1$.
-  If the right-hand side of "$update$"
-  had access to variables bound on the left-hand side,
+  If $sigma$ had access to variables bound in $mu$,
   then the array element would be replaced by $1$,
   because the variable binding $0 "as" var(x)$ would be shadowed by $1 "as" var(x)$.
   However, we enforce that
-  the right-hand side does not have access to variables bound on the right-hand side, so
+  $sigma$ does not have access to variables bound in $mu$, so
   the array element is replaced by $0$, which is the value originally bound to $var(x)$.
   Given the input array $[1, 2, 3]$, the filter yields the final result $[1, 0, 3]$.
 ]
 
+We take the following approach to prevent variables bound in $mu$ to "leak" into $sigma$:
+When evaluating $(mu update sigma)|^c_v$, we want
+$sigma$ to always be executed with the same $c$.
+That is, evaluating $(mu update sigma)|^c_v$ should never
+evaluate $sigma$ with any context other than $c$.
 In order to ensure that, we will define
 $(mu update sigma)|^c_v$ not for a _filter_ $sigma$,
 but for a _function_ $sigma(x)$, where
 $sigma(x)$ returns the output of the filter $sigma|^c_x$.
 This allows us to extend the context $c$ with bindings on the left-hand side of the update,
 while executing the update filter $sigma$ always with the same original context $c$.
-This prevents variables bound in $mu$ to "leak" into $sigma$.
+
+=== Error catching <error-catching>
+
+We can catch errors in $mu$; that is, $mu$ can have the shape $"try" f "catch" g$.
+However, this should catch only errors that occur in $mu$,
+_not_ errors that are returned by $sigma$.
+
+#example[
+  Consider the filter $mu update sigma$, where $mu$ is $.[]?$ and $sigma$ is $.+1$.
+  The filter $mu$ is lowered to the MIR filter $"try" .[] "catch" "empty"()$.
+  The intention of $mu update sigma$ is to
+  update all elements $.[]$ of the input value, and if $.[]$ returns an error
+  (which occurs when the input is neither an array nor an object, see @accessing),
+  to just return the input value unchanged.
+  When we run $mu update sigma$ with the input $0$,
+  $.[]$ fails with an error, but because the error is caught immediately afterwards,
+  $mu update sigma$ consequently just returns the input value $0$.
+  The interesting part is what happens when $sigma$ throws an error:
+  This occurs for example when running the filter with the input $[{}]$.
+  This would run $. + 1$ with the input ${}$, which yields an error (see @arithmetic).
+  This error is returned by $mu update sigma$.
+]
+
+This raises the question:
+How can we execute $("try" f "catch" g) update sigma$ and distinguish
+errors stemming from $f$ from errors stemming from $sigma$?
+
+We came up with the solution of _polarised exceptions_.
+In a nutshell, we want every exception that is returned by $sigma$ to be
+marked in a special way such that it can be ignored by a try-catch in $mu$.
+For this, we assume the existence of two functions
+$"polarise"(x)$ and $"depolarise"(x)$ from a value result $x$ to a value result.
+If $x$ is an exception, then
+$"polarise"(x)$ should return a polarised version of it, whereas
+$"depolarise"(x)$ should return an unpolarised version of it, i.e. it should
+remove any polarisation from an exception.
+By default, every exception created by $"error"(e)$ is unpolarised.
+With this method, when we evaluate an expression $"try" f "catch" g$ in $mu$,
+we can analyse the output of $f update sigma$, and only catch _unpolarised_ errors.
+That way, errors stemming from $mu$ are propagated,
+whereas errors stemming from $f$ are caught.
+
 
 // TODO:
 // - explain that sigma is now a function, not a filter
@@ -1481,6 +1529,17 @@ This prevents variables bound in $mu$ to "leak" into $sigma$.
 
 We will now give semantics that will allow us to define the output of
 $(f update g)|^c_v$ as referred to in @semantics.
+
+We will first combine the techniques in @limiting-interactions to define
+$(f update g)|^c_v$ for two _filters_ $f$ and $g$ by
+$(f update sigma)|^c_v$, where
+$sigma$ now is a _function_ from a value to a stream of value results:
+$ (f update g)|^c_v := sum_(y in (f update sigma)|^c_v) "depolarise"(y)", where"
+sigma(x) = sum_(y in g|^c_x) "polarise"(y). $
+We use a function instead of a filter on the right-hand side to
+limit the scope of variable bindings as explained in @var-bindings, and
+we use $"polarise"$ and $"depolarise"$ to
+restrict the scope of caught exceptions, as discussed in @error-catching.
 
 #figure(caption: [Update semantics. Here, $mu$ is a filter and $sigma(v)$ is a function from a value $v$ to a stream of value results.], table(columns: 2,
   $mu$, $(mu update sigma)|^c_v$,
@@ -1518,14 +1577,11 @@ $ "catch"(x, g, c, v) := cases(
     stream(x) & "otherwise"
 ) $
 
-For two filters $f$ and $g$, we define
-$(f update g)|^c_v := sum_(y in (f update sigma)|^c_v) "depolarise"(y)$, where
-$sigma(x) = sum_(y in g|^c_x) "polarise"(y)$.
-The function "polarise" marks exceptions occurring in the filter $g$,
-and "depolarise" removes the marker from exceptions.
-
-The update semantics are given in @tab:update-semantics.
-
+@tab:update-semantics shows the definition of $(mu update sigma)|^c_v$.
+Several of the cases for $mu$, like
+"$.$", "$f | g$", "$f, g$", and "$"if" var(x) "then" f "else" g$"
+are simply relatively straightforward consequences of the properties in @tab:update-props.
+We discuss the remaining cases for $mu$:
 - $f alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
   Here, $f$ is called as a "probe" first.
   If it yields at least one output that is considered "true"
@@ -1571,6 +1627,7 @@ The update semantics are given in @tab:update-semantics.
   That is because $.[]$ does not yield any value for the input,
   so $"error" update 1$ is executed, which yields an error.
 ]
+
 
 /*
 We could be tempted to also lower $f | g$ to $floor(f) "as" var(x') | var(x') | floor(g)$
