@@ -311,6 +311,7 @@ This behaviour of jq is cumbersome to define and to reason about.
 This motivates in part the definition of more simple and elegant semantics
 that behave like jq in most typical use cases
 but eliminate corner cases like the ones shown.
+We will show such semantics in @updates.
 
 
 
@@ -1298,6 +1299,14 @@ stream({k_1: v_1} union ... union {k_n: v_n}). $
 
 = Update Semantics <updates>
 
+In this section, we will discuss how to evaluate updates $f update g$.
+First, we will show how the original jq implementation executes such updates,
+and show which problems this approach entails.
+Then, we will give alternative semantics for updates that avoids these problems,
+while enabling faster performance by forgoing the construction of temporary path data.
+
+== jq updates via paths <jq-updates>
+
 jq's update mechanism works with _paths_.
 A path is a sequence of indices $i_j$ that can be written as $.[i_1]...[i_n]$.
 It refers to a value that can be retrieved by the filter "$.[i_1] | ... | .[i_n]$".
@@ -1317,15 +1326,41 @@ Note that $f$ is not allowed to produce new values; it may only return paths.
   Internally, in jq, this first builds the paths
   $.[0][0]$, $.[0][1]$, $.[1][0]$, $.[1][1]$,
   then updates the value at each of these paths with $g$.
-]
+] <ex:arr-update>
 
-There are several problems with this approach to updates:
+This approach can yield surprising results when the execution of the filter $g$
+changes the input value in a way that the set of paths changes.
+In such cases, only the paths constructed from the initial input are considered.
+This can lead to
+paths pointing to the wrong data,
+paths pointing to non-existent data, and
+missing paths.
+
+#example[
+  Consider the input value ${qs(a) |-> {qs(b) |-> 1}}$ and the filter
+  $(.[], .[][]) update g$, where $g$ is $[]$.
+  Executing this filter in jq first builds the path
+  $.[qs(a)]$ stemming from "$.[]$", then
+  $.[qs(a)][qs(b)]$ stemming from "$.[][]$".
+  Next, jq folds over the paths,
+  using the input value as initial accumulator and
+  updating the accumulator at each path with $g$.
+  The final output is thus the output of $(.[qs(a)] update g) | (.[qs(a)][qs(b)] update g)$.
+  The output of the first step $.[qs(a)] update g$ is ${qs(a) |-> []}$.
+  This value is the input to the second step $.[qs(a)][qs(b)] update g$,
+  which yields an error because
+  we cannot index the array $[]$ at the path $.[qs(a)]$ by $.[qs(b)]$.
+] <ex:obj-update-arr>
+
+/*
+// TODO: this actually returns [1, 3] in jq 1.7
 One of these problems is that if $g$ returns no output,
 the collected paths may point to values that do not exist any more.
 
 #example[
   Consider the input value $[1, 2, 2, 3]$ and the filter
-  "$.[] update g$", where $g$ is "$"if" . = 2 "then" "empty"() "else" .$",
+  // '.[] |= (if . == 2 then empty else . end)'
+  "$.[] update g$", where $g$ is "$"if" . eq.quest 2 "then" "empty"() "else" .$",
   which we might suppose to delete all values equal to 2 from the input list.
   However, the output of jq is $[1, 2, 3]$.
   What happens here is perhaps unexpected,
@@ -1336,40 +1371,116 @@ the collected paths may point to values that do not exist any more.
   leaving the list $[1, 2, 3]$ and the paths $.[2]$, $.[3]$ to update.
   However, $.[2]$ now refers to the number 3, and $.[3]$ points beyond the list.
 ] <ex:update>
+*/
 
-Even if this particular example can be executed correctly with a special case for
-filters that do not return exactly one output,
-there are more general examples which this approach treats in unexpected ways.
+We can also have surprising behaviour that does not manifest any error.
 
 #example[
-  Consider the input value $[[0]]$ and the filter
-  "$(.[], med .[][]) update g$", where $g$ is "$"if" . = [0] "then" [1, 1] "else" .+1$".
-  Executing this filter in jq first builds the path
-  $.[0]$ stemming from "$.[]$", then
-  $.[0][0]$ stemming from "$.[][]$".
-  Next, executing $g$ on the first path yields the intermediate result
-  $[[1, 1]]$.
-  Now, executing $g$ on the remaining path yields $[[2, 1]]$,
-  instead of $[[2, 2]]$ as we might have expected.
-] <ex:update-comma>
+  Consider the same input value and filter as in @ex:obj-update-arr,
+  but now with $g$ set to ${qs(c): 2}$.
+  The output of the first step $.[qs(a)] update g$ is ${qs(a) |-> {qs(c) |-> 2}}$.
+  This value is the input to the second step $.[qs(a)][qs(b)] update g$, which yields
+  ${qs(a) |-> {qs(c) |-> 2, qs(b) |-> {qs(c) |-> 2}}}$.
+  Here, the remaining path ($.[qs(a)][qs(b)]$) pointed to
+  data that was removed by the update on the first path,
+  so this data gets reintroduced by the update.
+  On the other hand, the data introduced by the first update step
+  (at the path $.[qs(a)][qs(c)]$) is not part of the original path,
+  so it is _not_ updated.
+] <ex:obj-update-obj>
 
-The general problem here is that the execution of the filter $g$ changes the input value,
-yet only the paths constructed from the initial input are considered.
-This leads to
-paths pointing to the wrong data,
-paths pointing to non-existent data (both occurring in @ex:update), and
-missing paths (@ex:update-comma).
+What would happen if we would interpret $(f_1, f_2) update g$ as
+$(f_1 update g) | (f_2 update g)$ instead?
+That way, the paths of $f_2$ would point precisely to the data returned by
+$f_1 update g$, thus avoiding the problems depicted by the examples above.
+In particular, with such an approach,
+@ex:obj-update-arr would yield ${qs(a) |-> []}$ instead of an error, and
+@ex:obj-update-obj would yield ${qs(a) |-> {qs(c) |-> {qs(c) |-> 2}}}$.
 
-I now show different semantics that avoid this problem,
-by interleaving calls to $f$ and $g$.
-By doing so, these semantics can abandon the idea of paths altogether.
+In the remainder of this section, we will show
+semantics that extend this idea to all update operations.
+The resulting update semantics can be understood to _interleave_ calls to $f$ and $g$.
+By doing so, these semantics can abandon the construction of paths altogether,
+which results in higher performance when evaluating updates.
+
+== Properties of new semantics
 
 // μονοπάτι = path
 // συνάρτηση = function
+#figure(caption: [Update semantics properties.], table(columns: 2,
+  $mu$, $mu update sigma$,
+  $"empty"()$, $.$,
+  $.$, $sigma$,
+  $f | g$, $f update (g update sigma)$,
+  $f, g$, $(f update sigma) | (g update sigma)$,
+  $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f update sigma "else" g update sigma$,
+  $f alt g$, $"if" "first"(f alt "null") "then" f update sigma "else" g update sigma$,
+)) <tab:update-props>
+
+@tab:update-props gives a few properties that we want to hold for updates $mu update sigma$.
+Let us discuss these for the different filters $mu$:
+- $"empty"()$: Returns the input unchanged.
+- "$.$": Returns the output of the update filter $sigma$ applied to the current input.
+  Note that while jq only returns at most one output of $sigma$,
+  these semantics return an arbitrary number of outputs.
+- $f | g$: Updates at $f$ with the update of $sigma$ at $g$.
+  This allows us to interpret
+  $(.[] | .[]) update sigma$ in @ex:arr-update by
+  $.[] update (.[] update sigma)$, yielding the same output as in the example.
+- $f, g$: Applies the update of $sigma$ at $g$ to the output of the update of $sigma$ at $f$.
+  We have already seen this at the end of @jq-updates.
+- $"if" var(x) "then" f "else" g$: Applies $sigma$ at $f$ if $var(x)$ holds, else at $g$.
+- $f alt g$: Applies $sigma$ at $f$ if $f$ yields some output whose boolean value (see @simple-fns) is not false, else applies $sigma$ at $g$.
+  Here, we assume the definition $"first"(f) := "label" var(x) | f | (., "break" var(x))$.
+  This returns the first output of $f$ if $f$ yields any output, else nothing.
+
+While @tab:update-props allows us to define the behaviour of several filters
+by reducing them to more primitive filters,
+there are several filters $mu$ which cannot be defined this way.
+We will therefore give the actual update semantics of $mu update sigma$ by defining
+$(mu update sigma)|^c_v$, not by defining simpler equivalent filters.
+
+== Limiting interactions
+
+To define $(mu update sigma)|^c_v$, we have to understand
+how to prevent unwanted interactions between $mu$ and $sigma$.
+In particular, we have to look at variable bindings and error catching.
+
+We can bind variables in $mu$; that is, $mu$ can have the shape $f "as" var(x) | g$.
+Here, the intent is that $g$ has access to $var(x)$, whereas $sigma$ does not!
+This is to ensure compatibility with jq's original semantics,
+which execute $mu$ and $sigma$ independently,
+so $sigma$ should not be able to access variables bound in $mu$.
+
+#example[
+  Consider the filter $0 "as" var(x) | (1 "as" var(x) | .[var(x)]) update var(x)$.
+  This updates the input array at index $1$.
+  If the right-hand side of "$update$"
+  had access to variables bound on the left-hand side,
+  then the array element would be replaced by $1$,
+  because the variable binding $0 "as" var(x)$ would be shadowed by $1 "as" var(x)$.
+  However, we enforce that
+  the right-hand side does not have access to variables bound on the right-hand side, so
+  the array element is replaced by $0$, which is the value originally bound to $var(x)$.
+  Given the input array $[1, 2, 3]$, the filter yields the final result $[1, 0, 3]$.
+]
+
+In order to ensure that, we will define
+$(mu update sigma)|^c_v$ not for a _filter_ $sigma$,
+but for a _function_ $sigma(x)$, where
+$sigma(x)$ returns the output of the filter $sigma|^c_x$.
+This allows us to extend the context $c$ with bindings on the left-hand side of the update,
+while executing the update filter $sigma$ always with the same original context $c$.
+This prevents variables bound in $mu$ to "leak" into $sigma$.
 
 // TODO:
 // - explain that sigma is now a function, not a filter
 // - make "reduce"^c_v explicit about the name of the variable $x
+
+== New semantics
+
+We will now give semantics that will allow us to define the output of
+$(f update g)|^c_v$ as referred to in @semantics.
 
 #figure(caption: [Update semantics. Here, $mu$ is a filter and $sigma(v)$ is a function from a value $v$ to a stream of value results.], table(columns: 2,
   $mu$, $(mu update sigma)|^c_v$,
@@ -1406,19 +1517,6 @@ $ "catch"(x, g, c, v) := cases(
     stream(v) & "if" x "is an unpolarised error and" g|^c_x = stream(),
     stream(x) & "otherwise"
 ) $
-
-#figure(caption: [Update semantics properties.], table(columns: 2,
-  $mu$, $mu update sigma$,
-  $"empty"()$, $.$,
-  $.$, $sigma$,
-  $f | g$, $f update (g update sigma)$,
-  $f, g$, $(f update sigma) | (g update sigma)$,
-  $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f update sigma "else" g update sigma$,
-  $f alt g$, $"if" "first"(f alt "null") "then" f update sigma "else" g update sigma$,
-)) <tab:update-props>
-
-Here, we have that $"first"(f) := "label" var(x) | f | (., "break" var(x))$.
-This filter returns the first output of $f$ if $f$ yields any output, else nothing.
 
 For two filters $f$ and $g$, we define
 $(f update g)|^c_v := sum_(y in (f update sigma)|^c_v) "depolarise"(y)$, where
@@ -1472,28 +1570,6 @@ The update semantics are given in @tab:update-semantics.
   $"error"([])$.
   That is because $.[]$ does not yield any value for the input,
   so $"error" update 1$ is executed, which yields an error.
-]
-
-The case for $f "as" var(x) | g$ is slightly tricky:
-Here, the intent is that $g$ has access to $var(x)$, but $sigma$ does not.
-This is to ensure compatibility with jq's original semantics,
-which execute $mu$ and $sigma$ independently,
-so $sigma$ should not be able to access variables bound in $mu$.
-In order to ensure that, we
-replace $var(x)$ by a fresh variable $var(x')$ and
-substitute $var(x)$ by $var(x')$ in $g$.
-
-#example[
-  Consider the filter $0 "as" var(x) | (1 "as" var(x) | .[var(x)]) update var(x)$.
-  This updates the input array at index $1$.
-  If the right-hand side of "$update$"
-  had access to variables bound on the right-hand side,
-  then the array element would be replaced by $1$,
-  because the variable binding $0 "as" var(x)$ would be shadowed by $1 "as" var(x)$.
-  However, because we enforce that
-  the right-hand side does not have access to variables bound on the right-hand side,
-  the array element is replaced by $0$, which is the value originally bound to $var(x)$.
-  Given the input array $[1, 2, 3]$, the filter yields the final result $[1, 0, 3]$.
 ]
 
 /*
