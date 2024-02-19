@@ -1387,7 +1387,7 @@ By doing so, these semantics can abandon the idea of paths altogether.
   $"label" var(x) | f$, $"label"(var(x), f update sigma)$,
   $"break" var(x)$, $stream(breakr(x, v))$,
   */
-  $x(f_1; ...; f_n)$, $(g update sigma)|^(c{x_1 |-> f_1, ..., x_n |-> f_n})_v "if" x(x_1; ...; x_n) := g$,
+  $x(f_1; ...; f_n)$, $(f update sigma)|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
   $x$, $(f update sigma)|^c'_v "if" c(x) = (f, c')$,
 )) <tab:update-semantics>
 
