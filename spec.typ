@@ -110,7 +110,7 @@ the total length of all streets (1576813 m) with the filter "`[.[].fields.longue
 jq provides a Turing-complete language that is interesting on its own; for example,
 "`[0, 1] | recurse([.[1], add])[0]"` generates the stream of Fibonacci numbers.
 This makes jq a widely used tool.
-I refer to the program jq as "jq" and to its language as "the jq language".
+We refer to the program jq as "jq" and to its language as "the jq language".
 
 The semantics of the jq language are only
 informally specified in the jq manual @jq-manual.
@@ -128,7 +128,7 @@ certain behaviour of a jq implementation is accidental or intended.
 
 However, a formal specification of the behaviour of jq would be very verbose,
 because jq has many special cases whose merit is not apparent.
-Therefore, I have striven to create
+Therefore, we have striven to create
 denotational semantics (@semantics) that closely resemble those of jq such that
 in most cases, their behaviour coincides, whereas they may differ in more exotic cases.
 The goals for creating these semantics were, in descending order of importance:
