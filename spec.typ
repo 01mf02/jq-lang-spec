@@ -137,7 +137,8 @@ The goals for creating these semantics were, in descending order of importance:
 - Performance: The semantics should allow for performant execution.
 - Compatibility: The semantics should be consistent with jq.
 
-One particular improvement over jq are the new update semantics (@updates), which
+The most significant improvement over jq behaviour described in this text are
+the new update semantics (@updates), which
 are simpler to describe and implement,
 eliminate a range a potential errors, and
 allow for more performant execution.
@@ -171,8 +172,11 @@ This goal of this section is to convey an intuition about how jq functions.
 The official documentation of jq is @jq-manual.
 
 jq programs are called _filters_.
-For now, let us consider a filter to be a function from a value to a (lazy) stream of values.
-Furthermore, let us assume a value to be either a boolean, an integer, or an array of values.
+For now, let us consider a filter to be a function from a value to
+a (lazy, possibly infinite) stream of values.
+Furthermore, in this section, let us assume a value to be either
+a boolean, an integer, or an array of values.
+(The full set of JSON values is introduced in @values.)
 
 The identity filter "`.`" returns a stream containing the input.
 
@@ -257,8 +261,16 @@ the Cartesian product of the output of `f` and `g`.
 However, there are cases where variables are indispensable.
 
 #example("Variables Are Necessary")[
-  jq defines a filter "`inside(xs)`" that expands to "`. as $x | xs | contains($x)`".
-  Here, we wish to pass `xs` as input to `contains`, but at the same point,
+  jq defines a filter "`in(xs)`" that expands to "`. as $x | xs | has($x)`".
+  Given an input value `i`, "`in(xs)`" binds it to `$x`, then returns
+  for every value produced by `xs` whether its domain contains `$x` (and thus `i`).
+  Here, the domain of an array is the set of its indices.
+  For example, for the input
+  `1`, the filter
+  "`in([5], [42, 3], [])`" yields the stream
+  `false, true, false`.
+  The point of this example is that
+  we wish to pass `xs` as input to `contains`, but at the same point,
   we also want to pass the input given to `inside` as an argument to `contains`.
   Without variables, we could not do both.
 ]
@@ -282,6 +294,7 @@ yields the cumulative sum over all array elements.
 
 Updating values can be done with the operator "`|=`",
 which has a similar function as lens setters in languages such as Haskell
+#cite(label("DBLP:conf/icfp/FosterPP08"))
 #cite(label("DBLP:conf/popl/FosterGMPS05"))
 #cite(label("DBLP:journals/programming/PickeringGW17")):
 Intuitively, the filter "`p |= f`" considers any value `v` returned by `p` and
@@ -347,10 +360,14 @@ $p$ is a path part of the shape $ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f
 $x$ is an identifier (such as "empty"),
 $n$ is a number (such as $42$ or $3.14$), and
 $s$ is a string (such as "Hello world!").
-
-// TODO: explain meaning of $^?$
-By convention, we write $var(x')$ to denote a fresh variable.
-The potential instances of $star$ and $cartesian$ are given in @tab:binops.
+We use the superscript "$?$" to denote an optional presence of "?"; in particular,
+$f[p]^?...[p]^?$ can be
+$f[p]$, $f[p]?$,
+$f[p][p]$, $f[p]?#h(0pt) [p]$, $f[p][p]?$, $f[p]?#h(0pt) [p]?$,
+$f[p][p][p]$, and so on.
+The potential instances of the operators $star$ and $cartesian$ are given in @tab:binops.
+All operators $star$ and $cartesian$ are left-associative, except for
+"$|$", "$=$", "$update$", and "$aritheq$".
 A folding operation $fold$ is either "reduce" or "foreach".
 
 #figure(
@@ -366,9 +383,6 @@ A folding operation $fold$ is either "reduce" or "foreach".
     Operators surrounded by parentheses have equal precedence.
   ],
 ) <tab:binops>
-
-All operators $star$ and $cartesian$ are left-associative, except for
-"$|$", "$=$", "$update$", and "$aritheq$".
 
 A _filter definition_ has the shape
 "$f(x_1; ...; x_n) := g$".
@@ -418,18 +432,6 @@ Compared to HIR, MIR filters have significantly simpler path operations
 and replace certain occurrences of filters by variables
 (e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
 
-@tab:lowering shows how to lower an HIR filter $phi$ to
-a semantically equivalent MIR filter $floor(phi)$.
-In particular, this desugars path operations and
-makes it explicit which operations are Cartesian or complex.
-Notice that for some complex operators $star$, namely
-"$=$", "$aritheq$", "$alteq$", "$"and"$", and "$"or"$",
-@tab:lowering specifies individual lowerings, whereas
-for the remaining complex operators $star$, namely
-"$|$", "$,$", "$update$", and "$alt$",
-@tab:lowering specifies a uniform lowering $floor(f star g) = floor(f) star floor(g)$.
-@tab:lower-path shows how to lower path parts $[p]^?$ to MIR filters.
-
 #figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
   $phi$, $floor(phi)$,
   [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
@@ -457,6 +459,18 @@ for the remaining complex operators $star$, namely
   $x(f_1; ...; f_n)$, $x(floor(f_1); ...; floor(f_n))$,
 )) <tab:lowering>
 
+@tab:lowering shows how to lower an HIR filter $phi$ to
+a semantically equivalent MIR filter $floor(phi)$.
+In particular, this desugars path operations and
+makes it explicit which operations are Cartesian or complex.
+By convention, we write $var(x')$ to denote a fresh variable.
+Notice that for some complex operators $star$, namely
+"$=$", "$aritheq$", "$alteq$", "$"and"$", and "$"or"$",
+@tab:lowering specifies individual lowerings, whereas
+for the remaining complex operators $star$, namely
+"$|$", "$,$", "$update$", and "$alt$",
+@tab:lowering specifies a uniform lowering $floor(f star g) = floor(f) star floor(g)$.
+
 #figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
   $[p  ]^?$, $floor([p]^?)_var(x)$,
   $[   ]^?$, $.[]^?$,
@@ -465,6 +479,23 @@ for the remaining complex operators $star$, namely
   $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | 0 "as" var(z') | .[var(z') : var(y')]^?$,
   $[f:g]^?$, $(var(x) | floor(f)) "as" var(y') | (var(x) | floor(g)) "as" var(z') | .[var(y') : var(z')]^?$,
 )) <tab:lower-path>
+
+@tab:lower-path shows how to lower path parts $[p]^?$ to MIR filters.
+Like in @hir, the meaning of superscript "$?$" is an optional presence of "$?$".
+In the lowering of $f[p_1]^?...[p_n]^?$ in @tab:lowering,
+if $[p_i]$ in the first column is directly followed by "?", then
+$floor([p_i]^?)_var(x)$ in the second column stands for
+$floor([p_i] ?)_var(x)$, otherwise for
+$floor([p_i]  )_var(x)$.
+Similarly, in @tab:lower-path, if $[p]$ in the first column is followed by "$?$",
+then we replace superscript "?" by "?" in the second column,
+otherwise we replace it by space.
+
+#example[
+  The HIR filter $(.[]?#h(0pt) [])$ is lowered to
+  $(. "as" var(x') | . | .[]? | .[])$.
+  Semantically, we will see that this is equivalent to $(.[]? | .[])$.
+]
 
 #example[
   The HIR filter $mu eq.triple .[0]$ is lowered to
@@ -1668,6 +1699,17 @@ We discuss the remaining cases for $mu$:
   That is because $.[]$ does not yield any value for the input,
   so $"error" update 1$ is executed, which yields an error.
 ]
+
+/*
+TODO:
+relative expressiveness of the two alternative semantics.  Can
+everything expressable in a jq update be similarly expressed in a jaq
+update?  If so, is their an automatic translation possible between
+them?  If so, perhaps jq updates could be automatically converted into
+jaq updates, enabling full support for jq semantics using the jaq
+implementation.  If not, what kinds of programs can no longer be
+expressed?  Can they be characterized?
+*/
 
 
 /*
