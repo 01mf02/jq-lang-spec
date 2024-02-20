@@ -1021,12 +1021,6 @@ We then have $ o_1 < o_2 <==> cases(
   v_1 < v_2 & "otherwise" (k_1 = k_2)
 ) $
 
-/*
-#example[
-  TODO: For object comparison.
-]
-*/
-
 
 
 = Evaluation Semantics <semantics>
@@ -1255,36 +1249,13 @@ We can see that the special treatment of the initial accumulator value also show
 in the expansion of $"foreach"$.
 In contrast, the hypothetical $"for"$ filter looks more symmetrical to $"reduce"$.
 
-// TODO: mention that folding considers only first(f)
-// is $"foreach" x "as" var(x) (y_0; f)$ equivalent to $"foreach" x "as" var(x) (y_0; "first"(f))$ in the jq implementation?
-
-/*
-The following property can be used to eliminate bindings.
-
-#lemma[
-  Let $phi(f)$ be a filter such that $phi(f)|^c_v$ has the shape
-  "$sum_(x in f|^c_v) ...$".
-  Then $phi(f)$ is equivalent to "$f "as" var(x) | phi(var(x))$".
-]
-
-// TODO: remove some filter cases in proof of lemma --- it's not exhaustive anyway right now
-#proof[
-  We have to prove the statement for $phi(f)$ set to
-  "$f | g$", "$f "as" var(x) | g$", "$f cartesian g$", "$f?$",
-  "$f "and" g$", "$f "or" g$", "$"if" f "then" g "else" h$",
-  "$.[f]$", and "$fold x "as" var(x)(f; g)$".
-  Let us consider the filter $phi(f)$ to be $.[f]$.
-  Then we show that $.[f]$ is equivalent to $f "as" var(x) | .[var(x)]$:
-  $ (f "as" var(x) | .[var(x)])|^c_v
-  &= sum_(x in f|^c_v) .[var(x)]|^(c{var(x) |-> x})_v \
-  &= sum_(x in f|^c_v) sum_(i in var(x)|^(c{var(x) |-> x})_v) stream(v[i]) \
-  &= sum_(x in f|^c_v) sum_(i in stream(x)) stream(v[i]) \
-  &= sum_(x in f|^c_v) stream(v[x]) \
-  &= .[f]|^c_v
-  $
-  The other cases for $phi(f)$ can be proved similarly.
-]
-*/
+Note that jq implements only a restricted version of these folding operators
+that discards all output values of $f$ after the first output.
+That means that in jq,
+$fold x "as" var(x) (var(y); f)$ is equivalent to
+$fold x "as" var(x) (var(y); "first"(f))$.
+Here, we assume the definition $"first"(f) := "label" var(x) | f | (., "break" var(x))$.
+This returns the first output of $f$ if $f$ yields any output, else nothing.
 
 
 == Object Construction
@@ -1447,8 +1418,7 @@ Let us discuss these for the different filters $mu$:
   We have already seen this at the end of @jq-updates.
 - $"if" var(x) "then" f "else" g$: Applies $sigma$ at $f$ if $var(x)$ holds, else at $g$.
 - $f alt g$: Applies $sigma$ at $f$ if $f$ yields some output whose boolean value (see @simple-fns) is not false, else applies $sigma$ at $g$.
-  Here, we assume the definition $"first"(f) := "label" var(x) | f | (., "break" var(x))$.
-  This returns the first output of $f$ if $f$ yields any output, else nothing.
+  See @folding for the definition of $"first"$.
 
 While @tab:update-props allows us to define the behaviour of several filters
 by reducing them to more primitive filters,
