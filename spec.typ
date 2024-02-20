@@ -1588,7 +1588,7 @@ We discuss the remaining cases for $mu$:
   because we want updates only to occur on parts of the original input value.
   (We can also think about it that way that $e$ does not have a valid path in
   the original jq update semantics shown in @jq-updates.)
-  The only way, therefore, to get out alive from a try-catch is to return ... nothing!
+  The only way, therefore, to get out alive from a catch is to return ... nothing!
 - $"break"(var(x))$: Break out from the update.#footnote[
     Note that unlike in @semantics, we do not define the update semantics of
     $"label" var(x) | f$, which could be used to resume an update after a $"break"$.
