@@ -1128,7 +1128,7 @@ Let us discuss its different cases:
   otherwise the boolean values of the values in $l$.
   Here, $"bool"(v)$ returns the boolean value as given in @simple-fns.
   $ "junction"(x, v, l) := "ite"lr(("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))), size: #50%) $
-- $var(x) "or" f$": Similar to its "and" counterpart above.
+- $var(x) "or" f$: Similar to its "and" counterpart above.
 - $"if" var(x) "then" f "else" g$: Returns the output of $f$ if $var(x)$ is bound to either null or false, else returns the output of $g$.
 - $.[]$, $.[var(x)]$, or $.[var(x):var(y)]$: Accesses parts of the input value; see @accessing for the definitions of the operators.
 - $fold x "as" var(x) (var(y); f)$: Folds $f$ over the values returned by $x$,
