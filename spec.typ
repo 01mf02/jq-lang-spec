@@ -1582,13 +1582,7 @@ We discuss the remaining cases for $mu$:
   In that case, $"catch"$ analyses the output of $g$ with input $x$:
   If $g$ yields no output, then it returns the original input value $v$,
   and if $g$ yields output, all its output is mapped to errors!
-  The reason for this peculiar behaviour is the following:
-  If $x$ is an error, it cannot refer to any part of the input value $v$.
-  Therefore we cannot output, for example, $(g update sigma)|^c_e$ here,
-  because we want updates only to occur on parts of the original input value.
-  (We can also think about it that way that $e$ does not have a valid path in
-  the original jq update semantics shown in @jq-updates.)
-  The only way, therefore, to get out alive from a catch is to return ... nothing!
+  The only way, therefore, to get out alive from a $"catch"$ is to return ... nothing.
 - $"break"(var(x))$: Break out from the update.#footnote[
     Note that unlike in @semantics, we do not define the update semantics of
     $"label" var(x) | f$, which could be used to resume an update after a $"break"$.
