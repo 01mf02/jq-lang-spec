@@ -699,7 +699,7 @@ This text does not fix how numbers are to be represented,
 just like the JSON standard does not impose any representation.#footnote[
   jq uses floating-point numbers to encode both integers and decimals.
   However, several operations in this text (for example those in @accessing)
-  make only sense for natural numbers $bb(N)$ or integers $bb(Z)$.
+  make only sense for natural numbers $NN$ or integers $ZZ$.
   In situations where integer values are expected and a number $n$ is provided,
   jq generally substitutes $n$ by $floor(n)$ if $n >= 0$ and $ceil(n)$ if $n < 0$.
   For example, accessing the $0.5$-th element of an array yields its $0$-th element.
@@ -834,9 +834,9 @@ $ l merge r := cases(
 We use this in the following definition of multiplication of two values $l$ and $r$:
 
 $ l times r := cases(
-  l + l times (r - 1) & "if" l "is a string and" r in bb(N) without {0},
+  l + l times (r - 1) & "if" l "is a string and" r in NN without {0},
   "null" & "if" l "is a string and" r = 0,
-  r times l & "if" r "is a string and" l in bb(N),
+  r times l & "if" r "is a string and" l in NN,
   l times r & "if" l "and" r "are numbers",
   l merge r & "if" l "and" r "are objects",
   "error" & "otherwise"
@@ -865,9 +865,9 @@ These serve to extract values that are contained within other values.
 The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
 
 $ v[i] := cases(
-  v_i    & "if" v = [v_0, ..., v_n] "," i in bb(N)", and" i <= n,
-  "null" & "if" v = [v_0, ..., v_n] "," i in bb(N)", and" i > n,
-  v[n+i] & "if" v = [v_0, ..., v_n] "," i in bb(Z) without bb(N)", and" 0 <= n+i,
+  v_i    & "if" v = [v_0, ..., v_n] "," i in NN", and" i <= n,
+  "null" & "if" v = [v_0, ..., v_n] "," i in NN", and" i > n,
+  v[n+i] & "if" v = [v_0, ..., v_n] "," i in ZZ without NN", and" 0 <= n+i,
   v_j    & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n}"," i "is a string, and" k_j = i,
   "null" & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n}"," i "is a string, and" i in.not {k_0, ..., k_n},
   "error" & "otherwise",
@@ -898,15 +898,15 @@ $v[]$ returns the stream $stream(v_0, ..., v_n)$.
 The last operator that we define here is a slice operator:
 
 $ v[i:j] := cases(
-  [sum_(k = i)^(j-1) stream(v_k)] & "if" v = [v_0, ..., v_n] "and" i","j in bb(N),
-  sum_(k = i)^(j-1) c_k & "if" v = c_0...c_n "and" i","j in bb(N),
-  v[(n+i):j] & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
-  v[i:(n+j)] & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
+  [sum_(k = i)^(j-1) stream(v_k)] & "if" v = [v_0, ..., v_n] "and" i","j in NN,
+  sum_(k = i)^(j-1) c_k & "if" v = c_0...c_n "and" i","j in NN,
+  v[(n+i):j] & "if" |v| = n", " i in ZZ without NN", and" 0 <= n+i,
+  v[i:(n+j)] & "if" |v| = n", " j in ZZ without NN", and" 0 <= n+j,
   "error" & "otherwise",
 ) $
 
 Note that unlike $v[]$ and $v[i]$, $v[i:j]$ may yield a value if $v$ is a string.
-If we have that $i, j in bb(N)$ and either $i > n$ or $i >= j$, then $v[i:j]$ yields
+If we have that $i, j in NN$ and either $i > n$ or $i >= j$, then $v[i:j]$ yields
 an empty array  if $v$ is an array, and
 an empty string if $v$ is a string.
 
@@ -953,14 +953,14 @@ replaces its $i$-th element by the first output of $f$,
 or deletes it if $f$ yields no output:
 $ v[i] update f := cases(
   v[0:i] + ["head"(f(v[i]), stream())] + v[(i+1):n]
-    & "if" v = [v_0, ..., v_n]", " i in bb(N)", and" i <= n,
+    & "if" v = [v_0, ..., v_n]", " i in NN", and" i <= n,
   /*
   v[0:i] + [h] + v[(i+1):n]
-    & "if" v = [v_0, ..., v_n]", " i in bb(N)"," i <= n", and" f(v[i]) = stream(h) + t,
+    & "if" v = [v_0, ..., v_n]", " i in NN"," i <= n", and" f(v[i]) = stream(h) + t,
   v[0:i] + v[(i+1):n]
-    & "if" v = [v_0, ..., v_n]", " i in bb(N)"," i <= n", and" f(v[i]) = stream(),
+    & "if" v = [v_0, ..., v_n]", " i in NN"," i <= n", and" f(v[i]) = stream(),
   */
-  v[n+i] update f & "if" v = [v_0, ..., v_n]", " i in bb(Z) without bb(N)", and" 0 <= n+i,
+  v[n+i] update f & "if" v = [v_0, ..., v_n]", " i in ZZ without NN", and" 0 <= n+i,
   v + {i: h} & "if" v = {...} "and" f(v[i]) = stream(h) + t,
   union.big_(k in "dom"(v) without {i}) {k |-> v[k]} & "if" v = {...} "and" f(v[i]) = stream(),
 
@@ -978,10 +978,10 @@ It replaces the slice $v[i:j]$
 by the first output of $f$ on $v[i:j]$, or
 by the empty array if $f$ yields no output.
 $ v[i:j] update f := cases(
-  v[0:i] + "head"(f(v[i:j]), []) + v[j:n] & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i <= j,
-  v & "if" v = [v_0, ..., v_n]", " i","j in bb(N)", and" i > j,
-  v[(n+i):j] update f & "if" |v| = n", " i in bb(Z) without bb(N)", and" 0 <= n+i,
-  v[i:(n+j)] update f & "if" |v| = n", " j in bb(Z) without bb(N)", and" 0 <= n+j,
+  v[0:i] + "head"(f(v[i:j]), []) + v[j:n] & "if" v = [v_0, ..., v_n]", " i","j in NN", and" i <= j,
+  v & "if" v = [v_0, ..., v_n]", " i","j in NN", and" i > j,
+  v[(n+i):j] update f & "if" |v| = n", " i in ZZ without NN", and" 0 <= n+i,
+  v[i:(n+j)] update f & "if" |v| = n", " j in ZZ without NN", and" 0 <= n+j,
   "error" & "otherwise",
 ) $
 
