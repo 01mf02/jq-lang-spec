@@ -176,9 +176,21 @@ For now, let us consider a filter to be a function from a value to
 a (lazy, possibly infinite) stream of values.
 Furthermore, in this section, let us assume a value to be either
 a boolean, an integer, or an array of values.
-(The full set of JSON values is introduced in @values.)
+(We introduce the full set of JSON values in @values.)
 
-The identity filter "`.`" returns a stream containing the input.
+The identity filter "`.`" returns a stream containing the input.#footnote[
+  The filters in this section can be executed on most UNIX shells by
+  `echo $INPUT | jq $FILTER`, where
+  `$INPUT` is the input value in JSON format and
+  `$FILTER` is the jq program to be executed.
+  Often, it is convenient to quote the filter; for example,
+  to run the filter "`.`" with the input value `0`,
+  we can run `echo 0 | jq '.'`.
+  In case where the input value does not matter,
+  we can also use `jq -n $FILTER`,
+  which runs the filter with the input value `null`.
+  We use jq 1.7.
+]
 
 Arithmetic operations, such as
 addition, subtraction, multiplication, division, and remainder,
@@ -487,9 +499,8 @@ if $[p_i]$ in the first column is directly followed by "?", then
 $floor([p_i]^?)_var(x)$ in the second column stands for
 $floor([p_i] ?)_var(x)$, otherwise for
 $floor([p_i]  )_var(x)$.
-Similarly, in @tab:lower-path, if $[p]$ in the first column is followed by "$?$",
-then we replace superscript "?" by "?" in the second column,
-otherwise we replace it by space.
+Similarly, in @tab:lower-path, if $[p]$ in the first column is followed by "$?$", then
+all occurrences of superscript "?" in the second column stand for "?", otherwise for nothing.
 
 #example[
   The HIR filter $(.[]?#h(0pt) [])$ is lowered to
