@@ -936,28 +936,8 @@ $v[] update f$ replaces $x$ by $f(x)$:
 $ v[] update f := cases(
   [sum_i f(v_i)] & "if" v = [v_0, ..., v_n],
   union.big_i cases({k_i : h} & "if" f(v_i) = stream(h) + t, {} & "otherwise") & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
-  /*
-  "bla"([], stream(), v, f) & "if" v "is an array",
-  "blu"({},           v, f) & "if" v "is an object",
-  */
   "error" & "otherwise",
 ) $
-
-/*
-$ "bla"(l, y, r, f) := cases(
-  "break"(var(x), l + [v] + r) & "if" y = stream(h) + t "and" h = "break"(var(x), v),
-  "bla"(l + [h], t, r, f) & "if" y = stream(h) + t "and" h != "break"(var(x), v),
-  "bla"(l, f(v_0), [v_1, ..., v_n], f) & "if" y = stream() "and" r = [v_0, ..., v_n],
-  l & "otherwise",
-) $
-
-$ "blu"(l, r, f) := cases(
-  "break"(var(x), l + {k |-> v} + r) & "if" r = {k |-> v_0} union r'", " f(v_0) = stream(h) + t", and" h = "break"(var(x), v),
-  "blu"(l + {k |-> h}, r', f) & "if" r = {k |-> v_0} union r'", " f(v_0) = stream(h) + t", and" h != "break"(var(x), v),
-  "blu"(l, r', f) & "if" r = {k |-> v_0} union r'", " f(v_0) = stream(),
-  l & "if" r = {},
-) $
-*/
 
 For an input array $v = [v_0, ..., v_n]$,
 $v[] update f$ replaces each $v_i$ by the output of $f(v_i)$, yielding
@@ -1589,25 +1569,12 @@ restrict the scope of caught exceptions, as discussed in @error-catching.
   $f "as" var(x) | g$, $"reduce"^c_v (f|^c_v, var(x), (g update sigma))$,
   $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", (f update sigma)|^c_v, (g update sigma)|^c_v)$,
   $"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
-  /*
-  $"label" var(x) | f$, $"label"(var(x), f update sigma)$,
-  */
   $"break" var(x)$, $stream("break"(var(x)))$,
   $x(f_1; ...; f_n)$, $(f update sigma)|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
   $x$, $(f update sigma)|^c'_v "if" c(x) = (f, c')$,
 )) <tab:update-semantics>
 
 // TODO: note which filters are _not_ defined
-
-/*
-$ "label"(var(x), l) := cases(
-  stream(v) & "if" l = stream(breakr(x, v)) + t,
-  stream(h) + "label"(var(x), t) & "if" l = stream(h) + t "and" h != breakr(x, v),
-  stream() & "if" l = stream(),
-) $
-*/
-
-
 
 @tab:update-semantics shows the definition of $(mu update sigma)|^c_v$.
 Several of the cases for $mu$, like
