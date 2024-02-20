@@ -1067,15 +1067,6 @@ $ "ite"(v, i, t, e) = cases(
   e & "otherwise"
 ) $
 
-We use the newly defined $"ite"$ function for another function that
-we will use to define conjunction and disjunction:
-
-If the boolean value of $x$ is $v$ (where $v$ will be true or false), then
-$"junction"(x, v, l)$ returns just $v$, otherwise the boolean values of the values in $l$.
-Here, $"bool"(v)$ returns the boolean value as given in @simple-fns.
-
-$ "junction"(x, v, l) := "ite"("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))) $
-
 Next, we define a function that is used to define alternation.
 $"trues"(l)$ returns those elements of $l$ whose boolean values are not false.
 Note that in our context, "not false" is _not_ the same as "true", because
@@ -1083,15 +1074,6 @@ the former includes exceptions, whereas the latter excludes them,
 and $"bool"(x)$ _can_ return exceptions, in particular if $x$ is an exception.
 
 $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
-
-The last helper function will be used to define the behaviour of label-break expressions.
-$"label"(l, var(x))$ returns all elements of $l$ until
-the current element is an exception of the form $"break"(var(x))$.
-
-$ "label"(l, var(x)) := cases(
-  stream(h) + "label"(t, var(x)) & "if" l = stream(h) + t "and" h != "break"(var(x)),
-  stream() & "otherwise",
-) $
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $phi|^c_v$,
@@ -1158,9 +1140,20 @@ Let us discuss its different cases:
   $"label" var(x') | "try" f "catch" (g, "break" var(x'))$.
 - $"label" var(x) | f$: Returns all values yielded by $f$ until $f$ yields
   an exception $"break"(var(x))$.
+  This uses the function $"label"(l, var(x))$, which returns all elements of $l$ until
+  the current element is an exception of the form $"break"(var(x))$:
+  $ "label"(l, var(x)) := cases(
+    stream(h) + "label"(t, var(x)) & "if" l = stream(h) + t "and" h != "break"(var(x)),
+    stream() & "otherwise",
+  ) $
 - $"break" var(x)$: Returns a value $"break"(var(x))$.
 - $var(x) "and" f$: Returns false if $var(x)$ is bound to either null or false, else
   returns the output of $f$ mapped to boolean values.
+  This uses the function $"junction"(x, v, l)$, which returns
+  just $v$ if the boolean value of $x$ is $v$ (where $v$ will be true or false),
+  otherwise the boolean values of the values in $l$.
+  Here, $"bool"(v)$ returns the boolean value as given in @simple-fns.
+  $ "junction"(x, v, l) := "ite"lr(("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))), size: #50%) $
 - $var(x) "or" f$": Similar to its "and" counterpart above.
 - $"if" var(x) "then" f "else" g$: Returns the output of $f$ if $var(x)$ is bound to either null or false, else returns the output of $g$.
 - $.[]$, $.[var(x)]$, or $.[var(x):var(y)]$: Accesses parts of the input value; see @accessing for the definitions of the operators.
