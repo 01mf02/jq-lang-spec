@@ -1188,8 +1188,8 @@ the first returns nothing,  corresponding to $"reduce" $ which does not return i
 the other returns just $v$, corresponding to $"foreach"$ which returns intermediate values.
 Instantiating $"fold"$ with these two functions, we obtain the following:
 
-$ "reduce"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream(#hide[v]) \
-     "for"^c_v (l, var(x), f) :=& "fold"(l, var(x), f, o) "where" o(v) = stream(v)
+$ "reduce"^c_v (l, var(x), f) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) = stream(#hide[v]) \
+     "for"^c_v (l, var(x), f) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) = stream(v)
 $
 
 Here, $"reduce"^c_v (l, var(x), f)$ is the function that is used in @tab:eval-semantics.
@@ -1207,7 +1207,7 @@ For that reason, we define $"foreach"$ in terms of $"for"$,
 but with a special treatment for the initial accumulator:
 
 $ "foreach"^c_v (l, var(x), f) := cases(
-  sum_(x in f|^(c{var(x) |-> h})_v) "for"(t, var(x), f) & "if" l = stream(h) + t,
+  sum_(x in f|^(c{var(x) |-> h})_v) "for"^c_x (t, var(x), f) & "if" l = stream(h) + t,
   stream() & "otherwise",
 ) $
 
