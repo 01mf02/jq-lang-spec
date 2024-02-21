@@ -491,6 +491,14 @@ for the remaining complex operators $star$, namely
   $[f:g]^?$, $(var(x) | floor(f)) "as" var(y') | (var(x) | floor(g)) "as" var(z') | .[var(y') : var(z')]^?$,
 )) <tab:lower-path>
 
+/*
+Plain assignment "$f = g$":
+The difference between "$f update g$" and "$f = g$" is: where
+"$f update g$" replaces all values $v$ at positions $f$ by $g$ applied to $v$,
+"$f = g$" replaces all values   at positions $f$ by $g$ applied to the _same_ value,
+namely the input value of "$f = g$".
+*/
+
 @tab:lower-path shows how to lower path parts $[p]^?$ to MIR filters.
 Like in @hir, the meaning of superscript "$?$" is an optional presence of "$?$".
 In the lowering of $f[p_1]^?...[p_n]^?$ in @tab:lowering,
@@ -1098,6 +1106,13 @@ Let us discuss its different cases:
 - $f "as" var(x) | g$: Binds every output of $f$ to the variable $var(x)$ and
   returns the output of $g$, where $g$ may reference $var(x)$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
+  We can show that the evaluation of $f | g$ is equivalent to that of
+  $f "as" var(x') | var(x') | g$, where $var(x')$ is a fresh variable.
+  Therefore, we could be tempted to lower $f | g$ to
+  $floor(f) "as" var(x') | var(x') | floor(g)$ in @tab:lowering.
+  However, we cannot do this because we will see in @updates that
+  this equivalence does _not_ hold for updates; that is,
+  $(f | g) update sigma$ is _not_ equal to $(f "as" var(x') | var(x') | g) update sigma$.
 - $var(x) cartesian var(y)$: Returns the output of a Cartesian operation "$cartesian$"
   (any of $eq.quest$, $eq.not$, $<$, $<=$, $>$, $>=$, $+$, $-$, $times$, $div$, and $mod$,
   as given in @tab:binops) on the values bound to $var(x)$ and $var(y)$.
@@ -1481,10 +1496,6 @@ That way, errors stemming from $mu$ are propagated,
 whereas errors stemming from $f$ are caught.
 
 
-// TODO:
-// - explain that sigma is now a function, not a filter
-// - make "reduce"^c_v explicit about the name of the variable $x
-
 == New semantics
 
 We will now give semantics that will allow us to define the output of
@@ -1517,8 +1528,6 @@ restrict the scope of caught exceptions, as discussed in @error-catching.
   $x(f_1; ...; f_n)$, $(f update sigma)|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
   $x$, $(f update sigma)|^c'_v "if" c(x) = (f, c')$,
 )) <tab:update-semantics>
-
-// TODO: note which filters are _not_ defined
 
 @tab:update-semantics shows the definition of $(mu update sigma)|^c_v$.
 Several of the cases for $mu$, like
@@ -1628,24 +1637,6 @@ them?  If so, perhaps jq updates could be automatically converted into
 jaq updates, enabling full support for jq semantics using the jaq
 implementation.  If not, what kinds of programs can no longer be
 expressed?  Can they be characterized?
-*/
-
-
-/*
-We could be tempted to also lower $f | g$ to $floor(f) "as" var(x') | var(x') | floor(g)$
-to replace all occurrences of $f | g$ by $var(x') | g$,
-thus simplifying the semantics a bit.
-However, this does not hold for updates! ...
-*/
-
-/*
-We can define the plain assignment filter "$f = g$" by
-"$. \as var(x) \mid f \update (var(x) \mid g)$", where
-$var(x)$ may not occur free in $f$ or $g$.
-The difference between "$f \update g$" and "$f = g$" is: where
-"$f \update g$" replaces all values $v$ at positions $f$ by $g$ applied to $v$,
-"$f = g$" replaces all values   at positions $f$ by $g$ applied to the _same_ value,
-namely the input value of "$f = g$".
 */
 
 
