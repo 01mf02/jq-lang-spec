@@ -706,6 +706,10 @@ $v$ for values,
 $n$ for numbers,
 $c$ for characters, and
 $k$ for object keys.
+We will sometimes write arrays as $[v_0, ..., v_n]$ and sometimes as $[v_1, ..., v_n]$:
+The former case is useful to express that $n$ is the maximal index of the array (having length $n+1$), and
+the latter case is useful to express that the array has length $n$.
+The same idea applies also to strings and objects.
 
 A number can be an integer or a decimal, optionally followed by an integer exponent.
 For example, $0$, $-42$, $3.14$, $3 times 10^8$ are valid JSON numbers.
