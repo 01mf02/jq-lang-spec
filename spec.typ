@@ -1646,11 +1646,11 @@ We will now show how to prove properties about HIR filters by equational reasoni
 For this, we use the lowering in @mir and the semantics defined in @semantics.
 As an example, we will show a few properties of object construction.
 
-Let us start by proving a few helper lemmas.
-In the remainder, $c$ and $v$ denote some arbitrary context and value.
+Let us start by proving a few helper lemmas, where
+$c$ and $v$ always denote some arbitrary context and value, respectively.
 
 #lemma[
-  For the HIR filters $f$ and $g$ and the Cartesian operator $cartesian$
+  For any HIR filters $f$ and $g$ and any Cartesian operator $cartesian$
   (such as addition, see @tab:binops),
   we have $floor(f cartesian g)|^c_v = sum_(x in floor(f)|^c_v) sum_(y in floor(g)|^c_v) stream(x cartesian y)$.
 ] <lem:cart-sum>
@@ -1670,7 +1670,7 @@ In the remainder, $c$ and $v$ denote some arbitrary context and value.
 ]
 
 #lemma[
-  For the HIR filters $f$ and $g$, we have
+  For any HIR filters $f$ and $g$, we have
   $floor({f: g})|^c_v = sum_(x in floor(f)|^c_v) sum_(y in floor(g)|^c_v) stream({x: y})$.
 ] <lem:obj-sum>
 
