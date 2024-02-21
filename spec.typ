@@ -1556,7 +1556,15 @@ We discuss the remaining cases for $mu$:
   In that case, $"catch"$ analyses the output of $g$ with input $x$:
   If $g$ yields no output, then it returns the original input value $v$,
   and if $g$ yields output, all its output is mapped to errors!
-  The only way, therefore, to get out alive from a $"catch"$ is to return ... nothing.
+  This behaviour might seem peculiar,
+  but it makes sense when we consider the jq way of implementing updates via paths:
+  When evaluating some update $mu update sigma$ with an input value $v$,
+  the filter $mu$ may only return paths to data contained within $v$.
+  When $mu$ is $"try" f "catch" g$,
+  the filter $g$ only receives inputs that stem from errors,
+  and because $v$ cannot contain errors, these inputs cannot be contained in $v$.
+  Consequentially, $g$ can never return any path pointing to $v$.
+  The only way, therefore, to get out alive from a $"catch"$ is for $g$ to return ... nothing.
 - $"break"(var(x))$: Break out from the update.#footnote[
     Note that unlike in @semantics, we do not define the update semantics of
     $"label" var(x) | f$, which could be used to resume an update after a $"break"$.
@@ -1564,8 +1572,10 @@ We discuss the remaining cases for $mu$:
     an additional $"break"$ exception that carries the current value alongside the variable,
     as well as
     variants of the value update operators in @updating that can handle unpolarised breaks.
-    As break-aware update operators are considerably more complex than what we showed and
-    we estimate that label expressions are rarely used in the left-hand side of updates anyway,
+    Because making update operators handle unpolarised breaks
+    renders them considerably more complex and
+    we estimate that label expressions are
+    rarely used in the left-hand side of updates anyway,
     we think it more beneficial for the presentation to forgo label expressions here.
   ]
 - $x(f_1; ...; f_n)$, $x$: Call filters.
