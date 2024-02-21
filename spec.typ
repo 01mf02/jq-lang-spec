@@ -110,10 +110,13 @@ jq provides a Turing-complete language that is interesting on its own; for examp
 This makes jq a widely used tool.
 We refer to the program jq as "jq" and to its language as "the jq language".
 
+The jq language is a dynamically typed, lazily evaluated
+functional programming language with
+second-class higher-order functions @jq-description.
 The semantics of the jq language are only
-informally specified in the jq manual @jq-manual.
+informally specified, for example in the jq manual @jq-manual.
 However, the documentation frequently does not cover certain cases, and
-historically, the implementation often downright contradicted the documentation.
+historically, the implementation often contradicted the documentation.
 /*
 For example, the documentation stated that the filter `limit(n; f)`
 "extracts up to `n` outputs from `f`".
@@ -164,6 +167,8 @@ Finally, we show how to prove the behaviour of jq programs in @obj-eq.
   Solid lines indicate data flow, whereas a dashed line indicates that
   a component is defined in terms of another.
 ], diagraph.render(read("structure.dot"))) <fig:structure>
+
+
 
 = Tour of jq <tour>
 
