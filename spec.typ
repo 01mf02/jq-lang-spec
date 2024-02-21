@@ -1146,6 +1146,13 @@ Let us discuss its different cases:
     stream() & "otherwise",
   ) $
 - $"break" var(x)$: Returns a value $"break"(var(x))$.
+  Similarly to the evaluation of variables $var(x)$ described above,
+  wellformedness of the filter (as defined in @hir) ensures that
+  the returned value $"break"(var(x))$ will be
+  eventually handled by a corresponding filter
+  $"label" var(x) | f$.
+  That means that the evaluation of a wellformed filter can only yield
+  values and errors, but never $"break"(var(x))$.
 - $var(x) "and" f$: Returns false if $var(x)$ is bound to either null or false, else
   returns the output of $f$ mapped to boolean values.
   This uses the function $"junction"(x, v, l)$, which returns
