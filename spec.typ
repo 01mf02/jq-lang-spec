@@ -158,6 +158,7 @@ a filter called _path_ that defines which parts of the input to update, and
 a filter that defines what the values matching the path should be replaced with.
 The semantics of jq and those that will be shown in this text
 differ most notably in the case of updates.
+Finally, we show how to prove the behaviour of jq programs in @obj-eq.
 
 #figure(caption: [Evaluation of a jq program with an input value.
   Solid lines indicate data flow, whereas a dashed line indicates that
@@ -1256,103 +1257,6 @@ Here, we assume the definition $"first"(f) := "label" var(x) | f | (., "break" v
 This returns the first output of $f$ if $f$ yields any output, else nothing.
 
 
-== Equational reasoning showcase: Object Construction
-
-We will now show how to prove properties about HIR filters by equational reasoning.
-For this, we use the semantics defined in this section and the lowering in @mir.
-As an example, we will show a few properties of object construction.
-
-Let us start by proving a few helper lemmas.
-In the remainder, $c$ and $v$ denote some arbitrary context and value.
-
-#lemma[
-  For the HIR filters $f$ and $g$ and the Cartesian operator $cartesian$
-  (such as addition, see @tab:binops),
-  we have $floor(f cartesian g)|^c_v = sum_(x in floor(f)|^c_v) sum_(y in floor(g)|^c_v) stream(x cartesian y)$.
-] <lem:cart-sum>
-
-#proof[
-  By unfolding the lowering as in @tab:lowering, we have that
-  $floor(f cartesian g)|^c_v = (floor(f) "as" var(x') | floor(g) "as" var(y') | var(x') cartesian var(y'))|^c_v$.
-  Using the evaluation semantics in @tab:eval-semantics, we can further expand this to
-  $sum_(x in floor(f)|^c_v) sum_(y in floor(g)^c{var(x') |-> x}_v)
-  (var(x') cartesian var(y'))|^c{var(x') |-> x, var(y') |-> y}_v$.
-  Because $var(x')$ and $var(y')$ are fresh variables,
-  we know that they cannot occur in $floor(g)$, so
-  $floor(g)^c{var(x') |-> x}_v = floor(g)^c_v$.
-  Furthermore, by the evaluation semantics, we have
-  $(var(x') cartesian var(y'))|^c{var(x') |-> x, var(y') |-> y}_v = stream(x cartesian y)$.
-  From these two observations, the conclusion immediately follows.
-]
-
-#lemma[
-  For the HIR filters $f$ and $g$, we have
-  $floor({f: g})|^c_v = sum_(x in floor(f)|^c_v) sum_(y in floor(g)|^c_v) stream({x: y})$.
-] <lem:obj-sum>
-
-#proof[Analogously to the proof of @lem:cart-sum.]
-
-We can now proceed by stating a central property of object construction.
-
-#theorem[
-  For any $n in NN$ with $n > 0$, we have that
-  $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
-  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
-  stream({k_1: v_1} + ... + {k_n: v_n}). $
-]
-
-#proof[
-  We will prove by induction on $n$.
-  The base case $n = 1$ directly follows from @lem:obj-sum.
-  For the induction step, we have to show that
-  $floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v$ is equivalent to
-  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_(n+1) in floor(k_(n+1))|^c_v) sum_(v_n in floor(v_(n+1))|^c_v)
-  stream({k_1: v_1} + ... + {k_(n+1): v_(n+1)}). $
-  /*
-  under the assumption that
-  $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
-  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
-  stream({k_1: v_1} + ... + {k_n: v_n}). $
-  */
-
-  We start by
-  $ & floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v =^"(lowering)" \
-  = & floor(sum_i {k_i: v_i})|^c_v = \
-  = & floor(sum_(i = 1)^n {k_i: v_i} + {k_(n+1): v_(n+1)})|^c_v =^#[(@lem:cart-sum)] \
-  = & sum_(x in floor(sum_(i=1)^n {k_i: v_i})|^c_v)
-      sum_(y in floor({k_(n+1): v_(n+1)})|^c_v)
-      stream(x + y). $
-
-  Here, we observe that $floor(sum_(i=1)^n {k_i: v_i})|^c_v = floor({k_1: v_1, ..., k_n: v_n})|^c_v$, which by the induction hypothesis equals
-  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
-  stream({k_1: v_1} + ... + {k_n: v_n}). $
-  We can use this to resume the simplification of
-  $floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v$ to
-  $ sum_(k_1 in floor(k_1)|^c_v)
-    sum_(v_1 in floor(v_1)|^c_v) ...
-    sum_(k_n in floor(k_n)|^c_v)
-    sum_(v_n in floor(v_n)|^c_v)
-    sum_(y in floor({k_(n+1): v_(n+1)})|^c_v)
-    stream({k_1: v_1} + ... + {k_n: v_n} + y)
-  $
-  Finally, applying @lem:obj-sum to $floor({k_(n+1): v_(n+1)})|^c_v$ proves the induction step.
-]
-
-We can use this theorem to simplify the evaluation of filters such as the following one.
-
-#example[
-  The evaluation of
-  ${qs(a): (1, 2), (qs(b), qs(c)): 3, qs(d): 4}$
-  //(with arbitrary context and input)
-  yields $stream(v_0, v_1, v_2, v_3)$, where $
-  v_0 = {qs(a) |-> 1, qs(b) |-> 3, qs(d) |-> 4},\
-  v_1 = {qs(a) |-> 1, qs(c) |-> 3, qs(d) |-> 4},\
-  v_2 = {qs(a) |-> 2, qs(b) |-> 3, qs(d) |-> 4},\
-  v_3 = {qs(a) |-> 2, qs(c) |-> 3, qs(d) |-> 4}.
-  $
-]
-
-
 
 = Update Semantics <updates>
 
@@ -1733,6 +1637,106 @@ The difference between "$f \update g$" and "$f = g$" is: where
 "$f = g$" replaces all values   at positions $f$ by $g$ applied to the _same_ value,
 namely the input value of "$f = g$".
 */
+
+
+
+= Equational reasoning showcase: Object Construction <obj-eq>
+
+We will now show how to prove properties about HIR filters by equational reasoning.
+For this, we use the lowering in @mir and the semantics defined in @semantics.
+As an example, we will show a few properties of object construction.
+
+Let us start by proving a few helper lemmas.
+In the remainder, $c$ and $v$ denote some arbitrary context and value.
+
+#lemma[
+  For the HIR filters $f$ and $g$ and the Cartesian operator $cartesian$
+  (such as addition, see @tab:binops),
+  we have $floor(f cartesian g)|^c_v = sum_(x in floor(f)|^c_v) sum_(y in floor(g)|^c_v) stream(x cartesian y)$.
+] <lem:cart-sum>
+
+#proof[
+  By unfolding the lowering as in @tab:lowering, we have that
+  $floor(f cartesian g)|^c_v = (floor(f) "as" var(x') | floor(g) "as" var(y') | var(x') cartesian var(y'))|^c_v$.
+  Using the evaluation semantics in @tab:eval-semantics, we can further expand this to
+  $sum_(x in floor(f)|^c_v) sum_(y in floor(g)^c{var(x') |-> x}_v)
+  (var(x') cartesian var(y'))|^c{var(x') |-> x, var(y') |-> y}_v$.
+  Because $var(x')$ and $var(y')$ are fresh variables,
+  we know that they cannot occur in $floor(g)$, so
+  $floor(g)^c{var(x') |-> x}_v = floor(g)^c_v$.
+  Furthermore, by the evaluation semantics, we have
+  $(var(x') cartesian var(y'))|^c{var(x') |-> x, var(y') |-> y}_v = stream(x cartesian y)$.
+  From these two observations, the conclusion immediately follows.
+]
+
+#lemma[
+  For the HIR filters $f$ and $g$, we have
+  $floor({f: g})|^c_v = sum_(x in floor(f)|^c_v) sum_(y in floor(g)|^c_v) stream({x: y})$.
+] <lem:obj-sum>
+
+#proof[Analogously to the proof of @lem:cart-sum.]
+
+We can now proceed by stating a central property of object construction.
+
+#theorem[
+  For any $n in NN$ with $n > 0$, we have that
+  $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
+  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
+  stream({k_1: v_1} + ... + {k_n: v_n}). $
+]
+
+#proof[
+  We will prove by induction on $n$.
+  The base case $n = 1$ directly follows from @lem:obj-sum.
+  For the induction step, we have to show that
+  $floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v$ is equivalent to
+  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_(n+1) in floor(k_(n+1))|^c_v) sum_(v_n in floor(v_(n+1))|^c_v)
+  stream({k_1: v_1} + ... + {k_(n+1): v_(n+1)}). $
+  /*
+  under the assumption that
+  $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
+  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
+  stream({k_1: v_1} + ... + {k_n: v_n}). $
+  */
+
+  We start by
+  $ & floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v =^"(lowering)" \
+  = & floor(sum_i {k_i: v_i})|^c_v = \
+  = & floor(sum_(i = 1)^n {k_i: v_i} + {k_(n+1): v_(n+1)})|^c_v =^#[(@lem:cart-sum)] \
+  = & sum_(x in floor(sum_(i=1)^n {k_i: v_i})|^c_v)
+      sum_(y in floor({k_(n+1): v_(n+1)})|^c_v)
+      stream(x + y). $
+
+  Here, we observe that $floor(sum_(i=1)^n {k_i: v_i})|^c_v = floor({k_1: v_1, ..., k_n: v_n})|^c_v$, which by the induction hypothesis equals
+  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
+  stream({k_1: v_1} + ... + {k_n: v_n}). $
+  We can use this to resume the simplification of
+  $floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v$ to
+  $ sum_(k_1 in floor(k_1)|^c_v)
+    sum_(v_1 in floor(v_1)|^c_v) ...
+    sum_(k_n in floor(k_n)|^c_v)
+    sum_(v_n in floor(v_n)|^c_v)
+    sum_(y in floor({k_(n+1): v_(n+1)})|^c_v)
+    stream({k_1: v_1} + ... + {k_n: v_n} + y)
+  $
+  Finally, applying @lem:obj-sum to $floor({k_(n+1): v_(n+1)})|^c_v$ proves the induction step.
+]
+
+We can use this theorem to simplify the evaluation of filters such as the following one.
+
+#example[
+  The evaluation of
+  ${qs(a): (1, 2), (qs(b), qs(c)): 3, qs(d): 4}$
+  //(with arbitrary context and input)
+  yields $stream(v_0, v_1, v_2, v_3)$, where $
+  v_0 = {qs(a) |-> 1, qs(b) |-> 3, qs(d) |-> 4},\
+  v_1 = {qs(a) |-> 1, qs(c) |-> 3, qs(d) |-> 4},\
+  v_2 = {qs(a) |-> 2, qs(b) |-> 3, qs(d) |-> 4},\
+  v_3 = {qs(a) |-> 2, qs(c) |-> 3, qs(d) |-> 4}.
+  $
+]
+
+
 
 = Conclusion
 
