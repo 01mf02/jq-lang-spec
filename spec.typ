@@ -419,6 +419,7 @@ For this, we consider a definition $x(x_1; ...; x_n) := phi$:
   $fold x "as" var(x) (y; g)$
   is a subterms of $phi$.
 
+
 == MIR <mir>
 
 We are now going to identify a subset of HIR called MIR and
@@ -542,9 +543,10 @@ In jq, Cartesian operations $f cartesian g$ would be lowered to
 $floor(g) "as" var(y') | floor(f) "as" var(x') | var(x) cartesian var(y)$, whereas we lower it to
 $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
 thus inverting the binding order.
-Our lowering of Cartesian operations is consistent with that of
-other operators, such as ${f: g}$, where
+We diverge here from jq to make the lowering of Cartesian operations
+consistent with that of other operators, such as ${f: g}$, where
 the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
+That makes it easier to define other filters, such as ${f_1: g_1, ..., f_n: g_n}$.
 Note that the difference only shows when both $f$ and $g$ return multiple values.
 
 #example[
@@ -1412,8 +1414,9 @@ Let us discuss these for the different filters $mu$:
 While @tab:update-props allows us to define the behaviour of several filters
 by reducing them to more primitive filters,
 there are several filters $mu$ which cannot be defined this way.
-We will therefore give the actual update semantics of $mu update sigma$ by defining
-$(mu update sigma)|^c_v$, not by defining simpler equivalent filters.
+We will therefore give the actual update semantics of $mu update sigma$ in @new-semantics
+by defining $(mu update sigma)|^c_v$, not
+by translating $mu update sigma$ to equivalent filters.
 
 == Limiting interactions <limiting-interactions>
 
@@ -1468,8 +1471,9 @@ _not_ errors that are returned by $sigma$.
   (which occurs when the input is neither an array nor an object, see @accessing),
   to just return the input value unchanged.
   When we run $mu update sigma$ with the input $0$,
-  $.[]$ fails with an error, but because the error is caught immediately afterwards,
-  $mu update sigma$ consequently just returns the input value $0$.
+  the filter $.[]$ fails with an error, but
+  because the error is caught immediately afterwards,
+  $mu update sigma$ consequently just returns the original input value $0$.
   The interesting part is what happens when $sigma$ throws an error:
   This occurs for example when running the filter with the input $[{}]$.
   This would run $. + 1$ with the input ${}$, which yields an error (see @arithmetic).
@@ -1496,7 +1500,7 @@ That way, errors stemming from $mu$ are propagated,
 whereas errors stemming from $f$ are caught.
 
 
-== New semantics
+== New semantics <new-semantics>
 
 We will now give semantics that will allow us to define the output of
 $(f update g)|^c_v$ as referred to in @semantics.
