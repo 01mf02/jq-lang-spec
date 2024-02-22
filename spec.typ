@@ -25,9 +25,9 @@
   ),
   abstract: [
     jq is a widely used tool that provides a programming language to manipulate JSON data.
-    However, it is currently only specified by its implementation,
+    However, the jq language is currently only specified by its implementation,
     making it difficult to reason about its behaviour.
-    To this end, we provide a syntax and denotational semantics for
+    To this end, we provide a formal syntax and denotational semantics for
     a large subset of the jq language.
     Our most significant contribution is to provide a new way to interpret updates
     that allows for more predictable and performant execution.
@@ -170,7 +170,7 @@ a filter called _path_ that defines which parts of the input to update, and
 a filter that defines what the values matching the path should be replaced with.
 The semantics of jq and those that will be shown in this text
 differ most notably in the case of updates.
-Finally, we show how to prove the behaviour of jq programs in @obj-eq.
+Finally, we show how to prove properties of jq programs by equational reasoning in @obj-eq.
 
 #figure(caption: [Evaluation of a jq program with an input value.
   Solid lines indicate data flow, whereas a dashed line indicates that
@@ -293,10 +293,11 @@ However, there are cases where variables are indispensable.
   For example, for the input
   `1`, the filter
   "`in([5], [42, 3], [])`" yields the stream
-  `false, true, false`.
+  `false, true, false`,
+  because only `[42, 3]` has a length greater than 1 and thus a domain that contains `1`.
   The point of this example is that
-  we wish to pass `xs` as input to `contains`, but at the same point,
-  we also want to pass the input given to `inside` as an argument to `contains`.
+  we wish to pass `xs` as input to `has`, but at the same point,
+  we also want to pass the input given to `in` as an argument to `has`.
   Without variables, we could not do both.
 ]
 
@@ -337,7 +338,7 @@ the filter "`1`" is not a path expression because
 but creates a new value.
 
 Identities such as
-"`.[] |= f`" being equivalent to "`[.[] | f]`", or
+"`.[] |= f`" being equivalent to "`[.[] | f]`" when the input value is an array, or
 "`. |= f`" being equivalent to `f`,
 would allow defining the behaviour of updates.
 However, these identities do not hold in jq due the way it
@@ -375,7 +376,7 @@ Finally, in @jq-syntax, we will show how HIR relates to actual jq syntax.
 A _filter_ $f$ is defined by
 
 $ f :=& n #or_ s #or_ . \
-  #or_& (f) #or_ f? #or_ [f] #or_ {f: f, ..., f: f} #or_ f[p]^?...[p]^? \
+  #or_& (f) #or_ f? #or_ [f] #or_ {f: f, ..., f: f} #or_ f p^? ... p^? \
   #or_& f star f #or_ f cartesian f \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (f; f) #or_ var(x) \
   #or_& "label" var(x) | f #or_ "break" var(x) \
@@ -387,10 +388,10 @@ $x$ is an identifier (such as "empty"),
 $n$ is a number (such as $42$ or $3.14$), and
 $s$ is a string (such as "Hello world!").
 We use the superscript "$?$" to denote an optional presence of "?"; in particular,
-$f[p]^?...[p]^?$ can be
-$f[p]$, $f[p]?$,
-$f[p][p]$, $f[p]?#h(0pt) [p]$, $f[p][p]?$, $f[p]?#h(0pt) [p]?$,
-$f[p][p][p]$, and so on.
+$f p^?... p^?$ can be
+$f p$, $f p?$,
+$f p p$, $f p?#h(0pt) p$, $f p p?$, $f p?#h(0pt) p?$,
+$f p p p$, and so on.
 The potential instances of the operators $star$ and $cartesian$ are given in @tab:binops.
 All operators $star$ and $cartesian$ are left-associative, except for
 "$|$", "$=$", "$update$", and "$aritheq$".
@@ -442,7 +443,7 @@ show how to _lower_ a HIR filter to a semantically equivalent MIR filter.
 
 A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
-  #or_& [f] #or_ {} #or_ {f: f} #or_ .[p] \
+  #or_& [f] #or_ {} #or_ {f: f} #or_ .p \
   #or_& f star f #or_ var(x) cartesian var(x) \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (.; f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
@@ -456,7 +457,7 @@ does not include "$=$" and "$aritheq$" anymore.
 
 Compared to HIR, MIR filters
 have significantly simpler path operations
-($.[p]$ versus $f[p]^?...[p]^?$) and
+($.p$ versus $f p^?... p^?$) and
 replace certain occurrences of filters by variables
 (e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
 
@@ -470,8 +471,8 @@ replace certain occurrences of filters by variables
   ${}$, ${}$,
   ${f: g}$, $floor(f) "as" var(x') | floor(g) "as" var(y') | {var(x'): var(y')}$,
   ${f_1: g_1, ..., f_n: g_n}$, $floor(sum_i {f_i: g_i})$,
-  $f[p_1]^?...[p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
-  $f = g$, $. "as" var(x') | floor(f update (var(x') | g))$,
+  $f p_1^? ... p_n^?$, $. "as" var(x') | floor(f) | floor(p_1^?)_var(x') | ... | floor(p_n^?)_var(x')$,
+  $f = g$, $floor(g) "as" var(x') | floor(f update var(x'))$,
   $f aritheq g$, $floor(f update . arith g)$,
   $f alteq g$, $floor(f update . alt g)$,
   $f "and" g$, $floor(f) "as" var(x') | var(x') "and" floor(g)$,
@@ -499,31 +500,23 @@ for the remaining complex operators $star$, namely
 "$|$", "$,$", "$update$", and "$alt$",
 @tab:lowering specifies a uniform lowering $floor(f star g) = floor(f) star floor(g)$.
 
-#figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
-  $[p  ]^?$, $floor([p]^?)_var(x)$,
+#figure(caption: [Lowering of a path part $p^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
+  $p    ^?$, $floor(p^?)_var(x)$,
   $[   ]^?$, $.[]^?$,
   $[f  ]^?$, $(var(x) | floor(f)) "as" var(y') | .[var(y')]^?$,
-  $[f: ]^?$, $(var(x) | floor(f)) "as" var(y') | "length"^? "as" var(z') | .[var(y') : var(z')]^?$,
+  $[f: ]^?$, $(var(x) | floor(f)) "as" var(y') | "length"()^? "as" var(z') | .[var(y') : var(z')]^?$,
   $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | 0 "as" var(z') | .[var(z') : var(y')]^?$,
   $[f:g]^?$, $(var(x) | floor(f)) "as" var(y') | (var(x) | floor(g)) "as" var(z') | .[var(y') : var(z')]^?$,
 )) <tab:lower-path>
 
-/*
-Plain assignment "$f = g$":
-The difference between "$f update g$" and "$f = g$" is: where
-"$f update g$" replaces all values $v$ at positions $f$ by $g$ applied to $v$,
-"$f = g$" replaces all values   at positions $f$ by $g$ applied to the _same_ value,
-namely the input value of "$f = g$".
-*/
-
-@tab:lower-path shows how to lower path parts $[p]^?$ to MIR filters.
+@tab:lower-path shows how to lower a path part $p^?$ to MIR filters.
 Like in @hir, the meaning of superscript "$?$" is an optional presence of "$?$".
-In the lowering of $f[p_1]^?...[p_n]^?$ in @tab:lowering,
-if $[p_i]$ in the first column is directly followed by "?", then
-$floor([p_i]^?)_var(x)$ in the second column stands for
-$floor([p_i] ?)_var(x)$, otherwise for
-$floor([p_i]  )_var(x)$.
-Similarly, in @tab:lower-path, if $[p]$ in the first column is followed by "$?$", then
+In the lowering of $f p_1^? ... p_n^?$ in @tab:lowering,
+if $p_i$ in the first column is directly followed by "?", then
+$floor(p_i^?)_var(x)$ in the second column stands for
+$floor(p_i ?#h(0pt))_var(x)$, otherwise for
+$floor(p_i  )_var(x)$.
+Similarly, in @tab:lower-path, if $p$ in the first column is followed by "$?$", then
 all occurrences of superscript "?" in the second column stand for "?", otherwise for nothing.
 
 #example[
@@ -536,8 +529,8 @@ all occurrences of superscript "?" in the second column stand for "?", otherwise
   The HIR filter $mu eq.triple .[0]$ is lowered to
   $floor(mu) eq.triple . "as" var(x) | . | (var(x) | 0) "as" var(y) | .[var(y)]$.
   Semantically, we will see that $floor(mu)$ is equivalent to $0 "as" var(y) | .[var(y)]$.
-  The HIR filter $phi eq.triple [3] | .[0] = ("length", 2)$ is lowered to the MIR filter
-  $floor(phi) eq.triple [3] | . "as" var(z) | floor(mu) update (var(z) | ("length", 2))$.
+  The HIR filter $phi eq.triple [3] | .[0] = ("length"(), 2)$ is lowered to the MIR filter
+  $floor(phi) eq.triple [3] | ("length"(), 2) "as" var(z) | floor(mu) update var(z)$.
   In @semantics, we will see that its output is $stream([1], [2])$.
 ]
 
@@ -553,7 +546,7 @@ For this reason, we have to define it in a more complicated way, for example
 $ "empty"() := ({} | .[]) "as" var(x) | . $
 This definition ensures that $"empty"$ can be employed also as a path expression.
 
-This lowering is compatible with the semantics of the jq implementation,
+The lowering in @tab:lowering is compatible with the semantics of the jq implementation,
 with one notable exception:
 In jq, Cartesian operations $f cartesian g$ would be lowered to
 $floor(g) "as" var(y') | floor(f) "as" var(x') | var(x) cartesian var(y)$, whereas we lower it to
@@ -565,7 +558,7 @@ consistent with that of other operators, such as ${f: g}$, where
 the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
 That also makes it easier to describe other filters, such as
 ${f_1: g_1, ..., f_n: g_n}$, which we can lower to
-$floor(sum_i {f_i: g_i})$, whereas its lowering assuming the jq lowering of Cartesian operations is
+$floor(sum_i {f_i: g_i})$, whereas its lowering assuming the jq lowering of Cartesian operations would be
 $floor({f_1: g_1}) "as" var(x'_1) | ... | floor({f_n: g_n}) "as" var(x'_n) | sum_i var(x'_i)$.
 
 #example[
@@ -584,7 +577,8 @@ Let us now go a level above HIR, namely a subset of actual jq syntax#footnote[
 ] of which we have seen examples in @tour, and
 show how to transform jq programs to HIR and to MIR.
 
-A _program_ is a (possibly empty) sequence of definitions, followed by a single filter `f`.
+A _program_ is a (possibly empty) sequence of definitions, followed by
+a _main filter_ `f`.
 A _definition_ has the shape `def x(x1; ...; xn): g;` or `def x: g`; where
 `x` is an identifier,
 `x1` to `xn` is a non-empty sequence of semicolon-separated identifiers, and
@@ -646,7 +640,7 @@ $x()$ as call to a filter that was defined as $x() := f$.
 To convert a jq program to MIR, we do the following:
 
 + For each definition, convert it to a HIR definition.
-+ Convert the filter `f` to a HIR filter $f$.
++ Convert the main filter `f` to a HIR filter $f$.
 + Replace the right-hand sides of HIR definitions and $f$ by
   their lowered MIR counterparts, using @tab:lowering.
 
@@ -700,7 +694,7 @@ an unordered map from _keys_ $k$ to values that we call an _object_.#footnote[
   ${k_0: v_0, ..., k_n: v_n}$ instead of
   ${k_0 |-> v_0, ..., k_n |-> v_n}$.
   However, in this text, we will use the
-  ${k_0: v_0, ..., k_n: v_n}$ syntax to define the _construction_ of objects, and use
+  ${k_0: v_0, ..., k_n: v_n}$ syntax to denote the _construction_ of objects, and use
   ${k_0 |-> v_0, ..., k_n |-> v_n}$ syntax to denote actual objects.
 ]
 In JSON, object keys are strings.#footnote[
@@ -752,10 +746,6 @@ An _exception_ either is an error or has the shape $"break"(var(x))$.
 The latter will become relevant starting from @semantics.
 
 A _value result_ is either a value or an exception.
-In this text, we will see many functions that take a fixed number of values.
-For any of these functions $f(v_1, ..., v_n)$,
-we extend their domain to value results such that $f(v_1, ..., v_n)$ yields $v_i$
-if $v_i$ is an exception and for all $j < i$, $v_j$ is a value.
 
 A _stream_ (or lazy list) is written as $stream(v_0, ..., v_n)$.
 The concatenation of two streams $s_1$, $s_2$ is written as $s_1 + s_2$.
@@ -764,12 +754,16 @@ $sum_(x in l) f(x)$ to denote $f(x_0) + ... + f(x_n)$.
 We use this frequently to map a function over a stream,
 by having $f(x)$ return a stream itself.
 
-The following function $"head"(l, e)$ returns the head of a list $l$ if it is not empty, otherwise $e$:
+In this text, we will see many functions that take values as arguments.
+By convention, for any of these functions $f(v_1, ..., v_n)$,
+we extend their domain to value results such that $f(v_1, ..., v_n)$ yields $v_i$
+(or rather $stream(v_i)$ if $f$ returns streams)
+if $v_i$ is an exception and for all $j < i$, $v_j$ is a value.
+For example, in @arithmetic, we will define $l + r$ for values $l$ and $r$,
+but by our convention, we extend the domain of addition to value results such that
+if $l$ is an exception, then $l + r$ returns just $l$, and
+if $l$ is a value, but $r$ is an exception, then $l + r$ returns just $r$.
 
-$ "head"(l, e) := cases(
-  h & "if" l = stream(h) + t,
-  e & "otherwise",
-) $
 
 
 == Construction <construction>
@@ -805,7 +799,7 @@ $ "keys"(v) := cases(
   stream(0  , ...,   n) & "if" v = [v_0, ..., v_n],
   stream(k_0) + "keys"(v') & "if" v = {k_0 |-> v_0} union v' "and" k_0 = min("dom"(v)),
   stream() & "if" v = {},
-  "error"         & "otherwise",
+  stream("error") & "otherwise",
 ) $
 
 For an object $v$, $"keys"(v)$ returns
@@ -866,10 +860,10 @@ $ l merge r := cases(
 We use this in the following definition of multiplication of two values $l$ and $r$:
 
 $ l times r := cases(
+  n_1 times n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
   l + l times (r - 1) & "if" l "is a string and" r in NN without {0},
   "null" & "if" l "is a string and" r = 0,
   r times l & "if" r "is a string and" l in NN,
-  l times r & "if" l "and" r "are numbers",
   l merge r & "if" l "and" r "are objects",
   "error" & "otherwise"
 ) $
@@ -949,20 +943,24 @@ an empty string if $v$ is a string.
 The operator $v[]$ is the only operator in this subsection that
 returns a _stream_ of value results instead of only a value result.
 
+
 == Updating <updating>
 
 For each access operator in @accessing, we will now define an _updating_ counterpart.
 Intuitively, where an access operator yields some elements contained in a value $v$,
-its corresponding update operator _replaces_ these elements in $v$ by the output of a function.
+its corresponding update operator _replaces_ these elements in $v$
+by the output of a function.
+The access operators will be used in @semantics, and
+the update operators will be used in @updates.
 
 All update operators take at least
 a value $v$ and
 a function $f$ from a value to a stream of value results.
 We extend the domain of $f$ to value results such that
-$f(e) = stream(e)$ if $e$ is an error.
+$f(e) = stream(e)$ if $e$ is an exception.
 
 The first update operator will be a counterpart to $v[]$.
-For _all_ elements $x$ that are yielded by $v[]$,
+For all elements $x$ that are yielded by $v[]$,
 $v[] update f$ replaces $x$ by $f(x)$:
 
 $ v[] update f := cases(
@@ -979,6 +977,14 @@ $v[] update f$ replaces each $v_i$ by the first output yielded by $f(v_i)$ if su
 otherwise it deletes ${k_i |-> v_i}$ from the object.
 Note that updating arrays diverges from jq, because
 jq only considers the first value yielded by $f$.
+
+For the next operators, we will use the following function $"head"(l, e)$, which
+returns the head of a list $l$ if it is not empty, otherwise $e$:
+
+$ "head"(l, e) := cases(
+  h & "if" l = stream(h) + t,
+  e & "otherwise",
+) $
 
 The next function takes a value $v$ and
 replaces its $i$-th element by the first output of $f$,
@@ -1017,7 +1023,8 @@ $ v[i:j] update f := cases(
   "error" & "otherwise",
 ) $
 
-Unlike $v[i:j]$, this operator fails when $v$ is a string.
+Unlike its corresponding access operator $v[i:j]$,
+this operator unconditionally fails when $v$ is a string.
 This operator diverges from jq if $f$ yields $"null"$, in which case
 jq returns an error, whereas
 this operator treats this as equivalent to $f$ returning $[]$.
