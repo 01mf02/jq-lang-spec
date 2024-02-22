@@ -138,6 +138,9 @@ The goals for creating these semantics were, in descending order of importance:
 - Performance: The semantics should allow for performant execution.
 - Compatibility: The semantics should be consistent with jq.
 
+We created these semantics experimentally, by coming up with
+jq filters and observing their output for all kinds of inputs.
+From this, we synthesised mathematical definitions to model the behaviour of jq.
 The most significant improvement over jq behaviour described in this text are
 the new update semantics (@updates), which
 are simpler to describe and implement,
@@ -550,11 +553,14 @@ In jq, Cartesian operations $f cartesian g$ would be lowered to
 $floor(g) "as" var(y') | floor(f) "as" var(x') | var(x) cartesian var(y)$, whereas we lower it to
 $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
 thus inverting the binding order.
+Note that the difference only shows when both $f$ and $g$ return multiple values.
 We diverge here from jq to make the lowering of Cartesian operations
 consistent with that of other operators, such as ${f: g}$, where
 the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
-That makes it easier to define other filters, such as ${f_1: g_1, ..., f_n: g_n}$.
-Note that the difference only shows when both $f$ and $g$ return multiple values.
+That also makes it easier to describe other filters, such as
+${f_1: g_1, ..., f_n: g_n}$, which we can lower to
+$floor(sum_i {f_i: g_i})$, whereas its lowering assuming the jq lowering of Cartesian operations is
+$floor({f_1: g_1}) "as" var(x'_1) | ... | floor({f_n: g_n}) "as" var(x'_n) | sum_i var(x'_i)$.
 
 #example[
   The filter $(0, 2) + (0, 1)$ yields
