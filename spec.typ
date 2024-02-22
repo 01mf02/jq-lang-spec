@@ -356,8 +356,8 @@ instead of the previously used typewriter font (as in "`f`", "`v`").
 
 We will start by introducing high-level intermediate representation (HIR) syntax in @hir.
 This syntax is very close to actual jq syntax.
-Then, we show a simplified version of HIR called mid-level intermediate representation (MIR)
-in @mir and provide a way to translate from HIR to MIR.
+Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @mir
+and provide a way to translate from HIR to MIR.
 This will simplify our semantics in @semantics.
 Finally, in @jq-syntax, we will show how HIR relates to actual jq syntax.
 
@@ -428,14 +428,14 @@ For this, we consider a definition $x(x_1; ...; x_n) := phi$:
 
 == MIR <mir>
 
-We are now going to show a simplified version of HIR called MIR and
+We are now going to identify a subset of HIR called MIR and
 show how to _lower_ a HIR filter to a semantically equivalent MIR filter.
 
 A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
   #or_& [f] #or_ {} #or_ {f: f} #or_ .[p] \
   #or_& f star f #or_ var(x) cartesian var(x) \
-  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (f) #or_ var(x) \
+  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (.; f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
   #or_& "label" var(x) | f #or_ "break" var(x) \
   #or_& x #or_ x(f; ...; f)
@@ -445,10 +445,10 @@ $ p := [] #or_ [var(x)] #or_ [var(x):var(x)]. $
 Furthermore, the set of complex operators $star$ in MIR
 does not include "$=$" and "$aritheq$" anymore.
 
-Compared to HIR, MIR filters have significantly
-simpler path operations ($.[p]$ versus $f[p]^?...[p]^?$),
-simpler folding operators ($fold f "as" var(x) (f)$ versus $fold f "as" var(x) (f; f)$),
-and replace certain occurrences of filters by variables
+Compared to HIR, MIR filters
+have significantly simpler path operations
+($.[p]$ versus $f[p]^?...[p]^?$) and
+replace certain occurrences of filters by variables
 (e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
 
 #figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
@@ -470,7 +470,7 @@ and replace certain occurrences of filters by variables
   $f star g$, $floor(f) star floor(g)$,
   $f cartesian g$, $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
   $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
-  $fold f_x "as" var(x) (f_y; f)$, $. "as" var(x') | floor(f_y) | fold floor(var(x') | f_x) "as" var(x) (floor(f))$,
+  $fold f_x "as" var(x) (f_y; f)$, $. "as" var(x') | floor(f_y) | fold floor(var(x') | f_x) "as" var(x) (.; floor(f))$,
   $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
   $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
   $"label" var(x) | f$, $"label" var(x) | floor(f)$,
@@ -1094,7 +1094,7 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
   $.[]$, $v[]$,
   $.[var(x)]$, $stream(v[c(var(x))])$,
   $.[var(x):var(y)]$, $stream(v[c(var(x)):c(var(y))])$,
-  $fold x "as" var(x) (f)$, $fold^c_v (x|^c_v, var(x), f)$,
+  $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f)$,
   $x(f_1; ...; f_n)$, $f|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
   $x$, $f|^c'_v "if" c(x) = (f, c')$,
   $f update g$, [see @updates]
@@ -1165,8 +1165,8 @@ Let us discuss its different cases:
 - $var(x) "or" f$: Similar to its "and" counterpart above.
 - $"if" var(x) "then" f "else" g$: Returns the output of $f$ if $var(x)$ is bound to either null or false, else returns the output of $g$.
 - $.[]$, $.[var(x)]$, or $.[var(x):var(y)]$: Accesses parts of the input value; see @accessing for the definitions of the operators.
-- $fold x "as" var(x) (f)$: Folds $f$ over the values returned by $x$,
-  starting with current input $v$ as the accumulator.
+- $fold x "as" var(x) (.; f)$: Folds $f$ over the values returned by $x$,
+  starting with the current input as accumulator.
   The current accumulator value is provided to $f$ as input value and
   $f$ can access the current value of $x$ by $var(x)$.
   If $fold = "reduce" $, this returns only the final        values of the accumulator, whereas
@@ -1206,7 +1206,7 @@ constant time that can be achieved by a proper jq implementation.
 In this subsection, we will define the functions $fold^c_v (l, var(x), f)$
 (where $fold$ is either $"foreach"$ or $"reduce"$),
 which underlie the semantics for the folding operators
-$fold x "as" var(x) (var(y); f)$.
+$fold x "as" var(x) (.; f)$.
 
 Let us start by defining a general folding function $"fold"^c_v (l, var(x), f, o)$: It takes
 a stream of value results $l$,
@@ -1256,21 +1256,21 @@ $ "foreach"^c_v (l, var(x), f) := cases(
 
 We will now look at what the evaluation of the various folding filters expands to.
 Apart from $"reduce"$ and $"foreach"$, we will also consider a hypothetical filter
-$"for" x "as" var(x) (f)$ that is defined by the function
+$"for" x "as" var(x) (.; f)$ that is defined by the function
 $"for"^c_v (l, var(x), f)$, analogously to the other folding filters.
 
 Assuming that the filter $x$ evaluates to $stream(x_0, ..., x_n)$,
 then $"reduce"$ and $"for"$ expand to
 
-$ "reduce"   x "as" var(x) (f) =&     x_0 "as" var(x) | f & wide
-  "for"      x "as" var(x) (f) =& ., (x_0 "as" var(x) | f \
+$ "reduce"   x "as" var(x) (.; f) =&     x_0 "as" var(x) | f & wide
+  "for"      x "as" var(x) (.; f) =& ., (x_0 "as" var(x) | f \
 |& ... &
 |& ... \
 |&     x_n "as" var(x) | f &
 |& ., (x_n "as" var(x) | f)...)
 $
 and $"foreach"$ expands to
-$ "foreach" x "as" var(x) (var(y); f)
+$ "foreach" x "as" var(x) (.; f)
 =&     x_0 "as" var(x) | f \
 |& ., (x_1 "as" var(x) | f \
 |& ... \
@@ -1284,8 +1284,8 @@ In contrast, the hypothetical $"for"$ filter looks more symmetrical to $"reduce"
 Note that jq implements only a restricted version of these folding operators
 that discards all output values of $f$ after the first output.
 That means that in jq,
-$fold x "as" var(x) (f)$ is equivalent to
-$fold x "as" var(x) ("first"(f))$.
+$fold x "as" var(x) (.;         f )$ is equivalent to
+$fold x "as" var(x) (.; "first"(f))$.
 Here, we assume the definition $"first"(f) := "label" var(x) | f | (., "break" var(x))$.
 This returns the first output of $f$ if $f$ yields any output, else nothing.
 
@@ -1766,7 +1766,7 @@ a large subset of the jq programming language.
 
 On the syntax side, we first defined
 formal syntax (HIR) that closely corresponds to actual jq syntax.
-We then gave a lowering that reduces HIR to a simpler syntax (MIR),
+We then gave a lowering that reduces HIR to a simpler subset (MIR),
 in order to simplify the semantics later.
 We finally showed how a subset of actual jq syntax can be translated into HIR and thus MIR.
 
