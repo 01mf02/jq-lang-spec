@@ -102,9 +102,15 @@ jq filters operate on streams of JSON values.
 This allows to manipulate JSON data with relatively compact filters.
 For example, given as input the public JSON dataset of streets in Paris @paris-voies,
 jq retrieves
-the number of streets (6508) with the filter "`length`",
-the names of the streets with the filter "`.[].fields.nomvoie`", and
-the total length of all streets (1576813 m) with the filter "`[.[].fields.longueur] | add`".
+the number of streets (6528) with the filter "`length`",
+the names of the streets with the filter "`.[].nomvoie`", and
+the total length of all streets (1574028 m) with the filter "`[.[].longueur] | add`".
+jq provides syntax to update data; for example,
+to remove geographical data obtained by
+"`.[].geo_shape`", but leaving intact all other data, we can use
+"`.[].geo_shape |= empty`".
+// jq -c was used for both formatting the original dataset and the "shrunk" one.
+This shrinks the dataset from \~25 MB to \~7 MB.
 jq provides a Turing-complete language that is interesting on its own; for example,
 "`[0, 1] | recurse([.[1], add])[0]"` generates the stream of Fibonacci numbers.
 This makes jq a widely used tool.
