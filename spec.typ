@@ -1741,7 +1741,7 @@ We can now proceed by stating a central property of object construction.
     sum_(v_1 in floor(v_1)|^c_v) ...
     sum_(k_(n+1) in floor(k_(n+1))|^c_v)
     sum_(v_(n+1) in floor(v_(n+1))|^c_v)
-    stream(sum_i {k_i: v_i}).
+    stream(sum_i^(n+1) {k_i: v_i}).
   $
   We start by
   $ & floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v =^"(lowering)" \
@@ -1751,7 +1751,9 @@ We can now proceed by stating a central property of object construction.
       sum_(y in floor({k_(n+1): v_(n+1)})|^c_v)
       stream(x + y).
   $
-  Here, we observe that $floor(sum_(i=1)^n {k_i: v_i})|^c_v = floor({k_1: v_1, ..., k_n: v_n})|^c_v$, which by the induction hypothesis equals
+  Here, we observe that
+  $floor(sum_(i=1)^n {k_i: v_i})|^c_v = floor({k_1: v_1, ..., k_n: v_n})|^c_v$,
+  which by the induction hypothesis equals
   $ sum_(k_1 in floor(k_1)|^c_v)
     sum_(v_1 in floor(v_1)|^c_v) ...
     sum_(k_n in floor(k_n)|^c_v)
