@@ -760,7 +760,7 @@ we extend their domain to value results such that $f(v_1, ..., v_n)$ yields $v_i
 (or rather $stream(v_i)$ if $f$ returns streams)
 if $v_i$ is an exception and for all $j < i$, $v_j$ is a value.
 For example, in @arithmetic, we will define $l + r$ for values $l$ and $r$,
-but by our convention, we extend the domain of addition to value results such that
+and by our convention, we extend the domain of addition to value results such that
 if $l$ is an exception, then $l + r$ returns just $l$, and
 if $l$ is a value, but $r$ is an exception, then $l + r$ returns just $r$.
 
