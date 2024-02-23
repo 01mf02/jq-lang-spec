@@ -1065,10 +1065,10 @@ We then have $ o_1 < o_2 <==> cases(
 = Evaluation Semantics <semantics>
 
 In this section, we will define a function $phi|^c_v$ that returns
-the output of the evaluation of the filter $phi$ on the input value $v$.
+the output of the filter $phi$ in the context $c$ on the input value $v$.
 
 Let us start with a few definitions.
-A context $c$ is a mapping
+A _context_ $c$ is a mapping
 from variables $var(x)$ to values and
 from identifiers $x$ to pairs $(f, c)$, where $f$ is a filter and $c$ is a context.
 Contexts store what variables and filter arguments are bound to.
@@ -1095,7 +1095,7 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
   $var(x)$, $stream(c(var(x)))$,
   $[f]$, $stream([f|^c_v])$,
   ${}$, $stream({})$,
-  ${var(x): var(y)}$, ${c(var(x)): c(var(y))}$,
+  ${var(x): var(y)}$, $stream({c(var(x)): c(var(y))})$,
   $f, g$, $f|^c_v + g|^c_v$,
   $f | g$, $sum_(x in f|^c_v) g|^c_x$,
   $f alt g$, $"ite"("trues"(f|^c_v), stream(), g|^c_v, "trues"(f|^c_v))$,
@@ -1135,7 +1135,7 @@ Let us discuss its different cases:
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
 - $f alt g$: Returns $l$ if $l$ is not empty, else the outputs of $g$, where
   $l$ are the outputs of $f$ whose boolean values are not false.
-- $f "as" var(x) | g$: Binds every output of $f$ to the variable $var(x)$ and
+- $f "as" var(x) | g$: For every output of $f$, binds it to the variable $var(x)$ and
   returns the output of $g$, where $g$ may reference $var(x)$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
   We can show that the evaluation of $f | g$ is equivalent to that of
@@ -1210,7 +1210,7 @@ An implementation may also define custom semantics for named filters.
 For example, an implementation may define
 $"error"|^c_v := "error"(v)$,
 $"keys"|^c_v := "keys"(v)$, and
-$"length"|^c_v := |v|$.
+$"length"|^c_v := |v|$, see @simple-fns.
 In the case of $"keys"$, for example, there is no obvious way to implement it by definition,
 in particular because there is no simple way to obtain the domain of an object ${...}$
 using only the filters for which we gave semantics in @tab:eval-semantics.
@@ -1342,7 +1342,7 @@ Note that $f$ is not allowed to produce new values; it may only return paths.
 ] <ex:arr-update>
 
 This approach can yield surprising results when the execution of the filter $g$
-changes the input value in a way that the set of paths changes.
+changes the input value in a way that the set of paths changes midway.
 In such cases, only the paths constructed from the initial input are considered.
 This can lead to
 paths pointing to the wrong data,
@@ -1402,8 +1402,10 @@ We can also have surprising behaviour that does not manifest any error.
   so it is _not_ updated.
 ] <ex:obj-update-obj>
 
-What would happen if we would interpret $(f_1, f_2) update g$ as
-$(f_1 update g) | (f_2 update g)$ instead?
+We found that we can interpret many update filters by simpler filters,
+yielding the same output as jq in most common cases, but avoiding the problems shown above.
+To see this, let us see what would happen if we would interpret
+$(f_1, f_2) update g$ as $(f_1 update g) | (f_2 update g)$.
 That way, the paths of $f_2$ would point precisely to the data returned by
 $f_1 update g$, thus avoiding the problems depicted by the examples above.
 In particular, with such an approach,
@@ -1474,8 +1476,7 @@ so $sigma$ should not be able to access variables bound in $mu$.
   If $sigma$ had access to variables bound in $mu$,
   then the array element would be replaced by $1$,
   because the variable binding $0 "as" var(x)$ would be shadowed by $1 "as" var(x)$.
-  However, we enforce that
-  $sigma$ does not have access to variables bound in $mu$, so
+  However, in jq, $sigma$ does not have access to variables bound in $mu$, so
   the array element is replaced by $0$, which is the value originally bound to $var(x)$.
   Given the input array $[1, 2, 3]$, the filter yields the final result $[1, 0, 3]$.
 ]
@@ -1512,7 +1513,7 @@ _not_ errors that are returned by $sigma$.
   The interesting part is what happens when $sigma$ throws an error:
   This occurs for example when running the filter with the input $[{}]$.
   This would run $. + 1$ with the input ${}$, which yields an error (see @arithmetic).
-  This error is returned by $mu update sigma$.
+  This error _is_ returned by $mu update sigma$.
 ]
 
 This raises the question:
@@ -1528,7 +1529,7 @@ If $x$ is an exception, then
 $"polarise"(x)$ should return a polarised version of it, whereas
 $"depolarise"(x)$ should return an unpolarised version of it, i.e. it should
 remove any polarisation from an exception.
-By default, every exception created by $"error"(e)$ is unpolarised.
+Every exception created by $"error"(e)$ is unpolarised.
 With this method, when we evaluate an expression $"try" f "catch" g$ in $mu$,
 we can analyse the output of $f update sigma$, and only catch _unpolarised_ errors.
 That way, errors stemming from $mu$ are propagated,
@@ -1537,7 +1538,7 @@ whereas errors stemming from $f$ are caught.
 
 == New semantics <new-semantics>
 
-We will now give semantics that will allow us to define the output of
+We will now give semantics that define the output of
 $(f update g)|^c_v$ as referred to in @semantics.
 
 We will first combine the techniques in @limiting-interactions to define
@@ -1548,8 +1549,10 @@ $ (f update g)|^c_v := sum_(y in (f update sigma)|^c_v) "depolarise"(y)", where"
 sigma(x) = sum_(y in g|^c_x) "polarise"(y). $
 We use a function instead of a filter on the right-hand side to
 limit the scope of variable bindings as explained in @var-bindings, and
-we use $"polarise"$ and $"depolarise"$ to
+we use $"polarise"$ to
 restrict the scope of caught exceptions, as discussed in @error-catching.
+Note that we $"depolarise"$ the final outputs of $f update g$ in order to
+prevent leaking polarisation information outside the update.
 
 #figure(caption: [Update semantics. Here, $mu$ is a filter and $sigma(v)$ is a function from a value $v$ to a stream of value results.], table(columns: 2,
   $mu$, $(mu update sigma)|^c_v$,
@@ -1592,9 +1595,9 @@ We discuss the remaining cases for $mu$:
   $ "catch"(x, g, c, v) := cases(
     sum_(y in g|^c_(e)) stream("error"(y)) & "if" x = "error"(e)", " x "is unpolarised, and" g|^c_x != stream(),
     stream(v) & "if" x = "error"(e)", " x "is unpolarised, and" g|^c_x = stream(),
-    stream(x) & "otherwise".
+    stream(x) & "otherwise"
 ) $
-  $"catch"(x, g, c, v)$ analyses $x$ (the current output of $f$):
+  The function $"catch"(x, g, c, v)$ analyses $x$ (the current output of $f$):
   If $x$ is no unpolarised error, $x$ is returned.
   For example, that is the case if the original right-hand side of the update
   returns an error, in which case we do not want this error to be caught here.
@@ -1617,8 +1620,8 @@ We discuss the remaining cases for $mu$:
     Note that unlike in @semantics, we do not define the update semantics of
     $"label" var(x) | f$, which could be used to resume an update after a $"break"$.
     The reason for this is that this requires
-    an additional $"break"$ exception that carries the current value alongside the variable,
-    as well as
+    an additional type of $"break"$ exceptions that
+    carries the current value alongside the variable, as well as
     variants of the value update operators in @updating that can handle unpolarised breaks.
     Because making update operators handle unpolarised breaks
     renders them considerably more complex and
@@ -1696,7 +1699,7 @@ $c$ and $v$ always denote some arbitrary context and value, respectively.
 ] <lem:cart-sum>
 
 #proof[
-  By unfolding the lowering as in @tab:lowering, we have that
+  The lowering in @tab:lowering yields
   $floor(f cartesian g)|^c_v = (floor(f) "as" var(x') | floor(g) "as" var(y') | var(x') cartesian var(y'))|^c_v$.
   Using the evaluation semantics in @tab:eval-semantics, we can further expand this to
   $sum_(x in floor(f)|^c_v) sum_(y in floor(g)^c{var(x') |-> x}_v)
@@ -1721,8 +1724,12 @@ We can now proceed by stating a central property of object construction.
 #theorem[
   For any $n in NN$ with $n > 0$, we have that
   $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
-  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
-  stream({k_1: v_1} + ... + {k_n: v_n}). $
+  $ sum_(k_1 in floor(k_1)|^c_v)
+    sum_(v_1 in floor(v_1)|^c_v) ...
+    sum_(k_n in floor(k_n)|^c_v)
+    sum_(v_n in floor(v_n)|^c_v)
+    stream(sum_i {k_i: v_i}).
+  $
 ]
 
 #proof[
@@ -1730,26 +1737,27 @@ We can now proceed by stating a central property of object construction.
   The base case $n = 1$ directly follows from @lem:obj-sum.
   For the induction step, we have to show that
   $floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v$ is equivalent to
-  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_(n+1) in floor(k_(n+1))|^c_v) sum_(v_n in floor(v_(n+1))|^c_v)
-  stream({k_1: v_1} + ... + {k_(n+1): v_(n+1)}). $
-  /*
-  under the assumption that
-  $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
-  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
-  stream({k_1: v_1} + ... + {k_n: v_n}). $
-  */
-
+  $ sum_(k_1 in floor(k_1)|^c_v)
+    sum_(v_1 in floor(v_1)|^c_v) ...
+    sum_(k_(n+1) in floor(k_(n+1))|^c_v)
+    sum_(v_(n+1) in floor(v_(n+1))|^c_v)
+    stream(sum_i {k_i: v_i}).
+  $
   We start by
   $ & floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v =^"(lowering)" \
   = & floor(sum_i {k_i: v_i})|^c_v = \
   = & floor(sum_(i = 1)^n {k_i: v_i} + {k_(n+1): v_(n+1)})|^c_v =^#[(@lem:cart-sum)] \
   = & sum_(x in floor(sum_(i=1)^n {k_i: v_i})|^c_v)
       sum_(y in floor({k_(n+1): v_(n+1)})|^c_v)
-      stream(x + y). $
-
+      stream(x + y).
+  $
   Here, we observe that $floor(sum_(i=1)^n {k_i: v_i})|^c_v = floor({k_1: v_1, ..., k_n: v_n})|^c_v$, which by the induction hypothesis equals
-  $ sum_(k_1 in floor(k_1)|^c_v) sum_(v_1 in floor(v_1)|^c_v) ... sum_(k_n in floor(k_n)|^c_v) sum_(v_n in floor(v_n)|^c_v)
-  stream({k_1: v_1} + ... + {k_n: v_n}). $
+  $ sum_(k_1 in floor(k_1)|^c_v)
+    sum_(v_1 in floor(v_1)|^c_v) ...
+    sum_(k_n in floor(k_n)|^c_v)
+    sum_(v_n in floor(v_n)|^c_v)
+    stream(sum_i^n {k_i: v_i}).
+  $
   We can use this to resume the simplification of
   $floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v$ to
   $ sum_(k_1 in floor(k_1)|^c_v)
@@ -1757,7 +1765,7 @@ We can now proceed by stating a central property of object construction.
     sum_(k_n in floor(k_n)|^c_v)
     sum_(v_n in floor(v_n)|^c_v)
     sum_(y in floor({k_(n+1): v_(n+1)})|^c_v)
-    stream({k_1: v_1} + ... + {k_n: v_n} + y)
+    stream(sum_i^n {k_i: v_i} + y)
   $
   Finally, applying @lem:obj-sum to $floor({k_(n+1): v_(n+1)})|^c_v$ proves the induction step.
 ]
@@ -1795,7 +1803,7 @@ Then, we used this to define the semantics of jq programs,
 by specifying the outcome of the execution of a jq program.
 A large part of this was dedicated to the evaluation of updates:
 In particular, we showed a new approach to evaluate updates.
-This approach, unlike the previous approach implemented in jq,
+This approach, unlike the approach implemented in jq,
 does not depend on separating path building and updating, but interweaves them.
 This allows update operations to cleanly handle multiple output values
 in cases where this was not possible before.
