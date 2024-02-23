@@ -1632,6 +1632,17 @@ We discuss the remaining cases for $mu$:
 - $x(f_1; ...; f_n)$, $x$: Call filters.
   This is defined analogously to @tab:eval-semantics.
 
+There are many filters $mu$ for which
+$(mu update sigma)|^c_v$ is not defined,
+for example $var(x)$, $[f]$, and ${}$.
+In such cases, we assume that $(mu update sigma)|^c_v$ returns an error just like jq,
+because these filters do not return paths to their input data.#footnote[
+  Apart from $"label" var(x) | g$, there is only one other kind of filter $mu$
+  that is supported in jq but not in our semantics, namely $fold x "as" var(x)(.; f)$.
+  For the final version of this text, however, we hope to provide
+  update semantics for this kind of filters as well.
+]
+
 #example("The Curious Case of Alternation")[
   The semantics of $(f alt g) update sigma$ can be rather surprising:
   For the input
@@ -1669,17 +1680,6 @@ We discuss the remaining cases for $mu$:
   That is because $.[]$ does not yield any value for the input,
   so $"error" update 1$ is executed, which yields an error.
 ]
-
-/*
-TODO:
-relative expressiveness of the two alternative semantics.  Can
-everything expressable in a jq update be similarly expressed in a jaq
-update?  If so, is their an automatic translation possible between
-them?  If so, perhaps jq updates could be automatically converted into
-jaq updates, enabling full support for jq semantics using the jaq
-implementation.  If not, what kinds of programs can no longer be
-expressed?  Can they be characterized?
-*/
 
 
 
