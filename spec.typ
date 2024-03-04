@@ -1290,7 +1290,7 @@ $ "reduce"   x "as" var(x) (.; f) =&     x_0 "as" var(x) | f & wide
 $
 and $"foreach"$ expands to
 $ "foreach" x "as" var(x) (.; f)
-=&     x_0 "as" var(x) | f \
+=& #hide($., ($) x_0 "as" var(x) | f \
 |& ., (x_1 "as" var(x) | f \
 |& ... \
 |& ., (x_n "as" var(x) | f)...).
@@ -1567,6 +1567,7 @@ prevent leaking polarisation information outside the update.
   $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", (f update sigma)|^c_v, (g update sigma)|^c_v)$,
   $"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
   $"break" var(x)$, $stream("break"(var(x)))$,
+  $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f, sigma)$,
   $x(f_1; ...; f_n)$, $(f update sigma)|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
   $x$, $(f update sigma)|^c'_v "if" c(x) = (f, c')$,
 )) <tab:update-semantics>
@@ -1629,6 +1630,7 @@ We discuss the remaining cases for $mu$:
     rarely used in the left-hand side of updates anyway,
     we think it more beneficial for the presentation to forgo label expressions here.
   ]
+- $fold x "as" var(x) (.; f)$: TODO.
 - $x(f_1; ...; f_n)$, $x$: Call filters.
   This is defined analogously to @tab:eval-semantics.
 
@@ -1636,12 +1638,9 @@ There are many filters $mu$ for which
 $(mu update sigma)|^c_v$ is not defined,
 for example $var(x)$, $[f]$, and ${}$.
 In such cases, we assume that $(mu update sigma)|^c_v$ returns an error just like jq,
-because these filters do not return paths to their input data.#footnote[
-  Apart from $"label" var(x) | g$, there is only one other kind of filter $mu$
-  that is supported in jq but not in our semantics, namely $fold x "as" var(x)(.; f)$.
-  For the final version of this text, however, we hope to provide
-  update semantics for this kind of filters as well.
-]
+because these filters do not return paths to their input data.
+Our semantics support all kinds of filters $mu$ that are supported by jq, except for
+$"label" var(x) | g$.
 
 #example("The Curious Case of Alternation")[
   The semantics of $(f alt g) update sigma$ can be rather surprising:
@@ -1680,6 +1679,41 @@ because these filters do not return paths to their input data.#footnote[
   That is because $.[]$ does not yield any value for the input,
   so $"error" update 1$ is executed, which yields an error.
 ]
+
+
+== Folding <folding-update>
+
+$ "fold"^c_v (l, var(x), f, sigma, o) := cases(
+  sum_(y in o(v)) (f update sigma')|^(c{var(x) |-> h})_y & "if" l = stream(h) + t "and" sigma'(x) = "fold"^c_x (t, var(x), f, sigma, o),
+  sigma(v) & "otherwise" (l = stream())
+) $
+
+$ "reduce"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) = #hide($sigma$)stream(v) \
+     "for"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) =  sigma(v)
+$
+
+$ "foreach"^c_v (l, var(x), f, sigma) := cases(
+  (f update sigma')|^(c{var(x) |-> h})_v & "if" l = stream(h) + t "and" sigma'(x) = "for"^c_x (t, var(x), f, sigma),
+  sigma(v) & "otherwise",
+) $
+
+$ "reduce"   x "as" var(x) (.; f) update sigma =&         ((x_0 "as" var(x) | f) & wide
+  "for"      x "as" var(x) (.; f) update sigma =& sigma | ((x_0 "as" var(x) | f) \
+update& ... &
+update& ... \
+update&         ((x_n "as" var(x) | f) &
+update& sigma | ((x_n "as" var(x) | f) \
+update& sigma)...) &
+update& sigma)...)
+$
+
+$ "foreach" x "as" var(x) (.; f) update sigma
+=& #hide($sigma |$) ((x_0 "as" var(x) | f) \
+update& sigma | ((x_1 "as" var(x) | f) \
+update& ... \
+update& sigma | ((x_n "as" var(x) | f) \
+update& sigma)...).
+$
 
 
 
