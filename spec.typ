@@ -1685,7 +1685,7 @@ $"label" var(x) | g$.
 
 In @folding, we have seen how to evaluate folding filters of the shape
 $fold x "as" var(x) (.; f)$, where $fold$ is either $"reduce"$ or $"foreach"$.
-We will now show how to define the corresponding update semantics for these filters.
+Here, we will define update semantics for these filters.
 
 Let us start with an example to understand folding on the left-hand side of an update.
 
