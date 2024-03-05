@@ -1418,7 +1418,7 @@ The resulting update semantics can be understood to _interleave_ calls to $f$ an
 By doing so, these semantics can abandon the construction of paths altogether,
 which results in higher performance when evaluating updates.
 
-== Properties of new semantics
+== Properties of new semantics <update-props>
 
 // μονοπάτι = path
 // συνάρτηση = function
@@ -1683,20 +1683,55 @@ $"label" var(x) | g$.
 
 == Folding <folding-update>
 
-$ "fold"^c_v (l, var(x), f, sigma, o) := cases(
-  sum_(y in o(v)) (f update sigma')|^(c{var(x) |-> h})_y & "if" l = stream(h) + t "and" sigma'(x) = "fold"^c_x (t, var(x), f, sigma, o),
-  sigma(v) & "otherwise" (l = stream())
-) $
+In @folding, we have seen how to evaluate folding filters of the shape
+$fold x "as" var(x) (.; f)$, where $fold$ is either $"reduce"$ or $"foreach"$.
+We will now show how to define the corresponding update semantics for these filters.
 
-$ "reduce"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) = #hide($sigma$)stream(v) \
-     "for"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) =  sigma(v)
-$
+Let us start with an example to understand folding on the left-hand side of an update.
 
-$ "foreach"^c_v (l, var(x), f, sigma) := cases(
-  (f update sigma')|^(c{var(x) |-> h})_v & "if" l = stream(h) + t "and" sigma'(x) = "for"^c_x (t, var(x), f, sigma),
-  sigma(v) & "otherwise",
-) $
+#example[
+  Let $v = [[[2], 1], 0]$ be our input value
+  and $mu$ be the filter $fold (0, 0) "as" var(x) (.; .[var(x)])$.
+  The regular evaluation of $mu$ with the input value then yields
+  $ mu|^{}_v = cases(
+    stream(#hide($v, [[2], 1], $) [2]) & "if" fold = "reduce",
+    stream(       v, [[2], 1],    [2]) & "if" fold = "for",
+    stream(#hide($v, $) [[2], 1], [2]) & "if" fold = "foreach",
+  ) $
+  For the case where $fold = "for"$, the paths corresponding to the output are
+  $.$, $.[0]$, and $.[0][0]$, and
+  for the case where $fold = "reduce"$, the paths are just $.[0][0]$.
+  Given that all outputs have corresponding paths, we can update over them.
+  For example, taking $. + [3]$ as filter $sigma$, we should obtain the output
+  #let h3 = hide($, 3$)
+  $ (mu update sigma)^{}_v = cases(
+    stream([[[2, 3], 1#h3], 0#h3]) & "if" fold = "reduce",
+    stream([[[2, 3], 1, 3], 0, 3]) & "if" fold = "for",
+    stream([[[2, 3], 1, 3], 0#h3]) & "if" fold = "foreach",
+  ) $
+]
 
+First, note that for folding filters,
+the lowering in @tab:lowering and
+the defining equations in @folding
+only make use of filters for which we have already introduced update semantics in @tab:update-semantics.
+This should not be taken for granted; for example, we originally lowered
+$fold f_x "as" var(x) (f_y; f)$ to
+$ floor(f_y) "as" var(y) | fold floor(f_x) "as" var(x) (var(y); floor(f)) $
+instead of the more complicated lowering found in @tab:lowering, namely
+$ . "as" var(x') | floor(f_y) | fold floor(var(x') | f_x) "as" var(x) (.; floor(f)). $
+While both lowerings produce the same output for regular evaluation,
+we cannot use the original lowering for updates, because the defining equations for
+$fold x "as" var(x) (var(y); f)$ would have the shape $var(y) | ...$,
+which is undefined on the left-hand side of an update.
+However, the lowering in @tab:lowering avoids this issue,
+so it can be used on the left-hand side of updates.
+
+To obtain an intuition about how the update evaluation of a fold looks like, we can take
+$fold x "as" var(x) (.; f) update sigma$,
+substitute the left-hand side by the defining equations in @folding and
+expand everything using the properties in @update-props.
+This yields
 $ "reduce"   x "as" var(x) (.; f) update sigma =&         ((x_0 "as" var(x) | f) & wide
   "for"      x "as" var(x) (.; f) update sigma =& sigma | ((x_0 "as" var(x) | f) \
 update& ... &
@@ -1706,7 +1741,7 @@ update& sigma | ((x_n "as" var(x) | f) \
 update& sigma)...) &
 update& sigma)...)
 $
-
+and
 $ "foreach" x "as" var(x) (.; f) update sigma
 =& #hide($sigma |$) ((x_0 "as" var(x) | f) \
 update& sigma | ((x_1 "as" var(x) | f) \
@@ -1714,6 +1749,20 @@ update& ... \
 update& sigma | ((x_n "as" var(x) | f) \
 update& sigma)...).
 $
+
+$ "fold"^c_v (l, var(x), f, sigma, o) := cases(
+  sum_(y in o(v)) (f update sigma')|^(c{var(x) |-> h})_y & "if" l = stream(h) + t "and" sigma'(x) = "fold"^c_x (t, var(x), f, sigma, o),
+  sigma(v) & "otherwise" (l = stream())
+) $
+
+$ "reduce"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) = #hide($sigma$)stream(v) \
+     "for"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) =  sigma(v)
+$
+and
+$ "foreach"^c_v (l, var(x), f, sigma) := cases(
+  (f update sigma')|^(c{var(x) |-> h})_v & "if" l = stream(h) + t "and" sigma'(x) = "for"^c_x (t, var(x), f, sigma),
+  sigma(v) & "otherwise",
+) $
 
 
 
