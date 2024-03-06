@@ -1617,7 +1617,7 @@ We discuss the remaining cases for $mu$:
   and because $v$ cannot contain errors, these inputs cannot be contained in $v$.
   Consequentially, $g$ can never return any path pointing to $v$.
   The only way, therefore, to get out alive from a $"catch"$ is for $g$ to return ... nothing.
-- $"break"(var(x))$: Break out from the update.#footnote[
+- $"break"(var(x))$: Breaks out from the update.#footnote[
     Note that unlike in @semantics, we do not define the update semantics of
     $"label" var(x) | f$, which could be used to resume an update after a $"break"$.
     The reason for this is that this requires
@@ -1630,8 +1630,9 @@ We discuss the remaining cases for $mu$:
     rarely used in the left-hand side of updates anyway,
     we think it more beneficial for the presentation to forgo label expressions here.
   ]
-- $fold x "as" var(x) (.; f)$: TODO.
-- $x(f_1; ...; f_n)$, $x$: Call filters.
+- $fold x "as" var(x) (.; f)$: Folds $f$ over the values returned by $var(x)$.
+  We will discuss this in @folding-update.
+- $x(f_1; ...; f_n)$, $x$: Calls filters.
   This is defined analogously to @tab:eval-semantics.
 
 There are many filters $mu$ for which
@@ -1686,21 +1687,22 @@ $"label" var(x) | g$.
 In @folding, we have seen how to evaluate folding filters of the shape
 $fold x "as" var(x) (.; f)$, where $fold$ is either $"reduce"$ or $"foreach"$.
 Here, we will define update semantics for these filters.
+These update operations are _not_ supported in jq 1.7; however,
+we will show that they arise quite naturally from previous definitions.
 
 Let us start with an example to understand folding on the left-hand side of an update.
 
 #example[
   Let $v = [[[2], 1], 0]$ be our input value
   and $mu$ be the filter $fold (0, 0) "as" var(x) (.; .[var(x)])$.
-  The regular evaluation of $mu$ with the input value then yields
+  The regular evaluation of $mu$ with the input value as described in @semantics yields
   $ mu|^{}_v = cases(
     stream(#hide($v, [[2], 1], $) [2]) & "if" fold = "reduce",
     stream(       v, [[2], 1],    [2]) & "if" fold = "for",
     stream(#hide($v, $) [[2], 1], [2]) & "if" fold = "foreach",
   ) $
-  For the case where $fold = "for"$, the paths corresponding to the output are
-  $.$, $.[0]$, and $.[0][0]$, and
-  for the case where $fold = "reduce"$, the paths are just $.[0][0]$.
+  When $fold = "for"$, the paths corresponding to the output are $.$, $.[0]$, and $.[0][0]$, and
+  when $fold = "reduce"$, the paths are just $.[0][0]$.
   Given that all outputs have corresponding paths, we can update over them.
   For example, taking $. + [3]$ as filter $sigma$, we should obtain the output
   #let h3 = hide($, 3$)
@@ -1709,7 +1711,7 @@ Let us start with an example to understand folding on the left-hand side of an u
     stream([[[2, 3], 1, 3], 0, 3]) & "if" fold = "for",
     stream([[[2, 3], 1, 3], 0#h3]) & "if" fold = "foreach",
   ) $
-]
+] <ex:folding-update>
 
 First, note that for folding filters,
 the lowering in @tab:lowering and
@@ -1724,7 +1726,8 @@ While both lowerings produce the same output for regular evaluation,
 we cannot use the original lowering for updates, because the defining equations for
 $fold x "as" var(x) (var(y); f)$ would have the shape $var(y) | ...$,
 which is undefined on the left-hand side of an update.
-However, the lowering in @tab:lowering avoids this issue,
+However, the lowering in @tab:lowering avoids this issue
+by not binding the output of $f_y$ to a variable,
 so it can be used on the left-hand side of updates.
 
 To obtain an intuition about how the update evaluation of a fold looks like, we can take
@@ -1741,7 +1744,7 @@ update& sigma | ((x_n "as" var(x) | f) \
 update& sigma)...) &
 update& sigma)...)
 $
-and
+and $"foreach"$ steps out of line again by not applying $sigma$ initially:
 $ "foreach" x "as" var(x) (.; f) update sigma
 =& #hide($sigma |$) ((x_0 "as" var(x) | f) \
 update& sigma | ((x_1 "as" var(x) | f) \
@@ -1750,18 +1753,38 @@ update& sigma | ((x_n "as" var(x) | f) \
 update& sigma)...).
 $
 
+#example[
+  To see the effect of above equations, let us reconsider
+  the input value and the filters from @ex:folding-update.
+  Using some liberty to write $.[0]$ instead of $0 "as" var(x) | .[var(x)]$, we have:
+  #let hs = hide($sigma | ($)
+  $ mu update sigma = cases(
+    #hs      .[0] update #hs      .[0] update sigma   & "if" fold = "reduce",
+    sigma | (.[0] update sigma | (.[0] update sigma)) & "if" fold = "for",
+    #hs      .[0] update sigma | (.[0] update sigma)  & "if" fold = "foreach",
+  ) $
+]
+
+We will now formally define the functions
+$fold^c_v (l, var(x), f, sigma)$ used in @tab:update-semantics.
+For this, we first introduce a function $"fold"^c_v (l, var(x), f, sigma, o)$,
+which resembles its corresponding function in @folding,
+but which adds an argument for the update filter $sigma$:
+
 $ "fold"^c_v (l, var(x), f, sigma, o) := cases(
   sum_(y in o(v)) (f update sigma')|^(c{var(x) |-> h})_y & "if" l = stream(h) + t "and" sigma'(x) = "fold"^c_x (t, var(x), f, sigma, o),
   sigma(v) & "otherwise" (l = stream())
 ) $
 
-$ "reduce"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) = #hide($sigma$)stream(v) \
-     "for"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) =  sigma(v)
+Using this function, we can now define
+
+$ "reduce"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, sigma, o) "where" o(v) = #hide($sigma$)stream(v) \
+     "for"^c_v (l, var(x), f, sigma) :=& "fold"^c_v (l, var(x), f, sigma, o) "where" o(v) =  sigma(v)
 $
-and
+as well as
 $ "foreach"^c_v (l, var(x), f, sigma) := cases(
   (f update sigma')|^(c{var(x) |-> h})_v & "if" l = stream(h) + t "and" sigma'(x) = "for"^c_x (t, var(x), f, sigma),
-  sigma(v) & "otherwise",
+  stream(v) & "otherwise",
 ) $
 
 
