@@ -197,10 +197,29 @@ We can see that multiplication of a string $s$ with a natural number $n > 0$ ret
 $sum_(i = 1)^n s$; that is, the concatenation of $n$ times the string $s$.
 The multiplication of two objects corresponds to their recursive merge as defined above.
 
-For two values $l$ and $r$, the arithmetic operations
-$l - r$, $l div r$, and $l mod r$ (modulo) yield
-$m - n$, $m div n$, and $m mod n$ if $l$ and $r$ are numbers $m$ and $n$,
-otherwise they yield an error.
+We now define subtraction of two values $l$ and $r$:
+
+$ l - r := cases(
+  n_1 - n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
+  [sum_(i, l_i in {r_0, ..., r_n}) stream(l_i) ] & "if" l = [l_0, ..., l_n] "and" r = [r_0, ..., r_n],
+  "error" & "otherwise"
+) $
+
+When both $l$ and $r$ are arrays, then $l - r$ returns
+an array containing those values of $l$ that are not contained in $r$.
+
+$ "split"(l, r) := "TODO" $
+
+$ l div r := cases(
+  n_1 div n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
+  "split"(l, r) & "if" l "and" r "are strings",
+  "error" & "otherwise"
+) $
+
+For two values $l$ and $r$, the arithmetic operation
+$l mod r$ (modulo) yields
+$m mod n$ if $l$ and $r$ are numbers $m$ and $n$,
+otherwise it yields an error.
 
 Suppose that the jq filters
 `f` and `g` yield $stream(l)$ and $stream(r)$, respectively.
