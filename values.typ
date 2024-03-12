@@ -157,6 +157,25 @@ the jq filter `true and .` yields $stream("bool"(v))$.
 
 == Arithmetic operations <arithmetic>
 
+We will now define a set of arithmetic operations on values.
+We will link these later directly to their counterparts in jq:
+Suppose that the jq filters
+`f` and `g` yield $stream(l)$ and $stream(r)$, respectively.
+Then the jq filters
+`f + g`,
+`f - g`,
+`f * g`,
+`f / g`, and
+`f % g` yield
+$stream(l + r)$,
+$stream(l - r)$,
+$stream(l times r)$,
+$stream(l div r)$, and
+$stream(l mod r)$,
+respectively.
+
+=== Addition
+
 We define addition of two values $l$ and $r$ as follows:
 
 $ l + r := cases(
@@ -171,6 +190,8 @@ $ l + r := cases(
 Here, we can see that $"null"$ serves as a neutral element for addition.
 For strings and arrays, addition corresponds to their concatenation, and
 for objects, it corresponds to their union.
+
+=== Multiplication
 
 #let merge = $union.double$
 Given two objects $l$ and $r$, we define their _recursive merge_ $l merge r$ as:
@@ -197,6 +218,8 @@ We can see that multiplication of a string $s$ with a natural number $n > 0$ ret
 $sum_(i = 1)^n s$; that is, the concatenation of $n$ times the string $s$.
 The multiplication of two objects corresponds to their recursive merge as defined above.
 
+=== Subtraction
+
 We now define subtraction of two values $l$ and $r$:
 
 $ l - r := cases(
@@ -208,52 +231,53 @@ $ l - r := cases(
 When both $l$ and $r$ are arrays, then $l - r$ returns
 an array containing those values of $l$ that are not contained in $r$.
 
+=== Division
+
 We will now define a function that
 splits a string $y + x$ by some non-empty separator string $s$.
 The function preserves the invariant that $y$ does not contain $s$:
 
 $ "split"(x, s, y) := cases(
   "split"(c_1...c_n, s, y + c_0) & "if" x = c_0...c_n "and" c_0...c_(|s| - 1) != s,
-  [stream(y)] + "split"(c_(|s|)...c_n, s, \"\") & "if" x = c_0...c_n "and" c_0...c_(|s| - 1) = s,
+  [stream(y)] + "split"(c_(|s|)...c_n, s, qs("")) & "if" x = c_0...c_n "and" c_0...c_(|s| - 1) = s,
   [stream(y)] & "otherwise" (|x| = 0),
 ) $
 
-We use this splitting function to define subtraction of two values:
+We use this splitting function to define division of two values:
 
 $ l div r := cases(
   n_1 div n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
   [] & "if" l "and" r "are strings and " |l| = 0,
   [sum_i stream(c_i)] & "if" l = c_0...c_n "," r "is a string," |l| > 0", and" |r| = 0,
-  "split"(l, r, \"\") & "if" l "and" r "are strings," |l| > 0", and" |r| > 0,
+  "split"(l, r, qs("")) & "if" l "and" r "are strings," |l| > 0", and" |r| > 0,
   "error" & "otherwise"
 ) $
 
 #example[
-  Let $s = \"a b\"$.
+  Let $s = qs("ab")$.
   We have that
-  $s div s = [\"\", \"\"]$.
+  $s div s = [qs(""), qs("")]$.
   Furthermore,
-  $\"c\" div s = [\"c\"]$,
-  $(s + \"c\" + s) div s = [\"\", \"c\", \"\"]$ and
-  $(s + \"c\" + s + \"d e\") div s = [\"\", \"c\", \"d e\"]$.
+  $qs("c") div s = [qs("c")]$,
+  $(s + qs("c") + s           ) div s = [qs(""), qs("c"), qs("")  ]$ and
+  $(s + qs("c") + s + qs("de")) div s = [qs(""), qs("c"), qs("de")]$.
 ]
+
+From this example, we can infer the following lemma.
 
 #lemma[
   Let $l$ and $r$ strings with $|l| > 0$ and $|r| > 0$.
   Then $l div r = [l_0, ..., l_n]$ for some $n > 0$ such that
-  for all $i$, $l_i$ is a string.
-  Furthermore, $l = (sum_(i < n) (l_i + r)) + l_n$.
+  $l = (sum_(i = 0)^(n - 1) (l_i + r)) + l_n$ and
+  for all $i$, $l_i$ is a string that does not contain $r$ as substring.
 ]
+
+=== Remainder
 
 For two values $l$ and $r$, the arithmetic operation
 $l mod r$ (modulo) yields
 $m mod n$ if $l$ and $r$ are numbers $m$ and $n$,
 otherwise it yields an error.
-
-Suppose that the jq filters
-`f` and `g` yield $stream(l)$ and $stream(r)$, respectively.
-Then the jq filters `f + g` and `f * g` yield
-$stream(l + r)$ and $stream(l times r)$, respectively.
 
 
 == Accessing <accessing>

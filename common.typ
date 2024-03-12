@@ -22,5 +22,5 @@
 #let alt = $slash.double$
 #let alteq = math.op($alt#h(0pt)=$)
 
-#let qs(s) = $quote #s quote$
+#let qs(s) = $quote#h(0pt)#s#h(0pt)quote$
 #let oat(k) = $.[#qs(k)]$
