@@ -3,7 +3,7 @@
 = Tour of jq <tour>
 
 This goal of this section is to convey an intuition about how jq functions.
-The official documentation of jq is @jq-manual.
+The official documentation of jq is its user manual @jq-manual.
 
 jq programs are called _filters_.
 For now, let us consider a filter to be a function from a value to
