@@ -163,7 +163,7 @@ $ l + r := cases(
   v & "if" l = "null" "and" r = v", or" l = v "and" r = "null",
   n_1 + n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
   c_(l,1)...c_(l,m)c_(r,1)...c_(r,n) & "if" l = c_(l,1)...c_(l,m) "and" r = c_(r,1)...c_(r,n),
-  [l_1, ..., l_m, r_1, ..., r_n] & "if" l = [l_1, ..., l_m] "and" r = [r_1, ..., r_n],
+  [stream(l_1, ..., l_m, r_1, ..., r_n)] & "if" l = [l_1, ..., l_m] "and" r = [r_1, ..., r_n],
   l union r & "if" l = {...} "and" r = {...},
   "error" & "otherwise",
 ) $
@@ -208,13 +208,42 @@ $ l - r := cases(
 When both $l$ and $r$ are arrays, then $l - r$ returns
 an array containing those values of $l$ that are not contained in $r$.
 
-$ "split"(l, r) := "TODO" $
+We will now define a function that
+splits a string $y + x$ by some non-empty separator string $s$.
+The function preserves the invariant that $y$ does not contain $s$:
+
+$ "split"(x, s, y) := cases(
+  "split"(c_1...c_n, s, y + c_0) & "if" x = c_0...c_n "and" c_0...c_(|s| - 1) != s,
+  [stream(y)] + "split"(c_(|s|)...c_n, s, \"\") & "if" x = c_0...c_n "and" c_0...c_(|s| - 1) = s,
+  [stream(y)] & "otherwise" (|x| = 0),
+) $
+
+We use this splitting function to define subtraction of two values:
 
 $ l div r := cases(
   n_1 div n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
-  "split"(l, r) & "if" l "and" r "are strings",
+  [] & "if" l "and" r "are strings and " |l| = 0,
+  [sum_i stream(c_i)] & "if" l = c_0...c_n "," r "is a string," |l| > 0", and" |r| = 0,
+  "split"(l, r, \"\") & "if" l "and" r "are strings," |l| > 0", and" |r| > 0,
   "error" & "otherwise"
 ) $
+
+#example[
+  Let $s = \"a b\"$.
+  We have that
+  $s div s = [\"\", \"\"]$.
+  Furthermore,
+  $\"c\" div s = [\"c\"]$,
+  $(s + \"c\" + s) div s = [\"\", \"c\", \"\"]$ and
+  $(s + \"c\" + s + \"d e\") div s = [\"\", \"c\", \"d e\"]$.
+]
+
+#lemma[
+  Let $l$ and $r$ strings with $|l| > 0$ and $|r| > 0$.
+  Then $l div r = [l_0, ..., l_n]$ for some $n > 0$ such that
+  for all $i$, $l_i$ is a string.
+  Furthermore, $l = (sum_(i < n) (l_i + r)) + l_n$.
+]
 
 For two values $l$ and $r$, the arithmetic operation
 $l mod r$ (modulo) yields
