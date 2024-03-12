@@ -8,6 +8,8 @@
 
 #text(size: 20pt, weight: "bold", title)
 
+= Introduction
+
 `jq` is a tool that provides a programming language
 to efficiently process JSON data.
 We call this programming language the "jq language".
