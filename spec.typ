@@ -6,6 +6,7 @@
 
 #let title = [A formal specification of the jq language]
 
+#set document(title: title)
 #text(size: 20pt, weight: "bold", title)
 
 = Introduction
