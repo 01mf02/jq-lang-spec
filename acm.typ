@@ -67,13 +67,14 @@
 }
 #let even-page(loc) = calc.rem(loc.page(), 2) == 0
 
-#let header(pub, loc) = {
-  let article-page = [#{pub.article}:#counter(page).display()]
-  if even-page(loc) [#article-page #h(1fr) #{pub.authors-short}]
-  else [#{pub.title-short} #h(1fr) #article-page]
+#let header(short, pub, loc) = {
+  let article = if pub != none [#{pub.article}:]
+  let article-page = [#article#counter(page).display()]
+  if even-page(loc) [#article-page #h(1fr) #{short.authors}]
+  else [#{short.title} #h(1fr) #article-page]
 }
 
-#let footer(pub) = [
+#let footer(pub) = if pub != none [
   #pub.journal-short,
   Vol. #pub.volume,
   No. #pub.number,
@@ -109,14 +110,32 @@
     doi: "XXXXXXX.XXXXXXX",
   ),
 
+  copyright: pub => [
+    Permission to make digital or hard copies of all or part of this
+    work for personal or classroom use is granted without fee provided
+    that copies are not made or distributed for profit or commercial
+    advantage and that copies bear this notice and the full citation on
+    the first page. Copyrights for components of this work owned by
+    others than ACM must be honored. Abstracting with credit is
+    permitted. To copy otherwise, or republish, to post on servers or to
+    redistribute to lists, requires prior specific permission
+    and#h(.5pt)/or  a fee. Request permissions from
+    permissions\@acm.org.\
+    #sym.copyright #pub.year Association for Computing Machinery\
+    0004-5411/2018/8-ART1 \$15.00\
+    https:\/\/doi.org\/#pub.doi
+  ],
+
   body
 ) = {
   if anonymous {
     authors = ((name: "Anonymous Author(s)"),)
     authors-short = "Anon."
   }
-  pub.title-short = if title-short == none { title } else { title-short }
-  pub.authors-short = if authors-short == none { author-names(authors) } else { authors-short }
+  let short = (
+    title: if title-short == none { title } else { title-short },
+    authors: if authors-short == none { author-names(authors) } else { authors-short },
+  )
 
   // Set document metadata
   set document(title: title, author: authors.map(author => author.name))
@@ -131,7 +150,7 @@
       left: 46pt,
       right: 46pt
     ),
-    header: text(size: 8pt, font: sfFont, locate(loc => if loc.page() > 1 { header(pub, loc) })),
+    header: text(size: 8pt, font: sfFont, locate(loc => if loc.page() > 1 { header(short, pub, loc) })),
     footer: text(size: 8pt, locate(loc => align(if even-page(loc) { left } else { right }, footer(pub)))),
     header-ascent: 17pt,
     footer-descent: 24pt,
@@ -149,17 +168,12 @@
 
     authors.map(show-author).join("\n")
     if not(anonymous) {
-      footnote([Authors' addresses: #authors.map(author-address).join("; ").])
+      footnote(numbering: x => [#hide[0]], [#linebreak() #v(-1.5em) Authors' addresses: #authors.map(author-address).join("; ").])
     }
+    footnote(numbering: x => [#hide[0]], (v(-1em), copyright(pub)).join())
     v(2.5pt)
 
-    [
-      #abstract
-
-      CCS Concepts: #ccs.map(show-ccs).join("; ").
-
-      Additional Key Words and Phrases: #keywords.join(", ")
-
+    let ref-format = if pub != none [
       *ACM Reference Format:* \
       #author-names(authors).
       #pub.year.
@@ -170,7 +184,16 @@
       Article #pub.article (#show-month(pub.month) #pub.year),
       #locate(total-pages).
       https:\/\/doi.org\/#pub.doi
-      #footnote(legal(pub))
+    ]
+
+    [
+      #abstract
+
+      CCS Concepts: #ccs.map(show-ccs).join("; ").
+
+      Additional Key Words and Phrases: #keywords.join(", ")
+
+      #ref-format
     ]
 
     v(1pt)

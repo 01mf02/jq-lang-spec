@@ -16,7 +16,7 @@
     ),
   ),
   authors-short: "Färber",
-  anonymous: true,
+  anonymous: false,
   ccs: (
     ([Software and its engineering], (
       (500, [Semantics]),
@@ -34,7 +34,7 @@
   ],
   keywords: ("jq", "JSON", "semantics"),
 
-  pub: (
+  pub: none, /*(
     journal: "Journal of the ACM",
     journal-short: "J. ACM",
     volume: 37,
@@ -43,7 +43,16 @@
     month: 8,
     year: 2018,
     doi: "XXXXXXX.XXXXXXX",
-  )
+  ),
+  */
+  copyright: pub => [
+    #line(length: 30%, stroke: 0.5pt)
+    #link("https://creativecommons.org/licenses/by/4.0/")[
+      #image("cc-by.svg", width: 10%)
+      This work is licensed under a Creative Commons Attribution 4.0 International License.
+    ] \
+    © 2024 Copyright held by the owner/author(s).
+  ],
 )
 
 #set raw(lang: "jq")
