@@ -25,8 +25,8 @@ atom_head =
   | fold atom "as" var args
   | var
   | const args?
-  | "[" term "]"
-  | "{" obj_entry* "}"
+  | "[" term? "]"
+  | "{" (obj_entry ("," obj_entry)*)? "}"
   | "." key_opt? path
   | ".."
   | "(" term ")"
