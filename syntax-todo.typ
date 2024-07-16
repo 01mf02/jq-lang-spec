@@ -1,3 +1,57 @@
+jq BNF:
+
+```
+defs = module def*
+main = module term
+
+module = "module" term ";" (("include" cstr | "import" cstr "as" var) ";")*
+
+term(op) = atom (op atom)* (("as" var)? "|" term(op))?
+
+term          = term(bin_op | "and" | "or" | ",")
+term_no_comma = term(bin_op | "and" | "or"      )
+
+atom = atom_head "?"? path
+
+atom_head =
+  | num
+  | str
+  | def term
+  | "-" atom
+  | "if" term "then" term ("elif" term "then" term)* ("else" term)? "end"
+  | "try" atom ("catch" atom)?
+  | "label" var "|" term
+  | "break" var
+  | fold atom "as" var args
+  | var
+  | const args?
+  | "[" term "]"
+  | "{" obj_entry* "}"
+  | "." key_opt? path
+  | ".."
+  | "(" term ")"
+
+def = "def" const args? ":" term ";"
+
+fold = "reduce" | "foreach"
+args = "(" term ("," term)* ")"
+num =
+str = @const? cstr
+cstr =
+bin_op =
+const =
+var =
+
+obj_entry =
+  | "(" term        ")" ":" term_no_comma
+  |  (var | key | str) (":" term_no_comma)?
+
+path = path_part_opt* ("." key_opt path_part_opt*)*
+path_part_opt = "[" path_part "]" "?"?
+key_opt = key "?"?
+path_part = term | term ":" term | term ":" | ":" term
+```
+
 We will now create a bridge between the concrete jq syntax and the
 high-level intermediate representation.
 In particular, we will simplify the following constructions of the jq syntax:
