@@ -26,7 +26,7 @@ atom_head =
   | var
   | const args?
   | "[" term? "]"
-  | "{" (obj_entry ("," obj_entry)*)? "}"
+  | "{" (obj_entry ("," obj_entry)* ","?)? "}"
   | "." key_opt? path
   | ".."
   | "(" term ")"
