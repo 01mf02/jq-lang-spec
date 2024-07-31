@@ -118,7 +118,7 @@ replace certain occurrences of filters by variables
   ${f_1: g_1, ..., f_n: g_n}$, $floor(sum_i {f_i: g_i})$,
   $f p_1^? ... p_n^?$, $. "as" var(x') | floor(f) | floor(p_1^?)_var(x') | ... | floor(p_n^?)_var(x')$,
   $f = g$, $floor(g) "as" var(x') | floor(f update var(x'))$,
-  $f aritheq g$, $floor(f update . arith g)$,
+  $f aritheq g$, $floor(g) "as" var(x') | floor(f update . arith var(x'))$,
   $f alteq g$, $floor(f update . alt g)$,
   $f "and" g$, $floor(f) "as" var(x') | var(x') "and" floor(g)$,
   $f "or"  g$, $floor(f) "as" var(x') | var(x') "or"  floor(g)$,
