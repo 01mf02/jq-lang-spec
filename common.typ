@@ -21,6 +21,8 @@
 #let update = $models$
 #let alt = $slash.double$
 #let alteq = math.op($alt#h(0pt)=$)
+#let defas = $#h(0pt):$
+#let defend = $; thick$
 
 #let qs(s) = $quote#h(0pt)#s#h(0pt)quote$
 #let oat(k) = $.[#qs(k)]$

@@ -8,8 +8,11 @@ the output of the filter $phi$ in the context $c$ on the input value $v$.
 Let us start with a few definitions.
 A _context_ $c$ is a mapping
 from variables $var(x)$ to values and
-from identifiers $x$ to pairs $(f, c)$, where $f$ is a filter and $c$ is a context.
-Contexts store what variables and filter arguments are bound to.
+from identifier-arity pairs $(x, n)$ to triples $(a, f, c)$, where
+$a$ is an identifier sequence with length $n$,
+$f$ is a filter, and
+$c$ is a context.
+Contexts store what variables and filters are bound to.
 
 We are now going to introduce a few helper functions.
 The first function helps define filters such as if-then-else and alternation ($f alt g$):
@@ -48,12 +51,15 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
   $var(x) "and" f$, $"junction"(c(var(x)), "false", f|^c_v)$,
   $var(x) "or"  f$, $"junction"(c(var(x)), "true" , f|^c_v)$,
   $"if" var(x) "then" f "else" g$, $"ite"("bool"(c(var(x))), "true", f|^c_v, g|^c_v)$,
+  $.[p]^?$, $v[c(p)]^?$,
+  /*
   $.[]$, $v[]$,
   $.[var(x)]$, $stream(v[c(var(x))])$,
   $.[var(x):var(y)]$, $stream(v[c(var(x)):c(var(y))])$,
+  */
   $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f)$,
-  $x(f_1; ...; f_n)$, $f|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
-  $x$, $f|^c'_v "if" c(x) = (f, c')$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $g|^(c union {(x, n) |-> ([x_1, ..., x_n], f, c)})_v$,
+  $x(f_1; ...; f_n)$, $f|^(c' union union.big_i {x_i |-> (f_i, c)})_v "if" c((x, n)) = ([x_1, ..., x_n], f, c')$,
   $f update g$, [see @updates]
 )) <tab:eval-semantics>
 
@@ -65,10 +71,10 @@ Let us discuss its different cases:
 - $var(x)$: Returns the value currently bound to the variable $var(x)$,
   by looking it up in the context.
   Wellformedness of the filter (as defined in @hir) ensures that such a value always exists.
-- $[f]$: Creates an array from the output of $f$, using the operator defined in @construction.
+- $[f]$: Creates an array from the output of $f$, using the operator defined in @values.
 - ${}$: Creates an empty object.
 - ${var(x): var(y)}$: Creates an object from the values bound to $var(x)$ and $var(y)$,
-  using the operator defined in @construction.
+  using the operator defined in @values.
 - $f, g$: Concatenates the outputs of $f$ and $g$.
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
 - $f alt g$: Returns $l$ if $l$ is not empty, else the outputs of $g$, where
@@ -87,7 +93,7 @@ Let us discuss its different cases:
   (any of $eq.quest$, $eq.not$, $<$, $<=$, $>$, $>=$, $+$, $-$, $times$, $div$, and $mod$,
   as given in @tab:binops) on the values bound to $var(x)$ and $var(y)$.
   The semantics of the arithmetic operators are given in @arithmetic,
-  the comparison operators are defined by the ordering given in @ordering,
+  the comparison operators are defined by the value order (see @value-ops),
   $l eq.quest r$ returns whether $l$ equals $r$, and
   $l eq.not r$ returns its negation.
 - $"try" f "catch" g$: Replaces all outputs of $f$ that equal $"error"(e)$ for some $e$
@@ -121,7 +127,10 @@ Let us discuss its different cases:
   $ "junction"(x, v, l) := "ite"lr(("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))), size: #50%) $
 - $var(x) "or" f$: Similar to its "and" counterpart above.
 - $"if" var(x) "then" f "else" g$: Returns the output of $f$ if $var(x)$ is bound to either null or false, else returns the output of $g$.
-- $.[]$, $.[var(x)]$, or $.[var(x):var(y)]$: Accesses parts of the input value; see @accessing for the definitions of the operators.
+- $.[p]$: Accesses parts of the input value;
+  see @value-ops for the definitions of the operators.
+  We apply $c$ to the path indices (which are variables)
+  to replace them by their corresponding values.
 - $fold x "as" var(x) (.; f)$: Folds $f$ over the values returned by $x$,
   starting with the current input as accumulator.
   The current accumulator value is provided to $f$ as input value and
@@ -131,6 +140,7 @@ Let us discuss its different cases:
   We will define the functions
   $"reduce" ^c_v (l, var(x), f)$ and
   $"foreach"^c_v (l, var(x), f)$ in @folding.
+// TODO!
 - $x(f_1; ...; f_n)$: Calls an $n$-ary filter $x$ that is defined by $x(x_1; ...; x_n) := f$.
   The output is that of the filter $f$, where
   each filter argument $x_i$ is bound to $(f_i, c)$.
@@ -146,16 +156,17 @@ Let us discuss its different cases:
 
 An implementation may also define custom semantics for named filters.
 For example, an implementation may define
-$"error"|^c_v := "error"(v)$,
-$"keys"|^c_v := "keys"(v)$, and
-$"length"|^c_v := |v|$, see @simple-fns.
+$"error"|^c_v := "error"(v)$ and
+$"keys"|^c_v := "keys"(v)$, see @simple-fns.
 In the case of $"keys"$, for example, there is no obvious way to implement it by definition,
 in particular because there is no simple way to obtain the domain of an object ${...}$
 using only the filters for which we gave semantics in @tab:eval-semantics.
+/*
 For $"length"$, we could give a definition, using
 $"reduce" .[] "as" var(x) (0; . + 1)$ to obtain the length of arrays and objects, but
 this would inherently require linear time to yield a result, instead of
 constant time that can be achieved by a proper jq implementation.
+*/
 
 
 == Folding <folding>
@@ -397,9 +408,9 @@ by translating $mu update sigma$ to equivalent filters.
 
 To define $(mu update sigma)|^c_v$, we first have to understand
 how to prevent unwanted interactions between $mu$ and $sigma$.
-In particular, we have to look at variable bindings and error catching.
+In particular, we have to look at variable bindings/* and error catching*/.
 
-=== Variable bindings <var-bindings>
+//=== Variable bindings <var-bindings>
 
 We can bind variables in $mu$; that is, $mu$ can have the shape $f "as" var(x) | g$.
 Here, the intent is that $g$ has access to $var(x)$, whereas $sigma$ does not!
@@ -431,6 +442,7 @@ $sigma(x)$ returns the output of the filter $sigma|^c_x$.
 This allows us to extend the context $c$ with bindings on the left-hand side of the update,
 while executing the update filter $sigma$ always with the same original context $c$.
 
+/*
 === Error catching <error-catching>
 
 We can catch errors in $mu$; that is, $mu$ can have the shape $"try" f "catch" g$.
@@ -472,6 +484,7 @@ With this method, when we evaluate an expression $"try" f "catch" g$ in $mu$,
 we can analyse the output of $f update sigma$, and only catch _unpolarised_ errors.
 That way, errors stemming from $mu$ are propagated,
 whereas errors stemming from $f$ are caught.
+*/
 
 
 == New semantics <new-semantics>
@@ -483,14 +496,14 @@ We will first combine the techniques in @limiting-interactions to define
 $(f update g)|^c_v$ for two _filters_ $f$ and $g$ by
 $(f update sigma)|^c_v$, where
 $sigma$ now is a _function_ from a value to a stream of value results:
-$ (f update g)|^c_v := sum_(y in (f update sigma)|^c_v) "depolarise"(y)", where"
-sigma(x) = sum_(y in g|^c_x) "polarise"(y). $
+$ (f update g)|^c_v := (f update sigma)|^c_v", where"
+sigma(x) = g|^c_x. $
 We use a function instead of a filter on the right-hand side to
-limit the scope of variable bindings as explained in @var-bindings, and
+limit the scope of variable bindings as explained in @limiting-interactions/*, and
 we use $"polarise"$ to
 restrict the scope of caught exceptions, as discussed in @error-catching.
 Note that we $"depolarise"$ the final outputs of $f update g$ in order to
-prevent leaking polarisation information outside the update.
+prevent leaking polarisation information outside the update*/.
 
 #figure(caption: [Update semantics. Here, $mu$ is a filter and $sigma(v)$ is a function from a value $v$ to a stream of value results.], table(columns: 2,
   $mu$, $(mu update sigma)|^c_v$,
@@ -498,12 +511,10 @@ prevent leaking polarisation information outside the update.
   $f | g$, $(f update sigma')|^c_v "where" sigma'(x) = (g update sigma)|^c_x$,
   $f, g$, $sum_(x in (f update sigma)|^c_v) (g update sigma)|^c_x$,
   $f alt g$, $"ite"("trues"(f|^c_v), stream(), (g update sigma)|^c_v, (f update sigma)|^c_v)$,
-  $.[]$, $stream(v[] update sigma(v))$,
-  $.[var(x)]$, $stream(v[c(var(x))] update sigma(v))$,
-  $.[var(x):var(y)]$, $stream(v[c(var(x)):c(var(y))] update sigma(v))$,
+  $.[p]^?$, $stream(v[c(p)]^? update sigma)$,
   $f "as" var(x) | g$, $"reduce"^c_v (f|^c_v, var(x), (g update sigma))$,
   $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", (f update sigma)|^c_v, (g update sigma)|^c_v)$,
-  $"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
+//$"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
   $"break" var(x)$, $stream("break"(var(x)))$,
   $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f, sigma)$,
   $x(f_1; ...; f_n)$, $(f update sigma)|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
@@ -522,13 +533,14 @@ We discuss the remaining cases for $mu$:
   then we update at $f$, else at $g$.
   This filter is unusual because is the only kind where a subexpression is both
   updated with ($(f update sigma)|^c_v$) and evaluated ($f|^c_v$).
-- $.[]$, $.[var(x)]$, $.[var(x) : var(y)]$:
-  Applies $sigma$ to the current value using the operators defined in @updating.
+- $.[p]^?$: Applies $sigma$ to the current value at the path part $p$
+  using the update operators in @value-ops.
 - $f "as" var(x) | g$:
   Folds over all outputs of $f$, using the input value $v$ as initial accumulator and
   updating the accumulator by $g update sigma$, where
   $var(x)$ is bound to the current output of $f$.
   The definition of $"reduce"$ is given in @folding.
+/*
 - $"try" f "catch" g$: Returns the output of $f update sigma$,
   mapping errors occurring in $f$ to $g$. The definition of the function $"catch"$ is
   $ "catch"(x, g, c, v) := cases(
@@ -568,6 +580,7 @@ We discuss the remaining cases for $mu$:
     rarely used in the left-hand side of updates anyway,
     we think it more beneficial for the presentation to forgo label expressions here.
   ]
+*/
 - $fold x "as" var(x) (.; f)$: Folds $f$ over the values returned by $var(x)$.
   We will discuss this in @folding-update.
 - $x(f_1; ...; f_n)$, $x$: Calls filters.
@@ -579,7 +592,7 @@ for example $var(x)$, $[f]$, and ${}$.
 In such cases, we assume that $(mu update sigma)|^c_v$ returns an error just like jq,
 because these filters do not return paths to their input data.
 Our semantics support all kinds of filters $mu$ that are supported by jq, except for
-$"label" var(x) | g$.
+$"label" var(x) | g$ and $"try" f "catch" g$.
 
 #example("The Curious Case of Alternation")[
   The semantics of $(f alt g) update sigma$ can be rather surprising:

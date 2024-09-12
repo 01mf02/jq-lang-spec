@@ -18,25 +18,33 @@ Finally, in @jq-syntax, we will show how HIR relates to actual jq syntax.
 
 == HIR <hir>
 
+A _path part_ containing indices of type $i$ is of the shape
+$ nothing #or_ i #or_ i: #or_ :i #or_ i:i. $
+We can transform
+a path part $  p $ with indices of type $i $ to
+a path part $f(p)$ with indices of type $i'$ by
+applying a function $f$ from $i$ to $i'$ to all indices in the original path part.
+
 A _filter_ $f$ is defined by
 
 $ f :=& n #or_ s #or_ . \
-  #or_& (f) #or_ f? #or_ [f] #or_ {f: f, ..., f: f} #or_ f p^? ... p^? \
+  #or_& (f) #or_ f? #or_ [f] #or_ {f: f, ..., f: f} #or_ f [p]^? ... [p]^? \
   #or_& f star f #or_ f cartesian f \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (f; f) #or_ var(x) \
   #or_& "label" var(x) | f #or_ "break" var(x) \
   #or_& "if" f "then" f "else" f #or_ "try" f "catch" f \
+  #or_& "def" x defas f defend f #or_ "def" x(x; ...; x) defas f defend f \
   #or_& x #or_ x(f; ...; f)
 $ where
-$p$ is a path part of the shape $ p := [] #or_ [f] #or_ [f:] #or_ [:f] #or_ [f:f], $
+$p$ is a path part containing indices of type $f$,
 $x$ is an identifier (such as "empty"),
 $n$ is a number (such as $42$ or $3.14$), and
 $s$ is a string (such as "Hello world!").
 We use the superscript "$?$" to denote an optional presence of "?"; in particular,
-$f p^?... p^?$ can be
-$f p$, $f p?$,
-$f p p$, $f p?#h(0pt) p$, $f p p?$, $f p?#h(0pt) p?$,
-$f p p p$, and so on.
+$f [p]^?... [p]^?$ can be
+$f [p]$, $f [p]?$,
+$f [p] [p]$, $f [p]?#h(0pt) [p]$, $f [p] [p]?$, $f [p]?#h(0pt) [p]?$,
+$f [p] [p] [p]$, and so on.
 The potential instances of the operators $star$ and $cartesian$ are given in @tab:binops.
 All operators $star$ and $cartesian$ are left-associative, except for
 "$|$", "$=$", "$update$", and "$aritheq$".
@@ -56,11 +64,14 @@ A folding operation $fold$ is either "reduce" or "foreach".
   ],
 ) <tab:binops>
 
+// TODO!
+/*
 A _filter definition_ has the shape
 "$f(x_1; ...; x_n) := g$".
 Here, $f$ is an $n$-ary filter with _filter arguments_ $x_i$, where $g$ may refer to $x_i$.
 For example, this allows us to define filters that produce the booleans,
 by defining $"true()" := (0 = 0)$ and $"false()" := (0 != 0)$.
+*/
 
 // TODO: these must also hold for the main filter!
 We are assuming a few preconditions that must be fulfilled for a filter to be well-formed.
@@ -88,15 +99,15 @@ show how to _lower_ a HIR filter to a semantically equivalent MIR filter.
 
 A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
-  #or_& [f] #or_ {} #or_ {f: f} #or_ .p \
+  #or_& [f] #or_ {} #or_ {f: f} #or_ .[p] \
   #or_& f star f #or_ var(x) cartesian var(x) \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (.; f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
   #or_& "label" var(x) | f #or_ "break" var(x) \
+  #or_& "def" x defas f defend f #or_ "def" x(x; ...; x) defas f defend f \
   #or_& x #or_ x(f; ...; f)
 $
-where $p$ is a path part of the shape
-$ p := [] #or_ [var(x)] #or_ [var(x):var(x)]. $
+where $p$ is a path part containing variables as indices,
 Furthermore, the set of complex operators $star$ in MIR
 does not include "$=$" and "$aritheq$" anymore.
 
@@ -116,7 +127,7 @@ replace certain occurrences of filters by variables
   ${}$, ${}$,
   ${f: g}$, $floor(f) "as" var(x') | floor(g) "as" var(y') | {var(x'): var(y')}$,
   ${f_1: g_1, ..., f_n: g_n}$, $floor(sum_i {f_i: g_i})$,
-  $f p_1^? ... p_n^?$, $. "as" var(x') | floor(f) | floor(p_1^?)_var(x') | ... | floor(p_n^?)_var(x')$,
+  $f [p_1]^? ... [p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
   $f = g$, $floor(g) "as" var(x') | floor(f update var(x'))$,
   $f aritheq g$, $floor(g) "as" var(x') | floor(f update . arith var(x'))$,
   $f alteq g$, $floor(f update . alt g)$,
@@ -129,6 +140,8 @@ replace certain occurrences of filters by variables
   $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
   $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
   $"label" var(x) | f$, $"label" var(x) | floor(f)$,
+  $"def" x defas f defend g$, $"def" x defas floor(f) defend floor(g)$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $"def" x(x_1; ...; x_n) defas floor(f) defend floor(g)$,
   $x$, $x$,
   $x(f_1; ...; f_n)$, $x(floor(f_1); ...; floor(f_n))$,
 )) <tab:lowering>
@@ -145,23 +158,24 @@ for the remaining complex operators $star$, namely
 "$|$", "$,$", "$update$", and "$alt$",
 @tab:lowering specifies a uniform lowering $floor(f star g) = floor(f) star floor(g)$.
 
-#figure(caption: [Lowering of a path part $p^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
-  $p    ^?$, $floor(p^?)_var(x)$,
+// TODO!
+#figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
+  $[p]  ^?$, $floor([p]^?)_var(x)$,
   $[   ]^?$, $.[]^?$,
   $[f  ]^?$, $(var(x) | floor(f)) "as" var(y') | .[var(y')]^?$,
-  $[f: ]^?$, $(var(x) | floor(f)) "as" var(y') | "length"()^? "as" var(z') | .[var(y') : var(z')]^?$,
-  $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | 0 "as" var(z') | .[var(z') : var(y')]^?$,
+  $[f: ]^?$, $(var(x) | floor(f)) "as" var(y') | .[var(y') :]^?$,
+  $[ :f]^?$, $(var(x) | floor(f)) "as" var(y') | .[: var(y')]^?$,
   $[f:g]^?$, $(var(x) | floor(f)) "as" var(y') | (var(x) | floor(g)) "as" var(z') | .[var(y') : var(z')]^?$,
 )) <tab:lower-path>
 
 @tab:lower-path shows how to lower a path part $p^?$ to MIR filters.
 Like in @hir, the meaning of superscript "$?$" is an optional presence of "$?$".
-In the lowering of $f p_1^? ... p_n^?$ in @tab:lowering,
-if $p_i$ in the first column is directly followed by "?", then
-$floor(p_i^?)_var(x)$ in the second column stands for
-$floor(p_i ?#h(0pt))_var(x)$, otherwise for
-$floor(p_i  )_var(x)$.
-Similarly, in @tab:lower-path, if $p$ in the first column is followed by "$?$", then
+In the lowering of $f [p_1]^? ... [p_n]^?$ in @tab:lowering,
+if $[p_i]$ in the first column is directly followed by "?", then
+$floor([p_i]^?)_var(x)$ in the second column stands for
+$floor([p_i] ?#h(0pt))_var(x)$, otherwise for
+$floor([p_i]  )_var(x)$.
+Similarly, in @tab:lower-path, if $[p]$ in the first column is followed by "$?$", then
 all occurrences of superscript "?" in the second column stand for "?", otherwise for nothing.
 
 #example[
@@ -220,15 +234,7 @@ Let us now go a level above HIR, namely a subset of actual jq syntax#footnote[
   However, these constructions can be transformed into
   semantically equivalent syntax as treated in this text.
 ] of which we have seen examples in @tour, and
-show how to transform jq programs to HIR and to MIR.
-
-A _program_ is a (possibly empty) sequence of definitions, followed by
-a _main filter_ `f`.
-A _definition_ has the shape `def x(x1; ...; xn): g;` or `def x: g`; where
-`x` is an identifier,
-`x1` to `xn` is a non-empty sequence of semicolon-separated identifiers, and
-`g` is a filter.
-In HIR, we write the corresponding definition as $x(x_1; ...; x_n) := g$.
+show how to transform jq filters to HIR and to MIR.
 
 The syntax of filters in concrete jq syntax is nearly the same as in HIR.
 To translate between the operators in @tab:binops, see @tab:op-correspondence.
@@ -256,7 +262,7 @@ On the other hand, on the right-hand side of a definition, `x` may refer either 
 a filter argument `x` or a nullary filter `x`.
 To ease our lives when defining the semantics, we allow the syntax $x()$ in HIR.
 We unambiguously interpret $x$ as call to a filter argument and
-$x()$ as call to a filter that was defined as $x() := f$.
+$x()$ as call to a filter that was defined via $"def" x defas f defend g$.
 
 #let correspondence = (
   (`|`, $|$),
@@ -282,13 +288,9 @@ $x()$ as call to a filter that was defined as $x() := f$.
   [HIR], ..correspondence.map(c => c.at(1)),
 )) <tab:op-correspondence>
 
-To convert a jq program to MIR, we do the following:
+To convert a jq filter `f` to MIR, we convert `f` to HIR, then to MIR, using @tab:lowering.
 
-+ For each definition, convert it to a HIR definition.
-+ Convert the main filter `f` to a HIR filter $f$.
-+ Replace the right-hand sides of HIR definitions and $f$ by
-  their lowered MIR counterparts, using @tab:lowering.
-
+// TODO!
 #example[
   Consider the jq program `def recurse(f): ., (f | recurse(f)); recurse(. + 1)`,
   which returns the infinite stream of output values $n, n+1, ...$
@@ -301,6 +303,7 @@ To convert a jq program to MIR, we do the following:
   $"recurse"(. "as" var(x') | 1 "as" var(y') | var(x') + var(y'))$.
 ]
 
+// TODO!
 #example[
   Consider the jq program `def select(f): if f then . else empty end; def negative: . < 0; .[] | select(negative)`.
   When given an array as an input, it yields

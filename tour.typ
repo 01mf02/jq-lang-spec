@@ -10,7 +10,7 @@ For now, let us consider a filter to be a function from a value to
 a (lazy, possibly infinite) stream of values.
 Furthermore, in this section, let us assume a value to be either
 a boolean, an integer, or an array of values.
-(We introduce the full set of JSON values in @values.)
+(We introduce the full set of JSON values in @json.)
 
 The identity filter "`.`" returns a stream containing the input.#footnote[
   The filters in this section can be executed on most UNIX shells by

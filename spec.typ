@@ -34,13 +34,25 @@ the behaviour of particular named filters, such as `reverse`.
 This text is structured as follows:
 @tour gives an introduction to the jq language.
 @syntax specifies the syntax treated in this text and transforms it to a simpler subset.
-@values defines JSON values as well as some operations on them used in jq.
+@values defines values.
 @semantics defines the output of jq programs, and
 @updates defines the output of jq updates.
+In the appendix,
+@json defines JSON values as well as some operations on them used in jq.
 
 #include "tour.typ"
 #include "syntax.typ"
 #include "values.typ"
 #include "semantics.typ"
+
+#let appendix(body) = {
+  set heading(numbering: "A.1", supplement: [Appendix])
+  counter(heading).update(0)
+  body
+}
+
+#show: appendix
+
+#include "json.typ"
 
 #bibliography("literature.bib")
