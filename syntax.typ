@@ -21,7 +21,7 @@ Finally, in @jq-syntax, we will show how HIR relates to actual jq syntax.
 A _path part_ containing indices of type $i$ is of the shape
 $ nothing #or_ i #or_ i: #or_ :i #or_ i:i. $
 We can transform
-a path part $  p $ with indices of type $i $ to
+a path part $p   $ with indices of type $i $ to
 a path part $f(p)$ with indices of type $i'$ by
 applying a function $f$ from $i$ to $i'$ to all indices in the original path part.
 
@@ -117,7 +117,7 @@ have significantly simpler path operations
 replace certain occurrences of filters by variables
 (e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
 
-#figure(caption: [Lowering of a	HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
+#figure(caption: [Lowering of a HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
   $phi$, $floor(phi)$,
   [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
   $(f)$, $floor(f)$,
