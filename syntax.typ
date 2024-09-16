@@ -131,8 +131,8 @@ replace certain occurrences of filters by variables
   $f = g$, $floor(g) "as" var(x') | floor(f update var(x'))$,
   $f aritheq g$, $floor(g) "as" var(x') | floor(f update . arith var(x'))$,
   $f alteq g$, $floor(f update . alt g)$,
-  $f "and" g$, $floor(f) "as" var(x') | var(x') "and" floor(g)$,
-  $f "or"  g$, $floor(f) "as" var(x') | var(x') "or"  floor(g)$,
+  $f "and" g$, $floor(f) "as" var(x') | "if" var(x') "then" "bool"(floor(g)) "else" bot$,
+  $f "or"  g$, $floor(f) "as" var(x') | "if" var(x') "then" top "else" "bool"(floor(g))$,
   $f star g$, $floor(f) star floor(g)$,
   $f cartesian g$, $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
   $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
@@ -157,6 +157,10 @@ Notice that for some complex operators $star$, namely
 for the remaining complex operators $star$, namely
 "$|$", "$,$", "$update$", and "$alt$",
 @tab:lowering specifies a uniform lowering $floor(f star g) = floor(f) star floor(g)$.
+The function
+$ "bool"(f) := f "as" var(x') | "if" var(x') "then" top "else" bot $
+takes a MIR filter $f$ and returns a MIR filter that
+maps the outputs of $f$ to their boolean values.
 
 // TODO!
 #figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,

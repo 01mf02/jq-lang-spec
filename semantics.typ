@@ -118,6 +118,7 @@ Let us discuss its different cases:
   $"label" var(x) | f$.
   That means that the evaluation of a wellformed filter can only yield
   values and errors, but never $"break"(var(x))$.
+/*
 - $var(x) "and" f$: Returns false if $var(x)$ is bound to either null or false, else
   returns the output of $f$ mapped to boolean values.
   This uses the function $"junction"(x, v, l)$, which returns
@@ -126,6 +127,7 @@ Let us discuss its different cases:
   Here, $"bool"(v)$ returns the boolean value as given in @simple-fns.
   $ "junction"(x, v, l) := "ite"lr(("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))), size: #50%) $
 - $var(x) "or" f$: Similar to its "and" counterpart above.
+*/
 - $"if" var(x) "then" f "else" g$: Returns the output of $f$ if $var(x)$ is bound to either null or false, else returns the output of $g$.
 - $.[p]$: Accesses parts of the input value;
   see @value-ops for the definitions of the operators.
