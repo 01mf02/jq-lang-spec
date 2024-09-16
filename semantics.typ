@@ -70,7 +70,7 @@ Let us discuss its different cases:
 - $n$ or $s$: Returns the value corresponding to the number $n$ or string $s$.
 - $var(x)$: Returns the value currently bound to the variable $var(x)$,
   by looking it up in the context.
-  Wellformedness of the filter (as defined in @hir) ensures that such a value always exists.
+  Wellformedness of the filter (as defined in @mir) ensures that such a value always exists.
 - $[f]$: Creates an array from the output of $f$, using the operator defined in @values.
 - ${}$: Creates an empty object.
 - ${var(x): var(y)}$: Creates an object from the values bound to $var(x)$ and $var(y)$,
@@ -142,17 +142,8 @@ Let us discuss its different cases:
   We will define the functions
   $"reduce" ^c_v (l, var(x), f)$ and
   $"foreach"^c_v (l, var(x), f)$ in @folding.
-// TODO!
-- $x(f_1; ...; f_n)$: Calls an $n$-ary filter $x$ that is defined by $x(x_1; ...; x_n) := f$.
-  The output is that of the filter $f$, where
-  each filter argument $x_i$ is bound to $(f_i, c)$.
+- $x(f_1; ...; f_n)$: Calls an $n$-ary filter $x$.
   This also handles the case of calling nullary filters such as $"empty"$.
-- $x$: Calls a filter argument.
-  By the well-formedness requirements given in @hir,
-  this must occur within the right-hand side of a definition whose arguments include $x$.
-  This requirement also ensures that $x in "dom"(c)$,
-  because an $x$ can only be evaluated as part of a call to the filter where it was bound, and
-  by the semantics of filter calls above, this adds a binding for $x$ to the context.
 - $f update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @updates.
 

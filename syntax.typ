@@ -73,24 +73,6 @@ For example, this allows us to define filters that produce the booleans,
 by defining $"true()" := (0 = 0)$ and $"false()" := (0 != 0)$.
 */
 
-// TODO: these must also hold for the main filter!
-We are assuming a few preconditions that must be fulfilled for a filter to be well-formed.
-For this, we consider a definition $x(x_1; ...; x_n) := phi$:
-
-- Arguments must be bound:
-  The only filter arguments that $phi$ can refer to are $x_1, ..., x_n$.
-- Labels must be bound:
-  If $phi$ contains a statement $"break" var(x)$,
-  then it must occur as a subterm of $g$, where
-  $"label" var(x) | g$
-  is a subterm of $phi$.
-- Variables must be bound:
-  If $phi$ contains any occurrence of a variable $var(x)$,
-  then it must occur as a subterm of $g$, where either
-  $f "as" var(x) | g$ or
-  $fold x "as" var(x) (y; g)$
-  is a subterms of $phi$.
-
 
 == MIR <mir>
 
@@ -229,6 +211,36 @@ $floor({f_1: g_1}) "as" var(x'_1) | ... | floor({f_n: g_n}) "as" var(x'_n) | sum
   $stream(0, 1, 2, 3)$ using our lowering, and
   $stream(0, 2, 1, 3)$ in jq.
 ]
+
+Informally, we say that a filter is _wellformed_ if all references to
+named filters, variables, and labels were previously bound.
+For example, the filter $a + var(x)$ is not wellformed because
+neither $a$ nor $var(x)$ was previously bound, but the filter
+$"def" a defas 1 defend 2 "as" var(x) | a + var(x)$ is wellformed.
+@tab:wf specifies in detail if a filter is wellformed.
+For this, it uses a context $c = (d, v, l)$, consisting of
+a set $d$ of pairs $(x, n)$ storing the name $x$ and the arity $n$ of a filter,
+a set $v$ of variables, and
+a set $l$ of labels.
+We say that a filter $phi$ is wellformed with respect to a context $c$ if
+$"wf"(phi, c)$ is true.
+
+#figure(caption: [Wellformedness of a MIR filter $phi$ with respect to a context $c = (d, v, l)$.], table(columns: 2,
+  $phi$, $"wf"(phi, c)$,
+  [$n$, $s$, $.$, $.[p]^?$, ${}$], $top$,
+  $var(x)$, $var(x) in v$,
+  $"break" var(x)$, $var(x) in l$,
+  $[f]$, $"wf"(f, c)$,
+  [${var(x): var(y)}$, $var(x) cartesian var(y)$], $var(x) in v and var(y) in v$,
+  [$f star g$, $"try" f "catch" g$], $"wf"(f, c) and "wf"(g, c)$,
+  $f "as" var(x) | g$, $"wf"(f) and "wf"(g, (d, v union {var(x)}, l))$,
+  $"label" var(x) | f$, $"wf"(f, (d, v, l union {var(x)}))$,
+  $"if" var(x) "then" f "else" g$, $var(x) in v and "wf"(f, c) and "wf"(g, c)$,
+  $fold x "as" var(x) (.; f)$, $"wf"(x, c) and "wf"(f, (d, v union {var(x)}, l))$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $"wf"(f, (d union union.big_i {(x_i, 0)}, v, l)) and "wf"(g, (d union {(x, n)}, v, l))$,
+  $x(f_1; ...; f_n)$, $(x, n) in d and "wf"(f_i, c)$,
+)) <tab:wf>
+
 
 == Concrete jq syntax <jq-syntax>
 
