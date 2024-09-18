@@ -52,11 +52,6 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
   $var(x) "or"  f$, $"junction"(c(var(x)), "true" , f|^c_v)$,
   $"if" var(x) "then" f "else" g$, $"ite"("bool"(c(var(x))), "true", f|^c_v, g|^c_v)$,
   $.[p]^?$, $v[c(p)]^?$,
-  /*
-  $.[]$, $v[]$,
-  $.[var(x)]$, $stream(v[c(var(x))])$,
-  $.[var(x):var(y)]$, $stream(v[c(var(x)):c(var(y))])$,
-  */
   $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f)$,
   $"def" x(x_1; ...; x_n) defas f defend g$, $g|^(c union {(x, n) |-> ([x_1, ..., x_n], f, c)})_v$,
   $x(f_1; ...; f_n)$, $f|^(c' union union.big_i {x_i |-> (f_i, c)})_v "if" c((x, n)) = ([x_1, ..., x_n], f, c')$,

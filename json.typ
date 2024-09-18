@@ -97,7 +97,6 @@ For an object $v$, $"keys"(v)$ returns
 the domain of the object sorted by ascending order.
 For the used ordering, see @json-order.
 
-/*
 We define the _length_ of a value as follows:
 
 $ |v| := cases(
@@ -108,7 +107,6 @@ $ |v| := cases(
   n       & "if" v = {k_1 |-> v_1, ..., k_n |-> v_n},
   "error" & "otherwise (if" v in {"true", "false"}")",
 ) $
-*/
 
 The _boolean value_ of a value $v$ is defined as follows:
 
@@ -250,9 +248,7 @@ otherwise it yields an error.
 
 == Accessing <json-access>
 
-// TODO: document v[i:, :i]
-
-We will now define three _access operators_.
+We will now define _access operators_.
 These serve to extract values that are contained within other values.
 
 The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
@@ -288,7 +284,7 @@ an array $v = [v_0, ..., v_n]$ or
 an object $v = {k_0 |-> v_0, ..., k_n |-> v_n}$ (where $k_0 < ... < k_n$),
 $v[]$ returns the stream $stream(v_0, ..., v_n)$.
 
-The last operator that we define here is a slice operator:
+Next, we define a slice operator:
 
 $ v[i:j] := cases(
   [sum_(k = i)^(j-1) stream(v_k)] & "if" v = [v_0, ..., v_n] "and" i","j in NN,
@@ -307,8 +303,17 @@ an empty string if $v$ is a string.
   If $v = [0, 1, 2, 3]$, then $v[1:3] = [1, 2]$.
 ]
 
-The operator $v[]$ is the only operator in this subsection that
-returns a _stream_ of value results instead of only a value result.
+
+@value-ops demands all access operators to yield a _stream_ of value results, yet only
+$v[]$ fulfills this, whereas $v[i]$ and $v[i:j]$ return a single value result.
+For that reason, we now redefine these operators to return a stream of value results, by
+$ v[i]   &:= stream(v[i]) \
+  v[i:j] &:= stream(v[i:j]) $
+
+Finally, we define the remaining access operators by using the slice operator:
+
+$ v[:j] &:= v[0:  &j] \
+  v[i:] &:= v[i:&|v|] $
 
 
 == Updating <json-update>
