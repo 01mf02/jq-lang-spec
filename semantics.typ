@@ -510,8 +510,8 @@ prevent leaking polarisation information outside the update*/.
 //$"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
   $"break" var(x)$, $stream("break"(var(x)))$,
   $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f, sigma)$,
-  $x(f_1; ...; f_n)$, $(f update sigma)|^(c union union.big_i {x_i |-> (f_i, c)})_v "if" x(x_1; ...; x_n) := f$,
-  $x$, $(f update sigma)|^c'_v "if" c(x) = (f, c')$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $(g update sigma)|^(c union {(x, n) |-> ([x_1, ..., x_n], f, c)})_v$,
+  $x(f_1; ...; f_n)$, $(f update sigma)|^(c' union union.big_i {x_i |-> (f_i, c)})_v "if" c((x, n)) = ([x_1, ..., x_n], f, c')$,
 )) <tab:update-semantics>
 
 @tab:update-semantics shows the definition of $(mu update sigma)|^c_v$.
