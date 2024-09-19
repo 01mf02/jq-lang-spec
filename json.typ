@@ -118,7 +118,7 @@ $ "bool"(v) := cases(
 We can draw a link between the functions here and jq:
 When called with the input value $v$,
 the jq filter `keys` yields $stream(["keys"(v)])$,
-/*the jq filter `length` yields $stream(|v|)$,*/ and
+the jq filter `length` yields $stream(|v|)$, and
 the jq filter `true and .` yields $stream("bool"(v))$.
 
 == Arithmetic operations <arithmetic>
@@ -315,6 +315,8 @@ Finally, we define the remaining access operators by using the slice operator:
 $ v[:j] &:= v[0:  &j] \
   v[i:] &:= v[i:&|v|] $
 
+When $|v|$ yields an error, then $v[i:]$ yields an error, too.
+
 
 == Updating <json-update>
 
@@ -404,6 +406,12 @@ this operator treats this as equivalent to $f$ returning $[]$.
 #example[
   If $v = [0, 1, 2, 3]$ and $f(v) = [4, 5, 6]$, then $v[1:3] update f = [0, 4, 5, 6, 3]$.
 ]
+
+Similarly to @json-access, we define the remaining operators by $v[i:j]$:
+
+$ v[:j] update f &:= v[0:  &j] update f \
+  v[i:] update f &:= v[i:&|v|] update f $
+
 
 == Order <json-order>
 
