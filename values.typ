@@ -9,6 +9,7 @@ we will define the jq semantics for a general value type.
 For this value type, there must be a type of numbers and a type of strings, such that
 for any number $n$, $n$ is a value, and
 for any string $s$, $s$ is a value.
+Furthermore, any boolean $top$ (true) or $bot$ (false) must be a value.
 By convention, we will write
 $v$ for values,
 $n$ for numbers, and
@@ -73,6 +74,7 @@ For JSON values, ${s: v}$ constructs a singleton object and ${}$ constructs an e
 see @json-construction.
 
 The function $"bool"(v)$ takes a value $v$ and yields a boolean.
+If $v in {top, bot}$, then $"bool"(v) = v$.
 
 Let $p$ a path part (as defined in @syntax) containing values as indices.
 The _access operator_ $v[p]$ extracts values contained within $v$ at positions given by $p$,
