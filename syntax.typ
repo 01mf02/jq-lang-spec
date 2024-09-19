@@ -64,14 +64,10 @@ A folding operation $fold$ is either "reduce" or "foreach".
   ],
 ) <tab:binops>
 
-// TODO!
-/*
-A _filter definition_ has the shape
-"$f(x_1; ...; x_n) := g$".
-Here, $f$ is an $n$-ary filter with _filter arguments_ $x_i$, where $g$ may refer to $x_i$.
-For example, this allows us to define filters that produce the booleans,
-by defining $"true()" := (0 = 0)$ and $"false()" := (0 != 0)$.
-*/
+We consider equivalent the notations
+$x()$ and $x$ as well as
+$"def" x() defas f defend g$ and
+$"def" x   defas f defend g$.
 
 
 == MIR <mir>
@@ -86,8 +82,8 @@ $ f :=& n #or_ s #or_ . \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (.; f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
   #or_& "label" var(x) | f #or_ "break" var(x) \
-  #or_& "def" x defas f defend f #or_ "def" x(x; ...; x) defas f defend f \
-  #or_& x #or_ x(f; ...; f)
+  #or_& "def" x(x; ...; x) defas f defend f \
+  #or_& x(f; ...; f)
 $
 where $p$ is a path part containing variables as indices,
 Furthermore, the set of complex operators $star$ in MIR
@@ -103,8 +99,8 @@ replace certain occurrences of filters by variables
   $phi$, $floor(phi)$,
   [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
   $(f)$, $floor(f)$,
-  $f?$, $"try" floor(f) "catch" "empty"()$,
-  $[]$, $["empty"()]$,
+  $f?$, $"try" floor(f) "catch" "empty"$,
+  $[]$, $["empty"]$,
   $[f]$, $[floor(f)]$,
   ${}$, ${}$,
   ${f: g}$, $floor(f) "as" var(x') | floor(g) "as" var(y') | {var(x'): var(y')}$,
@@ -113,8 +109,8 @@ replace certain occurrences of filters by variables
   $f = g$, $floor(g) "as" var(x') | floor(f update var(x'))$,
   $f aritheq g$, $floor(g) "as" var(x') | floor(f update . arith var(x'))$,
   $f alteq g$, $floor(f update . alt g)$,
-  $f "and" g$, $floor(f) "as" var(x') | "if" var(x') "then" "bool"(floor(g)) "else" bot$,
-  $f "or"  g$, $floor(f) "as" var(x') | "if" var(x') "then" top "else" "bool"(floor(g))$,
+  $f "and" g$, $floor("if" f "then" "bool"(g) "else" bot)$,
+  $f "or"  g$, $floor("if" f "then" top "else" "bool"(g))$,
   $f star g$, $floor(f) star floor(g)$,
   $f cartesian g$, $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
   $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
@@ -124,7 +120,6 @@ replace certain occurrences of filters by variables
   $"label" var(x) | f$, $"label" var(x) | floor(f)$,
   $"def" x defas f defend g$, $"def" x defas floor(f) defend floor(g)$,
   $"def" x(x_1; ...; x_n) defas f defend g$, $"def" x(x_1; ...; x_n) defas floor(f) defend floor(g)$,
-  $x$, $x$,
   $x(f_1; ...; f_n)$, $x(floor(f_1); ...; floor(f_n))$,
 )) <tab:lowering>
 
@@ -139,9 +134,23 @@ Notice that for some complex operators $star$, namely
 for the remaining complex operators $star$, namely
 "$|$", "$,$", "$update$", and "$alt$",
 @tab:lowering specifies a uniform lowering $floor(f star g) = floor(f) star floor(g)$.
-The function
-$ "bool"(f) := f "as" var(x') | "if" var(x') "then" top "else" bot $
-takes a MIR filter $f$ and returns a MIR filter that
+
+The filter $ "empty" := ({} | .[]) "as" var(x) | . $ returns an empty stream.
+We might be tempted to define it as ${} | .[]$,
+which constructs an empty object, then returns its contained values,
+which corresponds to an empty stream as well.
+However, such a definition relies on the temporary construction of new values
+(such as the empty object here),
+which is not admissible on the left-hand side of updates (see @updates).
+To ensure that $"empty"$ can be employed also as a path expression,
+we define it in this complicated manner.
+
+We define filters that yield the boolean values as
+$ top &:= 0  = 0, \
+  bot &:= 0 != 0. $
+The filter
+$ "bool"(f) &:= "if" f "then" top "else" bot $
+takes a HIR filter $f$ and returns a HIR filter that
 maps the outputs of $f$ to their boolean values.
 
 // TODO!
@@ -178,18 +187,6 @@ all occurrences of superscript "?" in the second column stand for "?", otherwise
   $floor(phi) eq.triple [3] | ("length"(), 2) "as" var(z) | floor(mu) update var(z)$.
   In @semantics, we will see that its output is $stream([1], [2])$.
 ]
-
-This lowering assumes the presence of one filter in the definitions, namely $"empty"$.
-This filter returns an empty stream.
-We might be tempted to define it as ${} | .[]$,
-which constructs an empty object, then returns its contained values,
-which corresponds to an empty stream as well.
-However, such a definition relies on the temporary construction of new values
-(such as the empty object here),
-which is not admissible on the left-hand side of updates (see @updates).
-For this reason, we have to define it in a more complicated way, for example
-$ "empty"() := ({} | .[]) "as" var(x) | . $
-This definition ensures that $"empty"$ can be employed also as a path expression.
 
 The lowering in @tab:lowering is compatible with the semantics of the jq implementation,
 with one notable exception:
@@ -270,15 +267,9 @@ Filters of the shape
 `if f then g else h end` correspond to the filter
 $"if" f "then" g "else" h$ in HIR;
 that is, in HIR, the final `end` is omitted.
-
-In jq, it is invalid syntax to
+Furthermore, in jq, it is invalid syntax to
 call a nullary filter as `x()` instead of `x`, or to
-define a nullary filter as `def x(): f;` instead of `def x: f;`.
-On the other hand, on the right-hand side of a definition, `x` may refer either to
-a filter argument `x` or a nullary filter `x`.
-To ease our lives when defining the semantics, we allow the syntax $x()$ in HIR.
-We unambiguously interpret $x$ as call to a filter argument and
-$x()$ as call to a filter that was defined via $"def" x defas f defend g$.
+define a nullary filter as `def x(): f; g` instead of `def x: f; g`.
 
 #let correspondence = (
   (`|`, $|$),
@@ -306,34 +297,37 @@ $x()$ as call to a filter that was defined via $"def" x defas f defend g$.
 
 To convert a jq filter `f` to MIR, we convert `f` to HIR, then to MIR, using @tab:lowering.
 
-// TODO!
 #example[
   Consider the jq program `def recurse(f): ., (f | recurse(f)); recurse(. + 1)`,
   which returns the infinite stream of output values $n, n+1, ...$
   when provided with an input number $n$.
-  The definition in this example can be converted to the HIR definition
-  $"recurse"(f) := ., (f | "recurse"(f))$ and the main filter can be converted to the HIR filter
-  $"recurse"(. + 1)$.
-  The lowering of the definition to MIR yields the same as the HIR definition, and
-  the lowering of the main filter to MIR yields
-  $"recurse"(. "as" var(x') | 1 "as" var(y') | var(x') + var(y'))$.
+  This example can be converted to the HIR filter
+  $ "def" "recurse"(f) defas ., (f | "recurse"(f)) defend "recurse"(. + 1). $
+  Lowering this to MIR yields
+  $ "def" "recurse"(f) defas ., (f | "recurse"(f)) defend "recurse"(. "as" var(x') | 1 "as" var(y') | var(x') + var(y')). $
 ]
 
-// TODO!
 #example[
-  Consider the jq program `def select(f): if f then . else empty end; def negative: . < 0; .[] | select(negative)`.
+  Consider the following jq program:
+  ```
+  def empty: {}[] as $x | .
+  def select(f): if f then . else empty end;
+  def negative: . < 0;
+  .[] | select(negative)
+  ```
   When given an array as an input, it yields
   those elements of the array that are smaller than $0$.
-  Here, the definitions in the example are converted to the HIR definitions
-  $"select"(f) := "if" f "then" . "else" "empty"()$ and
-  $"negative"() := . < 0$, and
-  the main filter is converted to the HIR filter
-  $.[] | "select"("negative"())$.
-  Both the definition of $"select"(f)$ and the main filter are already in MIR;
-  the MIR version of the remaining definition is
-  $"negative"() := . "as" var(x') | 0 "as" var(y') | var(x') < var(y')$.
+  This example can be converted to the HIR filter
+  $ &"def" "empty" defas {}[] "as" var(x) | . defend \
+    &"def" "select"(f) defas "if" f "then" . "else" "empty" defend \
+    &"def" "negative" defas . < 0 defend \
+    &.[] | "select"("negative"). $
+  Lowering this to MIR yields
+  $ &"def" "empty" defas ({} | .[]) "as" var(x) | . defend \
+    &"def" "select"(f) defas "if" f "then" . "else" "empty" defend \
+    &"def" "negative" defas . "as" var(x') | 0 "as" var(y') | var(x') < var(y') defend \
+    &.[] | "select"("negative"). $
 ]
 
-We will show in @semantics how to run the resulting MIR filter $f$
-in the presence of a set of MIR definitions.
+@semantics shows how to run the resulting MIR filter $f$.
 For a given input value $v$, the output of $f$ will be given by $f|^{}_v$.
