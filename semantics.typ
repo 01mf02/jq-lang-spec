@@ -104,6 +104,23 @@ Let us discuss its different cases:
     stream(h) + "label"(t, var(x)) & "if" l = stream(h) + t "and" h != "break"(var(x)),
     stream() & "otherwise",
   ) $
+  Here, we substitute occurrences of $var(x)$ by a fresh label $var(x')$ as given by @tab:subst.
+  To see that this is necessary, consider the example
+  $ "def" f(x) defas ("label" var(x) | x), 0 defend "label" var(x) | f("break" var(x)). $
+  With substitution, this is equivalent to
+  $"label" var(x') | ("label" var(x'') | "break" var(x')), 0$
+  and yields $stream(0)$, whereas
+  without substitution, this would be equivalent to
+  $"label" var(x) | ("label" var(x) | "break" var(x)), 0$
+  and would yield $stream()$.#footnote[
+    Would renaming all labels during lowering make the substitution step obsolete?
+    Alas, no, because filter execution may generate an arbitrary number of labels.
+    Consider the example $"def" f(x) defas "label" var(x) | f(x | "break" var(x)); f(.)$.
+    This evaluates to
+    $"label" var(x_1) | ... | "label" var(x_n) | f(. |
+     "break" var(x_1) | ... | "break" var(x_n))$
+    after $n$ evaluations of $f$, involving $n$ different labels.
+  ]
 - $"break" var(x)$: Returns a value $"break"(var(x))$.
   Similarly to the evaluation of variables $var(x)$ described above,
   wellformedness of the filter (as defined in @hir) ensures that
