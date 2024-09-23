@@ -24,5 +24,7 @@
 #let defas = $#h(0pt):$
 #let defend = $; thick$
 
+#let bot = math.class("normal", sym.bot)
+
 #let qs(s) = $quote#h(0pt)#s#h(0pt)quote$
 #let oat(k) = $.[#qs(k)]$
