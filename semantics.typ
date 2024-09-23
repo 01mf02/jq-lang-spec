@@ -46,10 +46,8 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
     g|^c_e & "if" x = "error"(e),
     stream(x) & "otherwise"
   )$,
-  $"label" var(x) | f$, $"label"(f|^c_v, var(x))$,
+  $"label" var(x) | f$, $"label"(f[var(x') / var(x)]|^c_v, var(x'))$,
   $"break" var(x)$, $stream("break"(var(x)))$,
-  $var(x) "and" f$, $"junction"(c(var(x)), "false", f|^c_v)$,
-  $var(x) "or"  f$, $"junction"(c(var(x)), "true" , f|^c_v)$,
   $"if" var(x) "then" f "else" g$, $"ite"("bool"(c(var(x))), "true", f|^c_v, g|^c_v)$,
   $.[p]^?$, $v[c(p)]^?$,
   $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f)$,
@@ -57,6 +55,7 @@ $ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
   $x(f_1; ...; f_n)$, $f|^(c' union union.big_i {x_i |-> (f_i, c)})_v "if" c((x, n)) = ([x_1, ..., x_n], f, c')$,
   $f update g$, [see @updates]
 )) <tab:eval-semantics>
+
 
 The evaluation semantics are given in @tab:eval-semantics.
 Let us discuss its different cases:
@@ -113,16 +112,6 @@ Let us discuss its different cases:
   $"label" var(x) | f$.
   That means that the evaluation of a wellformed filter can only yield
   values and errors, but never $"break"(var(x))$.
-/*
-- $var(x) "and" f$: Returns false if $var(x)$ is bound to either null or false, else
-  returns the output of $f$ mapped to boolean values.
-  This uses the function $"junction"(x, v, l)$, which returns
-  just $v$ if the boolean value of $x$ is $v$ (where $v$ will be true or false),
-  otherwise the boolean values of the values in $l$.
-  Here, $"bool"(v)$ returns the boolean value as given in @simple-fns.
-  $ "junction"(x, v, l) := "ite"lr(("bool"(x), v, stream(v), sum_(y in l) stream("bool"(y))), size: #50%) $
-- $var(x) "or" f$: Similar to its "and" counterpart above.
-*/
 - $"if" var(x) "then" f "else" g$: Returns the output of $f$ if $var(x)$ is bound to either null or false, else returns the output of $g$.
 - $.[p]$: Accesses parts of the input value;
   see @value-ops for the definitions of the operators.
@@ -141,6 +130,21 @@ Let us discuss its different cases:
   This also handles the case of calling nullary filters such as $"empty"$.
 - $f update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @updates.
+
+#figure(caption: [Substitution of break label $var(y)$ by $var(z)$ in filter $phi$.], table(columns: 2,
+  $phi$, $phi[var(z) / var(y)]$,
+  [$., n, s, {}, .[p]^?, var(x),$ \ ${var(x): var(y)}, "or" var(x) cartesian var(y)$], $phi$,
+  $"label" var(x) | f$, $"label" var(x) | "ite"(var(x), var(y), f, f[var(z) / var(y)])$,
+  $"break" var(x)$, $"break" "ite"(var(x), var(y), var(z), var(x))$,
+  $[f]$, $[f[var(z) / var(y)]]$,
+  $f star g$, $f[var(z) / var(y)] star g[var(z) / var(y)]$,
+  $f "as" var(x) | g$, $f[var(z) / var(y)] "as" var(x) | g[var(z) / var(y)]$,
+  $"try" f "catch" g$, $"try" f[var(z) / var(y)] "catch" g[var(z) / var(y)]$,
+  $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f[var(z) / var(y)] "else" g[var(z) / var(y)]$,
+  $fold x "as" var(x) (.; f)$, $fold x[var(z) / var(y)] "as" var(x) (.; f[var(z) / var(y)])$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $"def" x(x_1; ...; x_n) defas f[var(z) / var(y)] defend g[var(z) / var(y)]$,
+  $x(f_1; ...; f_n)$, $x(f_1 [var(z) / var(y)]; ...; f_n [var(z) / var(y)])$,
+)) <tab:subst>
 
 An implementation may also define custom semantics for named filters.
 For example, an implementation may define
