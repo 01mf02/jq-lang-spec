@@ -26,6 +26,13 @@ It is intended to complement the user manual.
 In some places, the behaviour described in this text diverges from `jq`.
 We try to point out such differing behaviour whenever it occurs.
 
+This text does not cover all parts of the jq language;
+in particular, it does not cover the module system.
+However, most of the programs that use features not covered by this specification
+can be translated into programs that are completely covered by this specification.
+For example, a program made of several modules can be
+transformed into a program that does not use modules.
+
 /*
 Note that this text only aims to specify
 the behaviour of jq filters that have special syntax, such as `|`;
