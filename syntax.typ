@@ -325,7 +325,7 @@ To convert a jq filter `f` to MIR, we convert `f` to HIR, then to MIR, using @ta
     &.[] | "select"("negative"). $
   Lowering this to MIR yields
   $ &"def" "empty" defas ({} | .[]) "as" var(x) | . defend \
-    &"def" "select"(f) defas "if" f "then" . "else" "empty" defend \
+    &"def" "select"(f) defas f "as" var(x') | "if" var(x') "then" . "else" "empty" defend \
     &"def" "negative" defas . "as" var(x') | 0 "as" var(y') | var(x') < var(y') defend \
     &.[] | "select"("negative"). $
 ]
