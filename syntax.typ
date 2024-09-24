@@ -45,6 +45,7 @@ $f [p]^?... [p]^?$ can be
 $f [p]$, $f [p]?$,
 $f [p] [p]$, $f [p]?#h(0pt) [p]$, $f [p] [p]?$, $f [p]?#h(0pt) [p]?$,
 $f [p] [p] [p]$, and so on.
+We write $[]$ instead of $[nothing]$.
 The potential instances of the operators $star$ and $cartesian$ are given in @tab:binops.
 All operators $star$ and $cartesian$ are left-associative, except for
 "$|$", "$=$", "$update$", and "$aritheq$".
