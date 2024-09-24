@@ -268,6 +268,9 @@ Filters of the shape
 `if f then g else h end` correspond to the filter
 $"if" f "then" g "else" h$ in HIR;
 that is, in HIR, the final `end` is omitted.
+Filters of the shape
+`if f1 then g1 elif f2 then g2 ... elif fn then gn else h end` are equivalent to
+`if f1 then g1 else if f2 then g2 else ... if fn then gn else h end ... end end`.
 Furthermore, in jq, it is invalid syntax to
 call a nullary filter as `x()` instead of `x`, or to
 define a nullary filter as `def x(): f; g` instead of `def x: f; g`.
