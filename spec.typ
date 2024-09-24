@@ -26,6 +26,15 @@ It is intended to complement the user manual.
 In some places, the behaviour described in this text diverges from `jq`.
 We try to point out such differing behaviour whenever it occurs.
 
+The first and foremost goal of this text is to allow users to
+_precisely predict what their jq programs will output_.
+On the other hand, this text does not try to describe how
+to implement a performant interpreter for the jq language --- the focus is not
+on _how_ a jq interpreter executes a jq program, but
+on _what_ a jq program outputs.
+This differentiates this text from the jq language description @jq-description,
+which draws much stronger on the implementation of `jq` to describe the jq language.
+
 This text does not cover all parts of the jq language;
 in particular, it does not cover the module system.
 However, most of the programs that use features not covered by this specification
