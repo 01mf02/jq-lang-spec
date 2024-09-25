@@ -27,7 +27,7 @@ applying a function $f$ from $i$ to $i'$ to all indices in the original path par
 
 A _filter_ $f$ is defined by
 
-$ f :=& n #or_ s #or_ . \
+$ f :=& n #or_ s #or_ . #or_ .. \
   #or_& (f) #or_ f? #or_ [f] #or_ {f: f, ..., f: f} #or_ f [p]^? ... [p]^? \
   #or_& f star f #or_ f cartesian f \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (f; f) #or_ var(x) \
@@ -99,6 +99,7 @@ replace certain occurrences of filters by variables
 #figure(caption: [Lowering of a HIR filter $phi$ to a MIR filter $floor(phi)$.], table(columns: 2,
   $phi$, $floor(phi)$,
   [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
+  $..$, $"def" "recurse" defas ., (.[]? | "recurse") defend "recurse"$,
   $(f)$, $floor(f)$,
   $f?$, $"try" floor(f) "catch" "empty"$,
   $[]$, $["empty"]$,
