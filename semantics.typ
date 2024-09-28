@@ -92,10 +92,12 @@ Let us discuss its different cases:
   $l eq.not r$ returns its negation.
 - $"try" f "catch" g$: Replaces all outputs of $f$ that equal $"error"(e)$ for some $e$
   by the output of $g$ on the input $e$.
-  Note that this diverges from jq, which aborts the evaluation of $f$ after the first error.
-  This behaviour can be simulated in our semantics, by replacing
+  At first sight, this seems to diverge from jq, which
+  aborts the evaluation of $f$ after the first error.
+  However, because lowering to MIR replaces
   $"try" f "catch" g$ with
-  $"label" var(x') | "try" f "catch" (g, "break" var(x'))$.
+  $"label" var(x') | "try" f "catch" (g, "break" var(x'))$ (see @tab:lowering),
+  the overall behaviour described here corresponds to jq after all.
 - $"label" var(x) | f$: Returns all values yielded by $f$ until $f$ yields
   an exception $"break"(var(x))$.
   This uses the function $"label"(l, var(x))$, which returns all elements of $l$ until

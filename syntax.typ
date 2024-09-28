@@ -32,7 +32,7 @@ $ f :=& n #or_ s #or_ . #or_ .. \
   #or_& f star f #or_ f cartesian f \
   #or_& f "as" var(x) | f #or_  fold f "as" var(x) (f; f) #or_ var(x) \
   #or_& "label" var(x) | f #or_ "break" var(x) \
-  #or_& "if" f "then" f "else" f #or_ "try" f "catch" f \
+  #or_& "if" f "then" f "else" f #or_ "try" f #or_ "try" f "catch" f \
   #or_& "def" x defas f defend f #or_ "def" x(x; ...; x) defas f defend f \
   #or_& x #or_ x(f; ...; f)
 $ where
@@ -65,10 +65,12 @@ A folding operation $fold$ is either "reduce" or "foreach".
   ],
 ) <tab:binops>
 
-We consider equivalent the notations
-$x()$ and $x$ as well as
-$"def" x() defas f defend g$ and
-$"def" x   defas f defend g$.
+We consider equivalent the following notations:
+
+- $f?$ and $"try" f$,
+- $x()$ and $x$,
+- $"def" x() defas f defend g$ and
+  $"def" x   defas f defend g$.
 
 
 == MIR <mir>
@@ -101,7 +103,7 @@ replace certain occurrences of filters by variables
   [$n$, $s$, $.$, $var(x)$, or $"break" var(x)$], $phi$,
   $..$, $"def" "recurse" defas ., (.[]? | "recurse") defend "recurse"$,
   $(f)$, $floor(f)$,
-  $f?$, $"try" floor(f) "catch" "empty"$,
+  $f?$, $"label" var(x') | "try" floor(f) "catch" ("break" var(x'))$,
   $[]$, $["empty"]$,
   $[f]$, $[floor(f)]$,
   ${}$, ${}$,
@@ -118,7 +120,7 @@ replace certain occurrences of filters by variables
   $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
   $fold f_x "as" var(x) (f_y; f)$, $. "as" var(x') | floor(f_y) | fold floor(var(x') | f_x) "as" var(x) (.; floor(f))$,
   $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
-  $"try" f "catch" g$, $"try" floor(f) "catch" floor(g)$,
+  $"try" f "catch" g$, $"label" var(x') | "try" floor(f) "catch" (floor(g), "break" var(x'))$,
   $"label" var(x) | f$, $"label" var(x) | floor(f)$,
   $"def" x defas f defend g$, $"def" x defas floor(f) defend floor(g)$,
   $"def" x(x_1; ...; x_n) defas f defend g$, $"def" x(x_1; ...; x_n) defas floor(f) defend floor(g)$,
