@@ -16,13 +16,10 @@
 `jq` is a tool that provides a programming language
 to efficiently process JSON data.
 We call this programming language the "jq language".
-It is documented by the user manual @jq-manual.
-However, the user manual can be ambiguous or even
-contradict the behaviour of `jq`.
 
 This text aims to give a precise, mathematical description of the jq language, similar to
 the "WebAssembly Core Specification" for WebAssembly @WebAssemblyCoreSpecification2.
-It is intended to complement the user manual.
+It is intended to complement the user manual @jq-manual.
 In some places, the behaviour described in this text diverges from `jq`.
 We try to point out such differing behaviour whenever it occurs.
 
