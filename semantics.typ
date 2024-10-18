@@ -160,7 +160,7 @@ Let us discuss its different cases:
   $f "as" var(x) | g$, $f[var(z) / var(y)] "as" var(x) | g[var(z) / var(y)]$,
   $"try" f "catch" g$, $"try" f[var(z) / var(y)] "catch" g[var(z) / var(y)]$,
   $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f[var(z) / var(y)] "else" g[var(z) / var(y)]$,
-  $fold x "as" var(x) (.; f)$, $fold x[var(z) / var(y)] "as" var(x) (.; f[var(z) / var(y)])$,
+  $fold x "as" var(x) (.; f; g)$, $fold x[var(z) / var(y)] "as" var(x) (.; f[var(z) / var(y)]; g[var(z) / var(y)])$,
   $"def" x(x_1; ...; x_n) defas f defend g$, $"def" x(x_1; ...; x_n) defas f[var(z) / var(y)] defend g[var(z) / var(y)]$,
   $x(f_1; ...; f_n)$, $x(f_1 [var(z) / var(y)]; ...; f_n [var(z) / var(y)])$,
 )) <tab:subst>
