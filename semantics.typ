@@ -622,6 +622,8 @@ $"label" var(x) | g$ and $"try" f "catch" g$.
 
 == Folding <folding-update>
 
+// TODO: update this for `foreach/3` and remove `for`
+
 In @folding, we have seen how to evaluate folding filters of the shape
 $fold x "as" var(x) (.; f)$, where $fold$ is either $"reduce"$ or $"foreach"$.
 Here, we will define update semantics for these filters.
