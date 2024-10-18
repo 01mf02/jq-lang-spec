@@ -182,91 +182,67 @@ constant time that can be achieved by a proper jq implementation.
 
 == Folding <folding>
 
-In this subsection, we will define the functions $fold^c_v (l, var(x), f)$
-(where $fold$ is either $"foreach"$ or $"reduce"$),
+In this subsection, we will define the functions
+$"reduce" ^c_v (l, var(x), f)$ and
+$"foreach"^c_v (l, var(x), f, g)$
 which underlie the semantics for the folding operators
-$fold x "as" var(x) (.; f)$.
+$"reduce"  x "as" var(x) (.; f)$ and
+$"foreach" x "as" var(x) (.; f; g)$.
 
-Let us start by defining a general folding function $"fold"^c_v (l, var(x), f, o)$: It takes
+Let us start by defining a general folding function
+$"fold"^c_v (l, var(x), f, g, o)$:
+It takes
 a stream of value results $l$,
 a variable $var(x)$,
-a filter $f$, and
+two filters $f$ and $g$, and
 a function $o(x)$ from a value $x$ to a stream of values.
 This function folds over the elements in $l$, starting from the accumulator value $v$.
-It yields the next accumulator value(s) by evaluating $f$
-with the current accumulator value as input and
-with the variable $var(x)$ bound to the first element in $l$.
-If $l$ is empty, then
-$v$ is called a  _final_        accumulator value and is returned, otherwise
-$v$ is called an _intermediate_ accumulator value and $o(v)$ is returned.
+For every element in $l$,
+$f$ is evaluated with the current accumulator value as input and
+with the variable $var(x)$ bound to the current element in $l$.
+Every output of $f$ is output after passing through $g$, then
+used as new accumulator value with the remaining list.
+If $l$ is empty, then $v$ is called a _final_ accumulator value and $o(v)$ is returned.
 
-$ "fold"^c_v (l, var(x), f, o) := cases(
-  o(v) + sum_(x in f|^(c{var(x) |-> h})_v) "fold"^c_x (t, var(x), f, o) & "if" l = stream(h) + t,
-  stream(        v ) & "otherwise" (l = stream())
+$ "fold"^c_v (l, var(x), f, g, o) := cases(
+  sum_(y in f|^(c{var(x) |-> h})_v) g|^(c{var(x) |-> h})_y + "fold"^c_y (t, var(x), f, g, o) & "if" l = stream(h) + t,
+  o(v) & "otherwise" (l = stream())
 ) $
 
 We use two different functions for $o(v)$;
-the first returns nothing,  corresponding to $"reduce" $ which does not return intermediate values, and
-the other returns just $v$, corresponding to $"foreach"$ which returns intermediate values.
+the first returns just $v$, corresponding to $"reduce"$ which returns a final value, and
+the second returns nothing,  corresponding to $"foreach"$.
 Instantiating $"fold"$ with these two functions, we obtain the following:
 
-$ "reduce"^c_v (l, var(x), f) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) = stream(#hide[v]) \
-     "for"^c_v (l, var(x), f) :=& "fold"^c_v (l, var(x), f, o) "where" o(v) = stream(v)
+$ "reduce"^c_v &(l, var(x), f&) &:= "fold"^c_v (l, var(x), f, "empty"&, o) "where" o(v) = stream(v) \
+  "foreach"^c_v &(l, var(x), f, g&) &:= "fold"^c_v (l, var(x), f, g&, o) "where" o(v) = stream(#hide[v])
 $
 
-Here, $"reduce"^c_v (l, var(x), f)$ is the function that is used in @tab:eval-semantics.
-However, $"for"^c_v (l, var(x), f)$ does _not_ implement the semantics of $"foreach"$,
-because it yields the initial accumulator value, whereas $"foreach"$ omits it.
-
-#example[
-  If we would set $"foreach"^c_v (l, var(x), f) := "for"^c_v (l, var(x), f)$, then evaluating
-  $"foreach" (1, 2, 3) "as" var(x) (0; . + var(x))$ would yield
-  $stream(0, 1, 3, 6)$, but jq evaluates it to
-  $stream(   1, 3, 6)$.
-]
-
-For that reason, we define $"foreach"$ in terms of $"for"$,
-but with a special treatment for the initial accumulator:
-
-$ "foreach"^c_v (l, var(x), f) := cases(
-  sum_(x in f|^(c{var(x) |-> h})_v) "for"^c_x (t, var(x), f) & "if" l = stream(h) + t,
-  stream() & "otherwise",
-) $
+Here,
+$"reduce" ^c_v (l, var(x), f)$ and
+$"foreach"^c_v (l, var(x), f, g)$ are the functions that are used in @tab:eval-semantics.
 
 We will now look at what the evaluation of the various folding filters expands to.
-Apart from $"reduce"$ and $"foreach"$, we will also consider a hypothetical filter
-$"for" x "as" var(x) (.; f)$ that is defined by the function
-$"for"^c_v (l, var(x), f)$, analogously to the other folding filters.
-
 Assuming that the filter $x$ evaluates to $stream(x_0, ..., x_n)$,
-then $"reduce"$ and $"for"$ expand to
+then $"reduce"$ and $"foreach"$ expand to
 
-$ "reduce"   x "as" var(x) (.; f) =&     x_0 "as" var(x) | f & wide
-  "for"      x "as" var(x) (.; f) =& ., (x_0 "as" var(x) | f \
+$ "reduce"   x "as" var(x) (.; f   ) =& x_0 "as" var(x) | f & wide
+  "foreach"  x "as" var(x) (.; f; g) =& x_0 "as" var(x) | f | g, ( \
 |& ... &
-|& ... \
-|&     x_n "as" var(x) | f &
-|& ., (x_n "as" var(x) | f)...)
-$
-and $"foreach"$ expands to
-$ "foreach" x "as" var(x) (.; f)
-=& #hide($., ($) x_0 "as" var(x) | f \
-|& ., (x_1 "as" var(x) | f \
-|& ... \
-|& ., (x_n "as" var(x) | f)...).
+ & ... \
+|& x_n "as" var(x) | f &
+ & x_n "as" var(x) | f | g, ( \
+&&
+ & "empty")...)
 $
 
-We can see that the special treatment of the initial accumulator value also shows up
-in the expansion of $"foreach"$.
-In contrast, the hypothetical $"for"$ filter looks more symmetrical to $"reduce"$.
-
-Note that jq implements only a restricted version of these folding operators
-that discards all output values of $f$ after the first output.
+Note that jq implements only restricted versions of these folding operators
+that consider only the last output of $f$ for the next iteration.
 That means that in jq,
-$fold x "as" var(x) (.;         f )$ is equivalent to
-$fold x "as" var(x) (.; "first"(f))$.
-Here, we assume the definition $"first"(f) := "label" var(x) | f | (., "break" var(x))$.
-This returns the first output of $f$ if $f$ yields any output, else nothing.
+$"reduce" x "as" var(x) (.;         f)$ is equivalent to
+$"reduce" x "as" var(x) (.; "last"(f))$.
+Here, we assume that the filter $"last"(f)$
+returns the last output of $f$ if $f$ yields any output, else nothing.
 
 
 

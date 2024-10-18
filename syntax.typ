@@ -28,18 +28,13 @@ applying a function $f$ from $i$ to $i'$ to all indices in the original path par
 A _pattern_ $P$ is of the shape
 $ var(x) #or_ [P, ..., P] #or_ {f: P, ..., f: P}, $
 where $f$ is a filter as defined below.
-We determine the sequence of variables bound by $P$ by
-$ "bnd"(P) = cases(
-  sum_i "bnd"(P_i) & "if" P = [P_1, ..., P_n] "or" P = {f_1: P_1, ..., f_n: P_n},
-  [var(x)] & "if" P = var(x),
-) $
 
 A _filter_ $f$ is defined by
 
 $ f :=& n #or_ s #or_ . #or_ .. \
   #or_& (f) #or_ f? #or_ [f] #or_ {f: f, ..., f: f} #or_ f [p]^? ... [p]^? \
   #or_& f star f #or_ f cartesian f \
-  #or_& f "as" P | f #or_  fold f "as" P (f; f) #or_ var(x) \
+  #or_& f "as" P | f #or_  "reduce" f "as" P (f; f) #or_ "foreach" f "as" P (f; f; f) #or_ var(x) \
   #or_& "label" var(x) | f #or_ "break" var(x) \
   #or_& "if" f "then" f "else" f #or_ "try" f #or_ "try" f "catch" f \
   #or_& "def" x defas f defend f #or_ "def" x(x; ...; x) defas f defend f \
@@ -58,7 +53,11 @@ We write $[]$ instead of $[nothing]$.
 The potential instances of the operators $star$ and $cartesian$ are given in @tab:binops.
 All operators $star$ and $cartesian$ are left-associative, except for
 "$|$", "$=$", "$update$", and "$aritheq$".
-A folding operation $fold$ is either "reduce" or "foreach".
+
+We will handle $"reduce"$ and $"foreach"$ very similarly; therefore,
+we introduce $fold$ to stand for either $"reduce"$ or $"foreach"$.
+However, because $"reduce"$ takes one argument less than $"foreach"$,
+we simply ignore the superfluous argument when handling $"reduce"$.
 
 #figure(
   table(
@@ -78,6 +77,7 @@ We consider equivalent the following notations:
 
 - $f?$ and $"try" f$,
 - $x()$ and $x$,
+- $"foreach" f_x "as" P (f_y; f)$ and $"foreach" f_x "as" P (f_y; f; .)$,
 - $"def" x() defas f defend g$ and
   $"def" x   defas f defend g$.
 
@@ -91,7 +91,7 @@ A MIR filter $f$ has the shape
 $ f :=& n #or_ s #or_ . \
   #or_& [f] #or_ {} #or_ {f: f} #or_ .[p] \
   #or_& f star f #or_ var(x) cartesian var(x) \
-  #or_& f "as" var(x) | f #or_  fold f "as" var(x) (.; f) #or_ var(x) \
+  #or_& f "as" var(x) | f #or_  "reduce" f "as" var(x) (.; f) #or_ "foreach" f "as" var(x) (.; f; f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
   #or_& "label" var(x) | f #or_ "break" var(x) \
   #or_& "def" x(x; ...; x) defas f defend f \
@@ -130,8 +130,9 @@ replace certain occurrences of filters by variables
   $f "as" P | g$, $floor(f) "as" var(x') | floor(var(x') "as" P | g)$,
   $var(x) "as" [P_1, ..., P_n] | g$, $floor(var(x) "as" {(0): P_1, ..., (n-1): P_n} | g)$,
   $var(x) "as" {f_1: P_1, ...} | g$, $floor(.[var(x) | f_1] "as" var(x') | var(x') "as" P_1 | var(x) "as" {f_2: P_2, ...} | g)$,
-  $fold f_x "as" var(x) (f_y; f)$, $. "as" var(x') | floor(f_y) | fold floor(var(x') | f_x) "as" var(x) (.; floor(f))$,
-  $fold f_x "as" P (f_y; f)$, $floor(fold f_x "as" P | "bnd"(P) "as" var(x') (f_y; var(x') "as" "bnd"(P) | f)) $,
+  $var(x) "as" {} | g$, $floor(g)$,
+  $fold f_x "as" var(x) (f_y; f; g)$, $. "as" var(x') | floor(f_y) | fold floor(var(x') | f_x) "as" var(x) (.; floor(f); floor(g))$,
+  $fold f_x "as" P (f_y; f; g)$, $floor(fold f_x "as" P | beta P "as" var(x') (f_y; var(x') "as" beta P | f; var(x') "as" beta P | g)) $,
   $"if" f_x "then" f "else" g$, $floor(f_x) "as" var(x') | "if" var(x') "then" floor(f) "else" floor(g)$,
   $"try" f "catch" g$, $"label" var(x') | "try" floor(f) "catch" (floor(g), "break" var(x'))$,
   $"label" var(x) | f$, $"label" var(x) | floor(f)$,
@@ -169,6 +170,20 @@ The filter
 $ "bool"(f) &:= "if" f "then" top "else" bot $
 takes a HIR filter $f$ and returns a HIR filter that
 maps the outputs of $f$ to their boolean values.
+
+In the lowering of $fold f_x "as" P (f_y; f; g)$
+(where $fold$ stands for either $"reduce"$ or $"foreach"$),
+we use the fact that we can both "serialise" and "deserialise"
+the variables bound by $P$ with $beta P$.
+Here, $beta P$ denotes the sequence of variables bound by $P$:
+$ beta P = cases(
+  sum_i beta P_i & "if" P = [P_1, ..., P_n] "or" P = {f_1: P_1, ..., f_n: P_n},
+  [var(x)] & "if" P = var(x),
+) $
+In particular, we exploit the property that
+$f "as" P | g$ can be rewritten to
+$ f "as" P | beta P "as" var(x') | var(x') "as" beta P | g, $
+because $beta P$ can be interpreted both as pattern and as filter.
 
 // TODO!
 #figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
@@ -250,7 +265,7 @@ $"wf"(phi, c)$ is true.
   $f "as" var(x) | g$, $"wf"(f) and "wf"(g, (d, v union {var(x)}, l))$,
   $"label" var(x) | f$, $"wf"(f, (d, v, l union {var(x)}))$,
   $"if" var(x) "then" f "else" g$, $var(x) in v and "wf"(f, c) and "wf"(g, c)$,
-  $fold x "as" var(x) (.; f)$, $"wf"(x, c) and "wf"(f, (d, v union {var(x)}, l))$,
+  $fold x "as" var(x) (.; f; g)$, $"wf"(x, c) and "wf"((f | g), (d, v union {var(x)}, l))$,
   $"def" x(x_1; ...; x_n) defas f defend g$, $"wf"(f, (d union union.big_i {(x_i, 0)}, v, l)) and "wf"(g, (d union {(x, n)}, v, l))$,
   $x(f_1; ...; f_n)$, $(x, n) in d and "wf"(f_i, c)$,
 )) <tab:wf>
