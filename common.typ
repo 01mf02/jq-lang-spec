@@ -1,4 +1,4 @@
-#import "@preview/ctheorems:1.1.0": thmplain, thmrules
+#import "@preview/ctheorems:1.1.3": thmplain, thmrules
 
 #let thm(x, y, ..args) = thmplain(x, y, inset: (left: 0em, right: 0em), ..args)
 #let example = thm("example", "Example")
@@ -11,6 +11,8 @@
 ).with(numbering: none)
 
 #let or_ = $quad || quad$
+#let app(..xs) = $#xs.pos().join($med$)$
+#let lam(..xs) = $lambda #app(..xs). thick$
 #let stream(..xs) = $angle.l #xs.pos().join($, $) angle.r$
 #let var(x) = $\$#x$
 #let cartesian = math.op($circle.small$)
