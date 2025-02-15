@@ -2,24 +2,56 @@
 
 = Evaluation Semantics <semantics>
 
-In this section, we will define a function $phi|^c_v$ that returns
-the output of the filter $phi$ in the context $c$ on the input value $v$.
+In this section, we will show how to transform a filter $phi$ to a lambda term $[|phi|]$,
+such that $[|phi|]$ is a function that takes an input value $v$ and returns
+the stream of values that the filter $phi$ outputs when given the input $v$.
+The evaluation strategy is call-by-name.
 
-Let us start with a few definitions.
-A _context_ $c$ is a mapping
-from variables $var(x)$ to values and
-from identifier-arity pairs $(x, n)$ to triples $(a, f, c)$, where
-$a$ is an identifier sequence with length $n$,
-$f$ is a filter, and
-$c$ is a context.
-Contexts store what variables and filters are bound to.
+The lambda term $[|phi|]$ that we will define will always have the shape $lam(v) t$.
+For conciseness, instead of writing $[|phi|] = lam(v) t$, we adopt the shorter notation $app([|phi|], v) = t$.
+
+#let bind = $>#h(-0.5em)>#h(-1em / 6)=$
+
+We model streams using a standard representation of lists in lambda calculus:
+$ "cons" &= lam(h, t, c, n) app(c, h, t) \
+  "nil"  &= lam(c, n) n $
+
+Furthermore, we introduce result values, which are either
+OK or an error:
+
+$ "ok"    &= lam(x, o, e, b) app(o, x) \
+  "err"   &= lam(x, o, e, b) app(e, x) \
+  "break" &= lam(x, o, e, b) app(b, x) $
+
+We assume the existence of a set of Y combinators $Y_n$ that we will use to
+define recursive functions of arity $n$.
+For each $n$, we have that $Y_n f = f (Y_n f)$ holds.
+Furthermore, the types of $Y_n$ are:
+
+$ Y_0:& ((x_0 &&-> y) -> x_0 &&-> y) -> x_0 &&-> y \
+  ... \
+  Y_n:& ((x_0 -> ... -> x_n &&-> y) -> x_0 -> ... -> x_n &&-> y) -> x_0 -> ... -> x_n &&-> y $
+
+The concatenation of two lists $l$ and $r$ can be defined as
+$ l + r := app(Y_0, (lam(f, l) app(l, (lam(h, t) app("cons", h, (app(f, t)))), r)), l), $
+which satisfies the equational property
+$ l + r = app(l, (lam(h, t) app("cons", h, (t + r))), r). $
+For simplicity, we will define recursive functions from here on mostly by equational properties,
+from which we could easily derive proper definitions using the $Y_n$ combinators.
+
+We use the monadic bind operator $bind$ to model composition.
+For a list $l$ and a function $f$ from a list element to a list, we have
+$ (l bind_l f) &= app(l, (lam(h, t) app(f, h) + (t bind f)), "nil") \
+  (l bind   f) &= l bind_l (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
 
 We are now going to introduce a few helper functions.
+/*
 The first function helps define filters such as if-then-else and alternation ($f alt g$):
 $ "ite"(v, i, t, e) = cases(
   t & "if" v = i,
   e & "otherwise"
 ) $
+*/
 
 Next, we define a function that is used to define alternation.
 $"trues"(l)$ returns those elements of $l$ whose boolean values are not false.
@@ -27,35 +59,40 @@ Note that in our context, "not false" is _not_ the same as "true", because
 the former includes exceptions, whereas the latter excludes them,
 and $"bool"(x)$ _can_ return exceptions, in particular if $x$ is an exception.
 
-$ "trues"(l) := sum_(x in l, "bool"(x) != "false") stream(x) $
+$ "trues" := lam(l) l bind (lam(x) app((app("bool", x)), stream(app("ok", x)), "nil")) $
+
+#let ok(x) = $app("ok", #x)$
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
-  $phi$, $phi|^c_v$,
-  $.$, $stream(v)$,
-  $n "or" s$, $stream(phi)$,
-  $var(x)$, $stream(c(var(x)))$,
-  $[f]$, $stream([f|^c_v])$,
-  ${}$, $stream({})$,
-  ${var(x): var(y)}$, $stream({c(var(x)): c(var(y))})$,
-  $f, g$, $f|^c_v + g|^c_v$,
-  $f | g$, $sum_(x in f|^c_v) g|^c_x$,
-  $f alt g$, $"ite"("trues"(f|^c_v), stream(), g|^c_v, "trues"(f|^c_v))$,
-  $f "as" var(x) | g$, $sum_(x in f|^c_v) g|^(c{var(x) |-> x})_v$,
-  $var(x) cartesian var(y)$, $stream(c(var(x)) cartesian c(var(y)))$,
-  $"try" f "catch" g$, $sum_(x in f|^c_v) cases(
-    g|^c_e & "if" x = "error"(e),
-    stream(x) & "otherwise"
-  )$,
-  $"label" var(x) | f$, $"label"(f[var(x') / var(x)]|^c_v, var(x'))$,
-  $"break" var(x)$, $stream("break"(var(x)))$,
-  $"if" var(x) "then" f "else" g$, $"ite"("bool"(c(var(x))), "true", f|^c_v, g|^c_v)$,
-  $.[p]^?$, $v[c(p)]^?$,
+  $phi$, $app([|phi|]_c, v)$,
+  $.$, $stream(ok(v))$,
+  $n "or" s$, $stream(ok(phi))$,
+  $[f]$, $stream([ app([|f|], v) ])$,
+  ${}$, $stream(ok({}))$,
+  ${var(x): var(y)}$, $stream(ok({var(x): var(y)}))$,
+  $var(x) cartesian var(y)$, $stream(ok((var(x) cartesian var(y))))$,
+  $f, g$, $app([|f|], v) + app([|g|], v)$,
+  $f | g$, $app([|f|], v) bind [|g|]$,
+  $f alt g$, $app((lam(t) app(t, (lam(\_, \_) t), (app([|g|], v)))), (app("trues", (app([|f|], v)))))$,
+  $f "as" var(x) | g$, $[|f|] v bind (lam(var(x)) app([|g|], v))$,
+  $"try" f "catch" g$, $[|f|] v bind_l lam(r) app(r, (lam(o) stream(r)), [|g|])$,
+  $"label" var(x) | f$, $"label"(var(x'), (lambda var(x). [|f|]_("bla"(c, var(x)))) var(x'))$,
+  $"break" var(x)$, $stream(app("break", c(var(x))))$,
+  $"if" var(x) "then" f "else" g$, $app((app((app("bool", var(x))), [|f|], [|g|])), v)$,
+  // TODO?
+  $.[p]^?$, $v[p]^?$,
   $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f)$,
-  $"def" x(x_1; ...; x_n) defas f defend g$, $g|^(c union {(x, n) |-> ([x_1, ..., x_n], f, c)})_v$,
-  $x(f_1; ...; f_n)$, $f|^(c' union union.big_i {x_i |-> (f_i, c)})_v "if" c((x, n)) = ([x_1, ..., x_n], f, c')$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app([|g|], v)) (app(Y_n, (lam(x, x_1, ..., x_n) [|f|]_(c union {i | x_i |-> 0}))))$,
+  $"def" x defas f defend g$, $(lam(x) app([|g|], v)) (app(Y_n, (lam(x) [|f|]_("remove"(c, x)))))$,
+  $x(f_1; ...; f_n)$, $cases(
+    app("offset", x, c(x)) & "if" n = 0 "and" x in "dom"(c),
+    app(x, [|f_1|], ..., [|f_n|], v) & "otherwise",
+  ))$,
   $f update g$, [see @updates]
 )) <tab:eval-semantics>
 
+$"bla"(c, var(x)) = {x in "dom"(c) | x |-> c(x) + 1} union {var(x) |-> 0}$
+$"remove"(c, x) = {y in "dom"(c) and x != y | y |-> c(y)}$
 
 The evaluation semantics are given in @tab:eval-semantics.
 Let us discuss its different cases:
