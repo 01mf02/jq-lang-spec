@@ -73,7 +73,7 @@ $app("run", [|phi|], l, v)$ to define $t_r$ and
 $app("upd", [|phi|], sigma, l, v)$ to define $t_u$.
 For example, if $phi = .$ (the identity filter), then $ [|phi|] = app("pair",
 (lam(l, v) stream(ok(v))),
-(lam(sigma, l, v) app("run", sigma, l, v))). $
+(lam(sigma, l, v) app(sigma, v))). $
 // TODO: to run or not to run, that's the question!
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
@@ -98,7 +98,7 @@ For example, if $phi = .$ (the identity filter), then $ [|phi|] = app("pair",
   $"foreach" x "as" var(x) (.; f; g)$, $app("foreach", (lam(var(x)) app("run", [|f|], l)), (lam(var(x)) app("run", [|g|], l)), (app("run", [|x|], l, v)), v)$,
   $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("run", [|g|], l, v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
   $x(f_1; ...; f_n)$, $app("run", (app(x, [|f_1|], ..., [|f_n|])), l, v)$,
-  $f update g$, [see @updates]
+  $f update g$, $app("upd", [|f|], (app("run", [|g|], l)), l, v)$,
 )) <tab:eval-semantics>
 
 The evaluation semantics are given in @tab:eval-semantics.
@@ -219,7 +219,7 @@ $"foreach" x "as" var(x) (.; f; g)$.
 Let us start by defining a general folding function $"fold"$:
 $ "fold" := lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, h, v) bind (lam(y) app(g, h, y) + app(F, t, y))), (app(n, v))))) $
 This function takes
-two functions $f$ and $g$ that both take two values and return a stream of value results, and
+two functions $f$ and $g$ that both take two values --- a list element and an accumulator --- and return a stream of value results, and
 a function $n$ (for the nil case) from a value $x$ to a stream of value results.
 From that, it creates a recursive function that
 takes a stream of value results $l$ and an accumulator value $v$ and
@@ -512,19 +512,21 @@ Note that we $"depolarise"$ the final outputs of $f update g$ in order to
 prevent leaking polarisation information outside the update*/.
 
 #figure(caption: [Update semantics. Here, $mu$ is a filter and $sigma(v)$ is a function from a value $v$ to a stream of value results.], table(columns: 2,
-  $mu$, $(mu update sigma)|^c_v$,
-  $.$, $sigma(v)$,
-  $f | g$, $(f update sigma')|^c_v "where" sigma'(x) = (g update sigma)|^c_x$,
-  $f, g$, $sum_(x in (f update sigma)|^c_v) (g update sigma)|^c_x$,
-  $f alt g$, $"ite"("trues"(f|^c_v), stream(), (g update sigma)|^c_v, (f update sigma)|^c_v)$,
+  $phi$, $app("upd", [|phi|], sigma, l, v)$,
+  $.$, $app(sigma, v)$,
+  $f | g$, $app("upd", [|f|], (app("upd", [|g|], sigma, l)), l, v)$,
+  $f, g$, $app("upd", [|f|], sigma, l, v) bind app("upd", [|g|], sigma, l)$,
+  $f alt g$, $app("upd", (app((app("run", [|f|], l, v) bind "trues"), (lam(\_, \_) [|f|]), [|g|])), l, v)$,
   $.[p]^?$, $stream(v[c(p)]^? update sigma)$,
-  $f "as" var(x) | g$, $"reduce"^c_v (f|^c_v, var(x), (g update sigma))$,
-  $"if" var(x) "then" f "else" g$, $"ite"(c(var(x)), "true", (f update sigma)|^c_v, (g update sigma)|^c_v)$,
-//$"try" f "catch" g$, $sum_(x in (f update sigma)|^c_v) "catch"(x, g, c, v)$,
-  $"break" var(x)$, $stream("break"(var(x)))$,
+  $f "as" var(x) | g$, $app("reduce", (lam(var(x)) app("upd", [|g|], sigma, l)), (app("run", [|f|], l, v)), v)$,
+  $"if" var(x) "then" f "else" g$, $app("upd", (app((app("bool", var(x))), [|f|], [|g|])), sigma, l, v)$,
+  $"break" var(x)$, $stream(app("break", var(x)))$,
+  // TODO!
   $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f, sigma)$,
-  $"def" x(x_1; ...; x_n) defas f defend g$, $(g update sigma)|^(c union {(x, n) |-> ([x_1, ..., x_n], f, c)})_v$,
-  $x(f_1; ...; f_n)$, $(f update sigma)|^(c' union union.big_i {x_i |-> (f_i, c)})_v "if" c((x, n)) = ([x_1, ..., x_n], f, c')$,
+  $"reduce" x "as" var(x) (.; f)$, $app("reduce"_models, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (app("run", [|x|], l, v)), v)$,
+  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach"_models, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (lam(var(x)) app("upd", [|g|], sigma, l)), (app("run", [|x|], l, v)), v)$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("upd", [|g|], sigma, l, v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
+  $x(f_1; ...; f_n)$, $app("upd", (app(x, [|f_1|], ..., [|f_n|])), sigma, l, v)$,
 )) <tab:update-semantics>
 
 @tab:update-semantics shows the definition of $(mu update sigma)|^c_v$.
@@ -720,15 +722,18 @@ For this, we first introduce a function $"fold"^c_v (l, var(x), f, g, sigma, o)$
 which resembles its corresponding function in @folding,
 but which adds an argument for the update filter $sigma$:
 
+$ "fold"_update := lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, (lam(x) app(g, h, x) bind app(F, t)), h, v)), (app(n, v))))) $
+
+/*
 $ "fold"^c_v (l, var(x), f, g, sigma, o) := cases(
   (f update sigma')|^(c{var(x) |-> h})_v & "if" l = stream(h) + t,
   o(v) & "otherwise" (l = stream()),
 ) $
 where
 $ sigma'(x) = sum_(y in (g update sigma)|^(c{var(x) |-> h})_x) "fold"^c_y (t, var(x), f, g, sigma, o). $
+*/
 
 Using this function, we can now define
 
-$  "reduce"^c_v & (l, var(x), f,    &sigma) :=& "fold"^c_v (l, var(x), f, "empty", &sigma, o) "where" o(v) = sigma(v) \
-  "foreach"^c_v & (l, var(x), f, g, &sigma) :=& "fold"^c_v (l, var(x), f,       g, &sigma, o) "where" o(v) = #hide($sigma$)stream(v)
-$
+$  "reduce"_models &:= lam(f   &&) app("fold", f, (lam(h, v) stream(v)), && sigma) \
+  "foreach"_models &:= lam(f, g&&) app("fold", f, g, && (lam(v) stream(ok(v)))) $
