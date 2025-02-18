@@ -7,10 +7,10 @@ such that $[|phi|]$ is a function that takes an input value $v$ and returns
 the stream of values that the filter $phi$ outputs when given the input $v$.
 The evaluation strategy is call-by-name.
 
-The lambda term $[|phi|]$ that we will define will always have the shape $lam(v) t$.
-For conciseness, instead of writing $[|phi|] = lam(v) t$, we adopt the shorter notation $app([|phi|], v) = t$.
+== Runtime
 
 #let bind = $>#h(-0.5em)>#h(-1em / 6)=$
+#let bindl = $class("binary", bind_L)$
 
 We model streams using a standard representation of lists in lambda calculus:
 $ "cons" &= lam(h, t, c, n) app(c, h, t) \
@@ -22,6 +22,15 @@ OK or an error:
 $ "ok"    &= lam(x, o, e, b) app(o, x) \
   "err"   &= lam(x, o, e, b) app(e, x) \
   "break" &= lam(x, o, e, b) app(b, x) $
+
+Next, we define pairs, which we use to store two functions
+--- a run and an update function --- for each filter.
+We retrieve the latter by $"run" := "fst"$ and $"upd" := "snd"$.
+
+$ "pair" &= lam(x, y, f) app(f, x, y) \
+  "fst"  &= lam(x, y). x \
+  "snd"  &= lam(x, y). y $
+
 
 We assume the existence of a set of Y combinators $Y_n$ that we will use to
 define recursive functions of arity $n$.
@@ -41,8 +50,8 @@ from which we could easily derive proper definitions using the $Y_n$ combinators
 
 We use the monadic bind operator $bind$ to model composition.
 For a list $l$ and a function $f$ from a list element to a list, we have
-$ (l bind_l f) &= app(l, (lam(h, t) app(f, h) + (t bind f)), "nil") \
-  (l bind   f) &= l bind_l (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
+$ (l bindl f) &= app(l, (lam(h, t) app(f, h) + (t bind f)), "nil") \
+  (l bind  f) &= l bindl (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
 
 We are now going to introduce a few helper functions.
 /*
@@ -61,38 +70,36 @@ and $"bool"(x)$ _can_ return exceptions, in particular if $x$ is an exception.
 
 $ "trues" := lam(l) l bind (lam(x) app((app("bool", x)), stream(app("ok", x)), "nil")) $
 
+== Compilation
+
+The lambda term $[|phi|]$ that we will define will always have the shape $lam(v) t$.
+For conciseness, instead of writing $[|phi|] = lam(v) t$, we adopt the shorter notation $app([|phi|], v) = t$.
+
 #let ok(x) = $app("ok", #x)$
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
-  $phi$, $app([|phi|]_c, v)$,
+  $phi$, $app("run", [|phi|], l, v)$,
   $.$, $stream(ok(v))$,
   $n "or" s$, $stream(ok(phi))$,
-  $[f]$, $stream([ app([|f|], v) ])$,
+  $[f]$, $stream([ app("run", [|f|], l, v) ])$,
   ${}$, $stream(ok({}))$,
   ${var(x): var(y)}$, $stream(ok({var(x): var(y)}))$,
   $var(x) cartesian var(y)$, $stream(ok((var(x) cartesian var(y))))$,
-  $f, g$, $app([|f|], v) + app([|g|], v)$,
-  $f | g$, $app([|f|], v) bind [|g|]$,
-  $f alt g$, $app((lam(t) app(t, (lam(\_, \_) t), (app([|g|], v)))), (app("trues", (app([|f|], v)))))$,
-  $f "as" var(x) | g$, $[|f|] v bind (lam(var(x)) app([|g|], v))$,
-  $"try" f "catch" g$, $[|f|] v bind_l lam(r) app(r, (lam(o) stream(r)), [|g|])$,
-  $"label" var(x) | f$, $"label"(var(x'), (lambda var(x). [|f|]_("bla"(c, var(x)))) var(x'))$,
-  $"break" var(x)$, $stream(app("break", c(var(x))))$,
-  $"if" var(x) "then" f "else" g$, $app((app((app("bool", var(x))), [|f|], [|g|])), v)$,
+  $f, g$, $app("run", [|f|], l, v) + app("run", [|g|], l, v)$,
+  $f | g$, $app("run", [|f|], l, v) bind app("run", [|g|], l)$,
+  $f alt g$, $app((lam(t) app(t, (lam(\_, \_) t), (app("run", [|g|], l, v)))), (app("trues", (app("run", [|f|], l, v)))))$,
+  $f "as" var(x) | g$, $app("run", [|f|], l, v) bind (lam(var(x)) app("run", [|g|], l, v))$,
+  $"try" f "catch" g$, $app("run", [|f|], l, v) bindl lam(r) app(r, (lam(o) stream(r)), (app("run", [|g|], l)))$,
+  $"label" var(x) | f$, $app("label", l, (app((lam(var(x)) app("run", [|f|], (app("succ", l)), v)), l)))$,
+  $"break" var(x)$, $stream(app("break", var(x)))$,
+  $"if" var(x) "then" f "else" g$, $app("run", (app((app("bool", var(x))), [|f|], [|g|])), l, v)$,
   // TODO?
   $.[p]^?$, $v[p]^?$,
   $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f)$,
-  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app([|g|], v)) (app(Y_n, (lam(x, x_1, ..., x_n) [|f|]_(c union {i | x_i |-> 0}))))$,
-  $"def" x defas f defend g$, $(lam(x) app([|g|], v)) (app(Y_n, (lam(x) [|f|]_("remove"(c, x)))))$,
-  $x(f_1; ...; f_n)$, $cases(
-    app("offset", x, c(x)) & "if" n = 0 "and" x in "dom"(c),
-    app(x, [|f_1|], ..., [|f_n|], v) & "otherwise",
-  ))$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("run", [|g|], l, v)) (app(Y_n, (lam(x, x_1, ..., x_n) [|f|])))$,
+  $x(f_1; ...; f_n)$, $app("run", (app(x, [|f_1|], ..., [|f_n|])), l, v)$,
   $f update g$, [see @updates]
 )) <tab:eval-semantics>
-
-$"bla"(c, var(x)) = {x in "dom"(c) | x |-> c(x) + 1} union {var(x) |-> 0}$
-$"remove"(c, x) = {y in "dom"(c) and x != y | y |-> c(y)}$
 
 The evaluation semantics are given in @tab:eval-semantics.
 Let us discuss its different cases:
