@@ -17,7 +17,7 @@ $ "cons" &= lam(h, t, c, n) app(c, h, t) \
   "nil"  &= lam(c, n) n $
 
 Furthermore, we introduce result values, which are either
-OK or an error:
+OK or an exception (an error or a break):
 
 $ "ok"    &= lam(x, o, e, b) app(o, x) \
   "err"   &= lam(x, o, e, b) app(e, x) \
@@ -37,12 +37,12 @@ define recursive functions of arity $n$.
 For each $n$, we have that $Y_n f = f (Y_n f)$ holds.
 Furthermore, the types of $Y_n$ are:
 
-$ Y_0:& ((x_0 &&-> y) -> x_0 &&-> y) -> x_0 &&-> y \
+$ Y_1:& ((x_1 &&-> y) -> x_1 &&-> y) -> x_1 &&-> y \
   ... \
-  Y_n:& ((x_0 -> ... -> x_n &&-> y) -> x_0 -> ... -> x_n &&-> y) -> x_0 -> ... -> x_n &&-> y $
+  Y_n:& ((x_1 -> ... -> x_n &&-> y) -> x_1 -> ... -> x_n &&-> y) -> x_1 -> ... -> x_n &&-> y $
 
 The concatenation of two lists $l$ and $r$ can be defined as
-$ l + r := app(Y_0, (lam(f, l) app(l, (lam(h, t) app("cons", h, (app(f, t)))), r)), l), $
+$ l + r := app(Y_1, (lam(f, l) app(l, (lam(h, t) app("cons", h, (app(f, t)))), r)), l), $
 which satisfies the equational property
 $ l + r = app(l, (lam(h, t) app("cons", h, (t + r))), r). $
 For simplicity, we will define recursive functions from here on mostly by equational properties,
@@ -50,32 +50,31 @@ from which we could easily derive proper definitions using the $Y_n$ combinators
 
 We use the monadic bind operator $bind$ to model composition.
 For a list $l$ and a function $f$ from a list element to a list, we have
-$ (l bindl f) &= app(l, (lam(h, t) app(f, h) + (t bind f)), "nil") \
-  (l bind  f) &= l bindl (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
-
-We are now going to introduce a few helper functions.
-/*
-The first function helps define filters such as if-then-else and alternation ($f alt g$):
-$ "ite"(v, i, t, e) = cases(
-  t & "if" v = i,
-  e & "otherwise"
-) $
-*/
+$ (l &bindl& f) &= app(l, (lam(h, t) app(f, h) + (t bindl f)), "nil") \
+  (l &bind & f) &= l bindl (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
 
 Next, we define a function that is used to define alternation.
-$"trues"(l)$ returns those elements of $l$ whose boolean values are not false.
-Note that in our context, "not false" is _not_ the same as "true", because
-the former includes exceptions, whereas the latter excludes them,
-and $"bool"(x)$ _can_ return exceptions, in particular if $x$ is an exception.
+$app("trues", x)$ returns its input $x$ if its boolean value is true.
+$ "trues" := lam(x) app((app("bool", x)), stream(app("ok", x)), "nil") $
 
-$ "trues" := lam(l) l bind (lam(x) app((app("bool", x)), stream(app("ok", x)), "nil")) $
+#let ok(x) = $app("ok", #x)$
 
 == Compilation
 
-The lambda term $[|phi|]$ that we will define will always have the shape $lam(v) t$.
-For conciseness, instead of writing $[|phi|] = lam(v) t$, we adopt the shorter notation $app([|phi|], v) = t$.
-
-#let ok(x) = $app("ok", #x)$
+The lambda term $[|phi|]$ corresponding to a filter $phi$ that we will define
+will always be a pair of two functions, namely a run and an update function.
+It has the shape $ [|phi|] = app("pair", (lam(l, v) t_r), (lam(sigma, l, v) t_u)) $
+for some terms $t_r$ (run function) and $t_u$ (update function).
+For a given $phi$, we can obtain
+$t_r$ by $app("run", [|phi|], l, v)$ and
+$t_u$ by $app("upd", [|phi|], sigma, l, v)$.
+For conciseness, we write
+$app("run", [|phi|], l, v)$ to define $t_r$ and
+$app("upd", [|phi|], sigma, l, v)$ to define $t_u$.
+For example, if $phi = .$ (the identity filter), then $ [|phi|] = app("pair",
+(lam(l, v) stream(ok(v))),
+(lam(sigma, l, v) app("run", sigma, l, v))). $
+// TODO: to run or not to run, that's the question!
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $app("run", [|phi|], l, v)$,
@@ -87,7 +86,7 @@ For conciseness, instead of writing $[|phi|] = lam(v) t$, we adopt the shorter n
   $var(x) cartesian var(y)$, $stream(ok((var(x) cartesian var(y))))$,
   $f, g$, $app("run", [|f|], l, v) + app("run", [|g|], l, v)$,
   $f | g$, $app("run", [|f|], l, v) bind app("run", [|g|], l)$,
-  $f alt g$, $app((lam(t) app(t, (lam(\_, \_) t), (app("run", [|g|], l, v)))), (app("trues", (app("run", [|f|], l, v)))))$,
+  $f alt g$, $app((lam(t) app(t, (lam(\_, \_) t), (app("run", [|g|], l, v)))), (app("run", [|f|], l, v) bind "trues"))$,
   $f "as" var(x) | g$, $app("run", [|f|], l, v) bind (lam(var(x)) app("run", [|g|], l, v))$,
   $"try" f "catch" g$, $app("run", [|f|], l, v) bindl lam(r) app(r, (lam(o) stream(r)), (app("run", [|g|], l)))$,
   $"label" var(x) | f$, $app("label", l, (app((lam(var(x)) app("run", [|f|], (app("succ", l)), v)), l)))$,
@@ -95,8 +94,9 @@ For conciseness, instead of writing $[|phi|] = lam(v) t$, we adopt the shorter n
   $"if" var(x) "then" f "else" g$, $app("run", (app((app("bool", var(x))), [|f|], [|g|])), l, v)$,
   // TODO?
   $.[p]^?$, $v[p]^?$,
-  $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f)$,
-  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("run", [|g|], l, v)) (app(Y_n, (lam(x, x_1, ..., x_n) [|f|])))$,
+  $"reduce" x "as" var(x) (.; f)$, $app("reduce", (lam(var(x)) app("run", [|f|], l)), (app("run", [|x|], l, v)), v)$,
+  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach", (lam(var(x)) app("run", [|f|], l)), (lam(var(x)) app("run", [|g|], l)), (app("run", [|x|], l, v)), v)$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("run", [|g|], l, v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
   $x(f_1; ...; f_n)$, $app("run", (app(x, [|f_1|], ..., [|f_n|])), l, v)$,
   $f update g$, [see @updates]
 )) <tab:eval-semantics>
@@ -150,7 +150,7 @@ Let us discuss its different cases:
     stream(h) + "label"(t, var(x)) & "if" l = stream(h) + t "and" h != "break"(var(x)),
     stream() & "otherwise",
   ) $
-  Here, we substitute occurrences of $var(x)$ by a fresh label $var(x')$ as given by @tab:subst.
+  // TODO!
   To see that this is necessary, consider the example
   $ "def" f(x) defas ("label" var(x) | x), 0 defend "label" var(x) | f("break" var(x)). $
   With substitution, this is equivalent to
@@ -194,21 +194,6 @@ Let us discuss its different cases:
 - $f update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @updates.
 
-#figure(caption: [Substitution of break label $var(y)$ by $var(z)$ in filter $phi$.], table(columns: 2,
-  $phi$, $phi[var(z) / var(y)]$,
-  [$., n, s, {}, .[p]^?, var(x),$ \ ${var(x): var(y)}, "or" var(x) cartesian var(y)$], $phi$,
-  $"label" var(x) | f$, $"label" var(x) | "ite"(var(x), var(y), f, f[var(z) / var(y)])$,
-  $"break" var(x)$, $"break" "ite"(var(x), var(y), var(z), var(x))$,
-  $[f]$, $[f[var(z) / var(y)]]$,
-  $f star g$, $f[var(z) / var(y)] star g[var(z) / var(y)]$,
-  $f "as" var(x) | g$, $f[var(z) / var(y)] "as" var(x) | g[var(z) / var(y)]$,
-  $"try" f "catch" g$, $"try" f[var(z) / var(y)] "catch" g[var(z) / var(y)]$,
-  $"if" var(x) "then" f "else" g$, $"if" var(x) "then" f[var(z) / var(y)] "else" g[var(z) / var(y)]$,
-  $fold x "as" var(x) (.; f; g)$, $fold x[var(z) / var(y)] "as" var(x) (.; f[var(z) / var(y)]; g[var(z) / var(y)])$,
-  $"def" x(x_1; ...; x_n) defas f defend g$, $"def" x(x_1; ...; x_n) defas f[var(z) / var(y)] defend g[var(z) / var(y)]$,
-  $x(f_1; ...; f_n)$, $x(f_1 [var(z) / var(y)]; ...; f_n [var(z) / var(y)])$,
-)) <tab:subst>
-
 An implementation may also define custom semantics for named filters.
 For example, an implementation may define
 $"error"|^c_v := "error"(v)$ and
@@ -227,44 +212,34 @@ constant time that can be achieved by a proper jq implementation.
 == Folding <folding>
 
 In this subsection, we will define the functions
-$"reduce" ^c_v (l, var(x), f)$ and
-$"foreach"^c_v (l, var(x), f, g)$
-which underlie the semantics for the folding operators
+$"reduce"$ and $"foreach"$ which underlie the semantics for the folding operators
 $"reduce"  x "as" var(x) (.; f)$ and
 $"foreach" x "as" var(x) (.; f; g)$.
 
-Let us start by defining a general folding function
-$"fold"^c_v (l, var(x), f, g, o)$:
-It takes
-a stream of value results $l$,
-a variable $var(x)$,
-two filters $f$ and $g$, and
-a function $o(x)$ from a value $x$ to a stream of values.
+Let us start by defining a general folding function $"fold"$:
+$ "fold" := lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, h, v) bind (lam(y) app(g, h, y) + app(F, t, y))), (app(n, v))))) $
+This function takes
+two functions $f$ and $g$ that both take two values and return a stream of value results, and
+a function $n$ (for the nil case) from a value $x$ to a stream of value results.
+From that, it creates a recursive function that
+takes a stream of value results $l$ and an accumulator value $v$ and
+returns a stream of value results.
 This function folds over the elements in $l$, starting from the accumulator value $v$.
-For every element in $l$,
-$f$ is evaluated with the current accumulator value as input and
-with the variable $var(x)$ bound to the current element in $l$.
-Every output of $f$ is output after passing through $g$, then
-used as new accumulator value with the remaining list.
-If $l$ is empty, then $v$ is called a _final_ accumulator value and $o(v)$ is returned.
+For every element $h$ in $l$,
+$f$ is evaluated with $h$ and the current accumulator value $v$ as input.
+Every output $y$ of $f$ is output after passing through $g$, then
+used as new accumulator value with the remaining list $t$.
+If $l$ is empty, then $v$ is called a _final_ accumulator value and $app(n, v)$ is returned.
 
-$ "fold"^c_v (l, var(x), f, g, o) := cases(
-  sum_(y in f|^(c{var(x) |-> h})_v) g|^(c{var(x) |-> h})_y + "fold"^c_y (t, var(x), f, g, o) & "if" l = stream(h) + t,
-  o(v) & "otherwise" (l = stream())
-) $
-
-We use two different functions for $o(v)$;
-the first returns just $v$, corresponding to $"reduce"$ which returns a final value, and
+We use two different functions for $n$;
+the first returns just its input, corresponding to $"reduce"$ which returns a final value, and
 the second returns nothing,  corresponding to $"foreach"$.
 Instantiating $"fold"$ with these two functions, we obtain the following:
 
-$ "reduce"^c_v &(l, var(x), f&) &:= "fold"^c_v (l, var(x), f, "empty"&, o) "where" o(v) = stream(v) \
-  "foreach"^c_v &(l, var(x), f, g&) &:= "fold"^c_v (l, var(x), f, g&, o) "where" o(v) = stream(#hide[v])
-$
+$ "reduce" &:= lam(f)     && app("fold", f, (lam(h, v) stream()), && (lam(v) stream(ok(v) &&))) \
+  "foreach" &:= lam(f, g) && app("fold", f, g, && (lam(v) stream(&&))) $
 
-Here,
-$"reduce" ^c_v (l, var(x), f)$ and
-$"foreach"^c_v (l, var(x), f, g)$ are the functions that are used in @tab:eval-semantics.
+Here, $"reduce"$ and $"foreach"$ are the functions used in @tab:eval-semantics.
 
 We will now look at what the evaluation of the various folding filters expands to.
 Assuming that the filter $x$ evaluates to $stream(x_0, ..., x_n)$,
