@@ -12,25 +12,38 @@ The evaluation strategy is call-by-name.
 #let bind = $>#h(-0.5em)>#h(-1em / 6)=$
 #let bindl = $class("binary", bind_L)$
 
-We model streams using a standard representation of lists in lambda calculus:
-$ "cons" &= lam(h, t, c, n) app(c, h, t) \
-  "nil"  &= lam(c, n) n $
+In this section, we define several data types and functions in lambda calculus.
+We assume that the type of values $cal(V)$ that we operate on (@values)
+can be encoded in lambda calculus.
+For convenience, we suppose that the boolean values are encoded as follows:
+$  "true": cal(V) := lam(t, f) t \
+  "false": cal(V) := lam(t, f) f $
+We assume the existence of a function $"bool": cal(V) -> cal(V)$ that
+takes a value and returns a boolean.
 
-Furthermore, we introduce result values, which are either
-OK or an exception (an error or a break):
-
-$ "ok"    &= lam(x, o, e, b) app(o, x) \
-  "err"   &= lam(x, o, e, b) app(e, x) \
-  "break" &= lam(x, o, e, b) app(b, x) $
-
-Next, we define pairs, which we use to store two functions
+We will use pairs to store two functions
 --- a run and an update function --- for each filter.
-We retrieve the latter by $"run" := "fst"$ and $"upd" := "snd"$.
 
-$ "pair" &= lam(x, y, f) app(f, x, y) \
-  "fst"  &= lam(x, y). x \
-  "snd"  &= lam(x, y). y $
+$ "pair" &:= lam(x, y, f) app(f, x, y) \
+  "fst"  &:= lam(p) app(p, (lam(x, y) x)) \
+  "snd"  &:= lam(p) app(p, (lam(x, y) y)) $
 
+We assume the existence of functions $"succ"$ and $"zero"$
+to construct natural numbers, as well as a function $"nat_eq"$ that returns
+$"true"$ if two natural numbers are equal, else $"false"$.
+We use natural numbers to store label identifiers.
+
+The elements returned by our filters are _result values_ $cal(R)$, which are
+either OK or an exception (an error or a break).
+
+$ "ok"   &: cal(V) -> cal(R) := lam(x, o, e, b) app(o, x) \
+  "err"  &: cal(V) -> cal(R) := lam(x, o, e, b) app(e, x) \
+  "break"&:  bb(N) -> cal(R) := lam(x, o, e, b) app(b, x) $
+
+We will use streams $cal(S)$ of result values as return type of filters.
+
+$ "cons"&: cal(R) -> cal(S) -> &&cal(S) := lam(h, t) && lam(c, n) app(c, h, t) \
+   "nil"&:                     &&cal(S) :=           && lam(c, n) n $
 
 We assume the existence of a set of Y combinators $Y_n$ that we will use to
 define recursive functions of arity $n$.
@@ -41,21 +54,30 @@ $ Y_1:& ((x_1 &&-> y) -> x_1 &&-> y) -> x_1 &&-> y \
   ... \
   Y_n:& ((x_1 -> ... -> x_n &&-> y) -> x_1 -> ... -> x_n &&-> y) -> x_1 -> ... -> x_n &&-> y $
 
-The concatenation of two lists $l$ and $r$ can be defined as
+We define the concatenation of two streams $l$ and $r$ as
 $ l + r := app(Y_1, (lam(f, l) app(l, (lam(h, t) app("cons", h, (app(f, t)))), r)), l), $
 which satisfies the equational property
 $ l + r = app(l, (lam(h, t) app("cons", h, (t + r))), r). $
 For simplicity, we will define recursive functions from here on mostly by equational properties,
 from which we could easily derive proper definitions using the $Y_n$ combinators.
 
-We use the monadic bind operator $bind$ to model composition.
-For a list $l$ and a function $f$ from a list element to a list, we have
-$ (l &bindl& f) &= app(l, (lam(h, t) app(f, h) + (t bindl f)), "nil") \
-  (l &bind & f) &= l bindl (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
+We define two monadic bind operators to describe composition.
+For a stream $s$ and a function $f$ from a _value result_ to a stream,
+$s bindl f$ applies $f$ to all elements of $s$ and concatenates the outputs.
+For a stream $s$ and a function $f$ from a _value_ to a stream,
+$s bind f$ applies OK values in $s$ to $f$ and returns exception values in $s$.
+$ &bindl&&: cal(S) -> (cal(R) -> cal(S)) -> cal(S) &&:= lam(s, f) app(s, (lam(h, t) app(f, h) + (t bindl f)), "nil") \
+  &bind &&: cal(S) -> (cal(V) -> cal(S)) -> cal(S) &&:= lam(s, f) s bindl (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
 
 Next, we define a function that is used to define alternation.
 $app("trues", x)$ returns its input $x$ if its boolean value is true.
-$ "trues" := lam(x) app((app("bool", x)), stream(app("ok", x)), "nil") $
+$ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x)), "nil") $
+
+The function $"label"$ takes a label $l$ and a stream $s$ of value results.
+It returns the longest prefix of $s$ that does not contain $app("break", l)$:
+
+$ "label"&: bb(N) -> cal(S) -> cal(S) \
+         &:= lam(l, s) app(s, (lam(h, t) app((lam(c) app(h, (lam(o) c), (lam(e) c), (lam(b) app("nat_eq", l, b, stream(), c)))), (stream(h) + app("label", l, t)))), stream()) $
 
 #let ok(x) = $app("ok", #x)$
 
@@ -65,16 +87,16 @@ The lambda term $[|phi|]$ corresponding to a filter $phi$ that we will define
 will always be a pair of two functions, namely a run and an update function.
 It has the shape $ [|phi|] = app("pair", (lam(l, v) t_r), (lam(sigma, l, v) t_u)) $
 for some terms $t_r$ (run function) and $t_u$ (update function).
+We retrieve the two functions from a pair by $"run" := "fst"$ and $"upd" := "snd"$.
 For a given $phi$, we can obtain
 $t_r$ by $app("run", [|phi|], l, v)$ and
 $t_u$ by $app("upd", [|phi|], sigma, l, v)$.
 For conciseness, we write
 $app("run", [|phi|], l, v)$ to define $t_r$ and
 $app("upd", [|phi|], sigma, l, v)$ to define $t_u$.
-For example, if $phi = .$ (the identity filter), then $ [|phi|] = app("pair",
+For example, for the identity filter "$.$", we have $ [|.|] = app("pair",
 (lam(l, v) stream(ok(v))),
 (lam(sigma, l, v) app(sigma, v))). $
-// TODO: to run or not to run, that's the question!
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $app("run", [|phi|], l, v)$,
@@ -217,9 +239,10 @@ $"reduce"  x "as" var(x) (.; f)$ and
 $"foreach" x "as" var(x) (.; f; g)$.
 
 Let us start by defining a general folding function $"fold"$:
-$ "fold" := lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, h, v) bind (lam(y) app(g, h, y) + app(F, t, y))), (app(n, v))))) $
+$ "fold"&: (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(S)) -> cal(S) -> cal(V) -> cal(S) \
+        &:= lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, h, v) bind (lam(y) app(g, h, y) + app(F, t, y))), (app(n, v))))) $
 This function takes
-two functions $f$ and $g$ that both take two values --- a list element and an accumulator --- and return a stream of value results, and
+two functions $f$ and $g$ that both take two values --- a stream element and an accumulator --- and return a stream of value results, and
 a function $n$ (for the nil case) from a value $x$ to a stream of value results.
 From that, it creates a recursive function that
 takes a stream of value results $l$ and an accumulator value $v$ and
@@ -228,7 +251,7 @@ This function folds over the elements in $l$, starting from the accumulator valu
 For every element $h$ in $l$,
 $f$ is evaluated with $h$ and the current accumulator value $v$ as input.
 Every output $y$ of $f$ is output after passing through $g$, then
-used as new accumulator value with the remaining list $t$.
+used as new accumulator value with the remaining stream $t$.
 If $l$ is empty, then $v$ is called a _final_ accumulator value and $app(n, v)$ is returned.
 
 We use two different functions for $n$;
@@ -496,20 +519,12 @@ whereas errors stemming from $f$ are caught.
 == New semantics <new-semantics>
 
 We will now give semantics that define the output of
-$(f update g)|^c_v$ as referred to in @semantics.
+$app("run", [|f update g|], l, v)$ as referred to in @semantics.
 
 We will first combine the techniques in @limiting-interactions to define
-$(f update g)|^c_v$ for two _filters_ $f$ and $g$ by
-$(f update sigma)|^c_v$, where
-$sigma$ now is a _function_ from a value to a stream of value results:
-$ (f update g)|^c_v := (f update sigma)|^c_v", where"
-sigma(x) = g|^c_x. $
-We use a function instead of a filter on the right-hand side to
-limit the scope of variable bindings as explained in @limiting-interactions/*, and
-we use $"polarise"$ to
-restrict the scope of caught exceptions, as discussed in @error-catching.
-Note that we $"depolarise"$ the final outputs of $f update g$ in order to
-prevent leaking polarisation information outside the update*/.
+$ app("run", [|f update g|], l, v) := app("upd", [|f|], sigma, l, v), "where" sigma: cal(V) -> cal(S) := app("run", [|g|], l) $
+We use the function $sigma$ instead of a filter on the right-hand side to
+limit the scope of variable bindings as explained in @limiting-interactions.
 
 #figure(caption: [Update semantics. Here, $mu$ is a filter and $sigma(v)$ is a function from a value $v$ to a stream of value results.], table(columns: 2,
   $phi$, $app("upd", [|phi|], sigma, l, v)$,
@@ -521,8 +536,6 @@ prevent leaking polarisation information outside the update*/.
   $f "as" var(x) | g$, $app("reduce", (lam(var(x)) app("upd", [|g|], sigma, l)), (app("run", [|f|], l, v)), v)$,
   $"if" var(x) "then" f "else" g$, $app("upd", (app((app("bool", var(x))), [|f|], [|g|])), sigma, l, v)$,
   $"break" var(x)$, $stream(app("break", var(x)))$,
-  // TODO!
-  $fold x "as" var(x) (.; f)$, $fold^c_v (x|^c_v, var(x), f, sigma)$,
   $"reduce" x "as" var(x) (.; f)$, $app("reduce"_models, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (app("run", [|x|], l, v)), v)$,
   $"foreach" x "as" var(x) (.; f; g)$, $app("foreach"_models, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (lam(var(x)) app("upd", [|g|], sigma, l)), (app("run", [|x|], l, v)), v)$,
   $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("upd", [|g|], sigma, l, v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
@@ -594,12 +607,12 @@ We discuss the remaining cases for $mu$:
 - $x(f_1; ...; f_n)$, $x$: Calls filters.
   This is defined analogously to @tab:eval-semantics.
 
-There are many filters $mu$ for which
-$(mu update sigma)|^c_v$ is not defined,
+There are many filters $phi$ for which
+$app("upd", [|phi|], sigma, l, v)$ is not defined,
 for example $var(x)$, $[f]$, and ${}$.
-In such cases, we assume that $(mu update sigma)|^c_v$ returns an error just like jq,
+In such cases, we assume that $app("upd", [|phi|], sigma, l, v)$ returns an error just like jq,
 because these filters do not return paths to their input data.
-Our semantics support all kinds of filters $mu$ that are supported by jq, except for
+Our semantics support all kinds of filters $phi$ that are supported by jq, except for
 $"label" var(x) | g$ and $"try" f "catch" g$.
 
 #example("The Curious Case of Alternation")[
@@ -646,7 +659,8 @@ $"label" var(x) | g$ and $"try" f "catch" g$.
 // TODO: update this for `foreach/3` and remove `for`
 
 In @folding, we have seen how to evaluate folding filters of the shape
-$fold x "as" var(x) (.; f)$, where $fold$ is either $"reduce"$ or $"foreach"$.
+$"reduce" x "as" var(x) (.; f)$ and
+$"foreach" x "as" var(x) (.; f; g)$.
 Here, we will define update semantics for these filters.
 These update operations are _not_ supported in jq 1.7; however,
 we will show that they arise quite naturally from previous definitions.
@@ -655,9 +669,9 @@ Let us start with an example to understand folding on the left-hand side of an u
 
 #example[
   Let $v = [[[2], 1], 0]$ be our input value
-  and $mu$ be the filter $fold (0, 0) "as" var(x) (.; .[var(x)])$.
-  The regular evaluation of $mu$ with the input value as described in @semantics yields
-  $ mu|^{}_v = cases(
+  and $phi$ be the filter $fold (0, 0) "as" var(x) (.; .[var(x)])$.
+  The regular evaluation of $phi$ with the input value as described in @semantics yields
+  $ "run" phi "zero" v = cases(
     stream(#hide($[[2], 1], $) [2]) & "if" fold = "reduce",
     stream(       [[2], 1],    [2]) & "if" fold = "foreach",
   ) $
@@ -666,7 +680,7 @@ Let us start with an example to understand folding on the left-hand side of an u
   Given that all outputs have corresponding paths, we can update over them.
   For example, taking $. + [3]$ as filter $sigma$, we should obtain the output
   #let h3 = hide($, 3$)
-  $ (mu update sigma)^{}_v = cases(
+  $ app("upd", phi, (app("run", sigma, "zero")), "zero", v) = cases(
     stream([[[2, 3], 1#h3], 0]) & "if" fold = "reduce",
     stream([[[2, 3], 1, 3], 0]) & "if" fold = "foreach",
   ) $
@@ -722,7 +736,8 @@ For this, we first introduce a function $"fold"^c_v (l, var(x), f, g, sigma, o)$
 which resembles its corresponding function in @folding,
 but which adds an argument for the update filter $sigma$:
 
-$ "fold"_update := lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, (lam(x) app(g, h, x) bind app(F, t)), h, v)), (app(n, v))))) $
+$ "fold"_update&: ((cal(V) -> cal(S)) -> cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(S)) -> cal(S) -> cal(V) -> cal(S) \
+               &:= lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, (lam(x) app(g, h, x) bind app(F, t)), h, v)), (app(n, v))))) $
 
 /*
 $ "fold"^c_v (l, var(x), f, g, sigma, o) := cases(

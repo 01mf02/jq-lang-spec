@@ -103,7 +103,7 @@ does not include "$=$" and "$aritheq$" anymore.
 
 Compared to HIR, MIR filters
 have significantly simpler path operations
-($.p$ versus $f p^?... p^?$) and
+($.[p]$ versus $f [p]^?... [p]^?$) and
 replace certain occurrences of filters by variables
 (e.g. $var(x) cartesian var(x)$ versus $f cartesian f$).
 
@@ -122,8 +122,8 @@ replace certain occurrences of filters by variables
   $f = g$, $floor(g) "as" var(x') | floor(f update var(x'))$,
   $f aritheq g$, $floor(g) "as" var(x') | floor(f update . arith var(x'))$,
   $f alteq g$, $floor(f update . alt g)$,
-  $f "and" g$, $floor("if" f "then" "bool"(g) "else" bot)$,
-  $f "or"  g$, $floor("if" f "then" top "else" "bool"(g))$,
+  $f "and" g$, $floor("if" f "then" "bool"(g) "else" "false")$,
+  $f "or"  g$, $floor("if" f "then" "true" "else" "bool"(g))$,
   $f star g$, $floor(f) star floor(g)$,
   $f cartesian g$, $floor(f) "as" var(x') | floor(g) "as" var(y') | var(x) cartesian var(y)$,
   $f "as" var(x) | g$, $floor(f) "as" var(x) | floor(g)$,
@@ -164,10 +164,10 @@ To ensure that $"empty"$ can be employed also as a path expression,
 we define it in this complicated manner.
 
 We define filters that yield the boolean values as
-$ top &:= 0  = 0, \
-  bot &:= 0 != 0. $
+$ "true"  &:= 0  = 0, \
+  "false" &:= 0 != 0. $
 The filter
-$ "bool"(f) &:= "if" f "then" top "else" bot $
+$ "bool"(f) &:= "if" f "then" "true" "else" "false" $
 takes a HIR filter $f$ and returns a HIR filter that
 maps the outputs of $f$ to their boolean values.
 
