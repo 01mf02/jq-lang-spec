@@ -86,7 +86,7 @@ The lambda term $[|phi|]$ corresponding to a filter $phi$ that we will define
 will always be a pair of two functions, namely a run and an update function.
 It has the shape $ [|phi|] = app("pair", (lam(l, v) t_r), (lam(sigma, l, v) t_u)) $
 for some terms $t_r$ (run function) and $t_u$ (update function).
-We retrieve the two functions from a pair by $"run" := "fst"$ and $"upd" := "snd"$.
+We retrieve the two functions from a pair by $"run"$ and $"upd"$.
 For a given $phi$, we can obtain
 $t_r$ by $app("run", [|phi|], l, v)$ and
 $t_u$ by $app("upd", [|phi|], sigma, l, v)$.
