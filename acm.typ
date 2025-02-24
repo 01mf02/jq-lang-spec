@@ -1,5 +1,5 @@
-#let mainFont = "Linux Libertine O"
-#let sfFont = "Linux Biolinum O"
+#let mainFont = "Libertinus Serif"
+#let sfFont = "Libertinus Sans"
 
 #let show-month(month) = (
   "January",
@@ -61,8 +61,8 @@
   https:\/\/doi.org\/#pub.doi
 ]
 
-#let total-pages(loc) = {
-  let total = counter(page).final(loc).last()
+#let total-pages = context {
+  let total = counter(page).final().last()
   [#total page#if(total > 1) { [s] }]
 }
 #let even-page(loc) = calc.rem(loc.page(), 2) == 0
@@ -150,8 +150,12 @@
       left: 46pt,
       right: 46pt
     ),
-    header: text(size: 8pt, font: sfFont, locate(loc => if loc.page() > 1 { header(short, pub, loc) })),
-    footer: text(size: 8pt, locate(loc => align(if even-page(loc) { left } else { right }, footer(pub)))),
+    header: text(size: 8pt, font: sfFont, context {
+      if counter(page).get().first() > 1 { header(short, pub, here()) }
+    }),
+    footer: text(size: 8pt, context {
+      align(if even-page(here()) { left } else { right }, footer(pub))
+    }),
     header-ascent: 17pt,
     footer-descent: 24pt,
   )
@@ -159,8 +163,7 @@
   // title page
   {
     set text(size: 9pt)
-    set par(justify: true, leading: 0.555em)
-    show par: set block(below: 9.5pt)
+    set par(justify: true, leading: 0.555em, spacing: 9.5pt)
 
     // Display title
     text(font: sfFont, size: 14.4pt, weight: "bold", title)
@@ -182,7 +185,7 @@
       #pub.volume,
       #pub.number,
       Article #pub.article (#show-month(pub.month) #pub.year),
-      #locate(total-pages).
+      #total-pages.
       https:\/\/doi.org\/#pub.doi
     ]
 
@@ -213,8 +216,9 @@
   set par(
     justify: true,
     leading: 5.35pt,
-    first-line-indent: 9.5pt)
-  show par: set block(below: 5.35pt)
+    first-line-indent: 9.5pt,
+    spacing: 5.35pt
+  )
 
   body
 }

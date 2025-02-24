@@ -1,5 +1,5 @@
-#import "@preview/diagraph:0.2.1"
-#import "@preview/ctheorems:1.1.0"
+#import "@preview/diagraph:0.3.1"
+#import "@preview/ctheorems:1.1.3"
 #import "acm.typ": acmart
 #import "common.typ": *
 #show: ctheorems.thmrules
@@ -153,7 +153,7 @@ a filter called _path_ that defines which parts of the input to update, and
 a filter that defines what the values matching the path should be replaced with.
 The semantics of jq and those that will be shown in this text
 differ most notably in the case of updates.
-Finally, we show how to prove properties of jq programs by equational reasoning in @obj-eq.
+//Finally, we show how to prove properties of jq programs by equational reasoning in @obj-eq.
 
 #figure(caption: [Evaluation of a jq program with an input value.
   Solid lines indicate data flow, whereas a dashed line indicates that
@@ -167,7 +167,7 @@ Finally, we show how to prove properties of jq programs by equational reasoning 
 #include "values.typ"
 #include "semantics.typ"
 
-
+/*
 
 = Equational reasoning showcase: Object Construction <obj-eq>
 
@@ -272,7 +272,7 @@ We can use this theorem to simplify the evaluation of filters such as the follow
   $
 ]
 
-
+*/
 
 = Conclusion
 
@@ -312,3 +312,13 @@ This makes it possible to prove correctness of jq programs or to
 implement provably correct optimisations in jq compilers/interpreters.
 
 #bibliography("literature.bib")
+
+#let appendix(body) = {
+  set heading(numbering: "A.1", supplement: [Appendix])
+  counter(heading).update(0)
+  body
+}
+
+#show: appendix
+
+#include "json.typ"
