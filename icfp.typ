@@ -155,8 +155,12 @@ a filter called _path_ that defines which parts of the input to update, and
 a filter that defines what the values matching the path should be replaced with.
 The semantics of jq and those that will be shown in this text
 differ most notably in the case of updates.
+@impl describes and evaluates our implementation `jaq` of the proposed semantics,
+showing that even a relatively straightforward implementation can outperform
+all other established implementations of the jq language.
 //Finally, we show how to prove properties of jq programs by equational reasoning in @obj-eq.
 
+// TODO: this shows not what jq does, this shows what *we* do!
 #figure(caption: [Evaluation of a jq program with an input value.
   Solid lines indicate data flow, whereas a dashed line indicates that
   a component is defined in terms of another.
@@ -168,6 +172,7 @@ differ most notably in the case of updates.
 #include "syntax.typ"
 #include "values.typ"
 #include "semantics.typ"
+#include "impl.typ"
 
 /*
 
