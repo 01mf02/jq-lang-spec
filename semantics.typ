@@ -402,7 +402,7 @@ which results in higher performance when evaluating updates.
 // συνάρτηση = function
 #figure(caption: [Update semantics properties.], table(columns: 2,
   $mu$, $mu update sigma$,
-  $"empty"()$, $.$,
+  $"empty"$, $.$,
   $.$, $sigma$,
   $f | g$, $f update (g update sigma)$,
   $f, g$, $(f update sigma) | (g update sigma)$,
