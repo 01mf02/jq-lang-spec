@@ -2,6 +2,8 @@
 
 = Evaluation Semantics <semantics>
 
+// TODO: variables and labels must be disjoint!
+
 In this section, we will show how to transform a filter $phi$ to a lambda term $[|phi|]$,
 such that $[|phi|]$ is a function that takes an input value $v$ and returns
 the stream of values that the filter $phi$ outputs when given the input $v$.
@@ -12,24 +14,27 @@ The evaluation strategy is call-by-name.
 #let bind = $>#h(-0.5em)>#h(-1em / 6)=$
 #let bindl = $class("binary", bind_L)$
 
-In this section, we define several data types and functions in lambda calculus.
-We assume that the type of values $cal(V)$ that we operate on (@values)
+In this section, we define several data types and functions in
+simply typed lambda calculus.
+To ease the understanding, we will informally give type names to certain terms.
+Furthermore, we assume that the type of values $cal(V)$ that we operate on (@values)
 can be encoded in lambda calculus.
-For convenience, we suppose that the boolean values are encoded as follows:
-$  "true": cal(V) := lam(t, f) t \
-  "false": cal(V) := lam(t, f) f $
-We assume the existence of a function $"bool": cal(V) -> cal(V)$ that
+
+We encode boolean values as follows:
+$  "true": bb(B) := lam(t, f) t \
+  "false": bb(B) := lam(t, f) f $
+We assume the existence of a function $"bool": cal(V) -> bb(B)$ that
 takes a value and returns a boolean.
 
 We will use pairs to store two functions
---- a run and an update function --- for each filter.
+--- a run and an update function --- that characterise each filter $cal(F)$.
 
-$ "pair" &:= lam(x, y, f) app(f, x, y) \
-  "fst"  &:= lam(p) app(p, (lam(x, y) x)) \
-  "snd"  &:= lam(p) app(p, (lam(x, y) y)) $
+$ "pair"&:          &&(bb(N) -> cal(V) -> cal(S)) &&-> ((cal(V) -> cal(S)) -> bb(N) -> cal(V) -> cal(S)) -> cal(F) &&:= lam(x, y, f) app(f, x, y) \
+  "run"&: cal(F) -> &&(bb(N) -> cal(V) -> cal(S)) && &&:= lam(p) app(p, (lam(x, y) x)) \
+  "upd"&: cal(F) &&&&-> ((cal(V) -> cal(S)) -> bb(N) -> cal(V) -> cal(S)) &&:= lam(p) app(p, (lam(x, y) y)) $
 
-We assume the existence of functions $"succ"$ and $"zero"$
-to construct natural numbers, as well as a function $"nat_eq"$ that returns
+We assume the existence of functions $"succ": bb(N) -> bb(N)$ and $"zero": bb(N)$
+to construct natural numbers, as well as a function $"nat_eq": bb(N) -> bb(N) -> bb(B)$ that returns
 $"true"$ if two natural numbers are equal, else $"false"$.
 We use natural numbers to store label identifiers.
 
@@ -50,9 +55,9 @@ define recursive functions of arity $n$.
 For each $n$, we have that $Y_n f = f (Y_n f)$ holds.
 Furthermore, the types of $Y_n$ are:
 
-$ Y_1:& ((x_1 &&-> y) -> x_1 &&-> y) -> x_1 &&-> y \
+$ Y_1:& ((T_1 &&-> U) -> T_1 &&-> U) -> T_1 &&-> U \
   ... \
-  Y_n:& ((x_1 -> ... -> x_n &&-> y) -> x_1 -> ... -> x_n &&-> y) -> x_1 -> ... -> x_n &&-> y $
+  Y_n:& ((T_1 -> ... -> T_n &&-> U) -> T_1 -> ... -> T_n &&-> U) -> T_1 -> ... -> T_n &&-> U $
 
 We define the concatenation of two streams $l$ and $r$ as
 $ l + r := app(Y_1, (lam(f, l) app(l, (lam(h, t) app("cons", h, (app(f, t)))), r)), l), $
@@ -72,12 +77,6 @@ $ &bindl&&: cal(S) -> (cal(R) -> cal(S)) -> cal(S) &&:= lam(s, f) app(s, (lam(h,
 Next, we define a function that is used to define alternation.
 $app("trues", x)$ returns its input $x$ if its boolean value is true.
 $ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x)), "nil") $
-
-The function $"label"$ takes a label $l$ and a stream $s$ of value results.
-It returns the longest prefix of $s$ that does not contain $app("break", l)$:
-
-$ "label"&: bb(N) -> cal(S) -> cal(S) \
-         &:= lam(l, s) app(s, (lam(h, t) app((lam(c) app(h, (lam(o) c), (lam(e) c), (lam(b) app("nat_eq", l, b, stream(), c)))), (stream(h) + app("label", l, t)))), stream()) $
 
 #let ok(x) = $app("ok", #x)$
 
@@ -166,12 +165,12 @@ Let us discuss its different cases:
   the overall behaviour described here corresponds to jq after all.
 - $"label" var(x) | f$: Returns all values yielded by $f$ until $f$ yields
   an exception $"break"(var(x))$.
-  This uses the function $"label"(l, var(x))$, which returns all elements of $l$ until
-  the current element is an exception of the form $"break"(var(x))$:
-  $ "label"(l, var(x)) := cases(
-    stream(h) + "label"(t, var(x)) & "if" l = stream(h) + t "and" h != "break"(var(x)),
-    stream() & "otherwise",
-  ) $
+  This uses a function $"label"$ that
+  takes a label $l$ and a stream $s$ of value results,
+  returning the longest prefix of $s$ that does not contain $app("break", l)$:
+  $ "label"&: bb(N) -> cal(S) -> cal(S) \
+         &:= lam(l, s) app(s, (lam(h, t) app((lam(c) app(h, (lam(o) c), (lam(e) c), (lam(b) app("nat_eq", l, b, stream(), c)))), (stream(h) + app("label", l, t)))), stream()) $
+  /*
   // TODO!
   To see that this is necessary, consider the example
   $ "def" f(x) defas ("label" var(x) | x), 0 defend "label" var(x) | f("break" var(x)). $
@@ -189,7 +188,8 @@ Let us discuss its different cases:
      "break" var(x_1) | ... | "break" var(x_n))$
     after $n$ evaluations of $f$, involving $n$ different labels.
   ]
-- $"break" var(x)$: Returns a value $"break"(var(x))$.
+  */
+- $"break" var(x)$: Returns a value result $app("break", var(x))$.
   Similarly to the evaluation of variables $var(x)$ described above,
   wellformedness of the filter (as defined in @hir) ensures that
   the returned value $"break"(var(x))$ will be
@@ -536,8 +536,8 @@ limit the scope of variable bindings as explained in @limiting-interactions.
   $f "as" var(x) | g$, $app("reduce", (lam(var(x)) app("upd", [|g|], sigma, l)), (app("run", [|f|], l, v)), v)$,
   $"if" var(x) "then" f "else" g$, $app("upd", (app((app("bool", var(x))), [|f|], [|g|])), sigma, l, v)$,
   $"break" var(x)$, $stream(app("break", var(x)))$,
-  $"reduce" x "as" var(x) (.; f)$, $app("reduce"_models, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (app("run", [|x|], l, v)), v)$,
-  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach"_models, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (lam(var(x)) app("upd", [|g|], sigma, l)), (app("run", [|x|], l, v)), v)$,
+  $"reduce" x "as" var(x) (.; f)$, $app("reduce"_update, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (app("run", [|x|], l, v)), v)$,
+  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach"_update, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (lam(var(x)) app("upd", [|g|], sigma, l)), (app("run", [|x|], l, v)), v)$,
   $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("upd", [|g|], sigma, l, v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
   $x(f_1; ...; f_n)$, $app("upd", (app(x, [|f_1|], ..., [|f_n|])), sigma, l, v)$,
 )) <tab:update-semantics>
@@ -750,5 +750,5 @@ $ sigma'(x) = sum_(y in (g update sigma)|^(c{var(x) |-> h})_x) "fold"^c_y (t, va
 
 Using this function, we can now define
 
-$  "reduce"_models &:= lam(f   &&) app("fold", f, (lam(h, v) stream(v)), && sigma) \
-  "foreach"_models &:= lam(f, g&&) app("fold", f, g, && (lam(v) stream(ok(v)))) $
+$  "reduce"_update &:= lam(f   &&) app("fold", f, (lam(h, v) stream(v)), && sigma) \
+  "foreach"_update &:= lam(f, g&&) app("fold", f, g, && (lam(v) stream(ok(v)))) $
