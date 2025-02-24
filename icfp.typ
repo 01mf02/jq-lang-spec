@@ -6,6 +6,9 @@
 
 #show: acmart.with(
   format: "acmsmall",
+  // TODO: set to true!
+  draft: false,
+
   title: [A formal specification of the jq language],
   authors: (
     (

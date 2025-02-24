@@ -87,6 +87,7 @@
   // Currently supported formats are:
   //  - acmsmall
   format: "acmsmall",
+  draft: false,
   
   // Title, subtitle, authors, abstract, ACM ccs, keywords
   title: "Title",
@@ -136,6 +137,8 @@
     title: if title-short == none { title } else { title-short },
     authors: if authors-short == none { author-names(authors) } else { authors-short },
   )
+
+  set par.line(numbering: n => text(red)[#n]) if draft
 
   // Set document metadata
   set document(title: title, author: authors.map(author => author.name))
