@@ -60,6 +60,7 @@
 
 #set raw(lang: "jq")
 #set figure(placement: auto)
+#set table(fill: (_, y) => if y == 0 { gray.lighten(75%) })
 
 /*
 TODO:
