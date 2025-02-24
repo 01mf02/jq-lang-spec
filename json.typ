@@ -108,6 +108,9 @@ $ |v| := cases(
   "error" & "otherwise (if" v in {"true", "false"}")",
 ) $
 
+Here, $|n|$ denotes the absolute value of a number, e.g.
+$|3.14| = 3.14$ and $|-2| = 2$.
+
 The _boolean value_ of a value $v$ is defined as follows:
 
 $ "bool"(v) := cases(
@@ -415,11 +418,7 @@ $ v[:j] update f &:= v[0:  &j] update f \
 
 == Order <json-order>
 
-In this subsection, we establish a total order on values.#footnote[
-  Note that jq does _not_ implement a _strict_ total order on values;
-  in particular, its order on (floating-point) numbers specifies $"nan" < "nan"$,
-  from which follows that $"nan" != "nan"$ and $"nan" gt.not "nan"$.
-]
+In this subsection, we establish a total order on values.
 
 We have that
 $ "null" < "false" < "true" < n < s < a < o, $ where
@@ -428,6 +427,9 @@ $s$ is a string,
 $a$ is an array, and
 $o$ is an object.
 We assume that there is a total order on numbers and characters.
+jq does _not_ implement a _strict_ total order on values;
+in particular, its order on (floating-point) numbers specifies $"nan" < "nan"$,
+from which follows that $"nan" != "nan"$ and $"nan" gt.not "nan"$.
 Strings and arrays are ordered lexicographically.
 
 Two objects $o_1$ and $o_2$ are ordered as follows:
