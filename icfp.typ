@@ -120,11 +120,9 @@ The underlying issue is that there existed no formally specified semantics to re
 Having such semantics allows to determine whether
 certain behaviour of a jq implementation is accidental or intended.
 
-However, a formal specification of the behaviour of jq would be very verbose,
-because jq has many special cases whose merit is not apparent.
-Therefore, we have striven to create
-denotational semantics (@semantics) that closely resemble those of jq such that
-in most cases, their behaviour coincides, whereas they may differ in more exotic cases.
+We have striven to create denotational semantics (@semantics) that
+closely resemble those of jq such that in most common use cases,
+their behaviour coincides, whereas they may differ in more exotic cases.
 The goals for creating these semantics were, in descending order of importance:
 
 - Simplicity: The semantics should be easy to describe, understand, and implement.
