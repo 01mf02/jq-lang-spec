@@ -4,6 +4,7 @@
 
 // TODO: variables and labels must be disjoint!
 
+// TODO!
 In this section, we will show how to transform a filter $phi$ to a lambda term $[|phi|]$,
 such that $[|phi|]$ is a function that takes an input value $v$ and returns
 the stream of values that the filter $phi$ outputs when given the input $v$.
@@ -29,9 +30,9 @@ takes a value and returns a boolean.
 We will use pairs to store two functions
 --- a run and an update function --- that characterise each filter $cal(F)$.
 
-$ "pair"&:          &&(bb(N) -> cal(V) -> cal(S)) &&-> ((cal(V) -> cal(S)) -> bb(N) -> cal(V) -> cal(S)) -> cal(F) &&:= lam(x, y, f) app(f, x, y) \
-  "run"&: cal(F) -> &&(bb(N) -> cal(V) -> cal(S)) && &&:= lam(p) app(p, (lam(x, y) x)) \
-  "upd"&: cal(F) &&&&-> ((cal(V) -> cal(S)) -> bb(N) -> cal(V) -> cal(S)) &&:= lam(p) app(p, (lam(x, y) y)) $
+$ "pair"&:           &&(cal(V) -> cal(S)) &&-> ((cal(V) -> cal(S)) -> cal(V) -> cal(S)) -> cal(F) &&:= lam(x, y, f)   app(f, x, y)  \
+   "run"&: cal(F) -> &&(cal(V) -> cal(S)) &&                                                      &&:= lam(p) app(p, (lam(x, y) x)) \
+   "upd"&: cal(F)    &&                   &&-> ((cal(V) -> cal(S)) -> cal(V) -> cal(S))           &&:= lam(p) app(p, (lam(x, y) y)) $
 
 We assume the existence of functions $"succ": bb(N) -> bb(N)$ and $"zero": bb(N)$
 to construct natural numbers, as well as a function $"nat_eq": bb(N) -> bb(N) -> bb(B)$ that returns
@@ -84,42 +85,46 @@ $ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x))
 
 The lambda term $[|phi|]$ corresponding to a filter $phi$ that we will define
 will always be a pair of two functions, namely a run and an update function.
-It has the shape $ [|phi|] = app("pair", (lam(l, v) t_r), (lam(sigma, l, v) t_u)) $
+It has the shape $ [|phi|] = app("pair", (lam(v) t_r), (lam(sigma, v) t_u)) $
 for some terms $t_r$ (run function) and $t_u$ (update function).
 We retrieve the two functions from a pair by $"run"$ and $"upd"$.
 For a given $phi$, we can obtain
-$t_r$ by $app("run", [|phi|], l, v)$ and
-$t_u$ by $app("upd", [|phi|], sigma, l, v)$.
+$t_r$ by $app("run", [|phi|],        v)$ and
+$t_u$ by $app("upd", [|phi|], sigma, v)$.
 For conciseness, we write
-$app("run", [|phi|], l, v)$ to define $t_r$ and
-$app("upd", [|phi|], sigma, l, v)$ to define $t_u$.
+$app("run", [|phi|],        v)$ to define $t_r$ and
+$app("upd", [|phi|], sigma, v)$ to define $t_u$.
 For example, for the identity filter "$.$", we have $ [|.|] = app("pair",
-(lam(l, v) stream(ok(v))),
-(lam(sigma, l, v) app(sigma, v))). $
+(lam(v) stream(ok(v))),
+(lam(sigma, v) app(sigma, v))), $
+where the two values of the pair were obtained from
+@tab:eval-semantics and @tab:update-semantics.
+
+#let fresh = $kappa$
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
-  $phi$, $app("run", [|phi|], l, v)$,
+  $phi$, $app("run", [|phi|], v)$,
   $.$, $stream(ok(v))$,
   $n "or" s$, $stream(ok(phi))$,
-  $[f]$, $stream([ app("run", [|f|], l, v) ])$,
+  $[f]$, $stream([ app("run", [|f|], v) ])$,
   ${}$, $stream(ok({}))$,
   ${var(x): var(y)}$, $stream(ok({var(x): var(y)}))$,
   $var(x) cartesian var(y)$, $stream(ok((var(x) cartesian var(y))))$,
-  $f, g$, $app("run", [|f|], l, v) + app("run", [|g|], l, v)$,
-  $f | g$, $app("run", [|f|], l, v) bind app("run", [|g|], l)$,
-  $f alt g$, $app((lam(t) app(t, (lam(\_, \_) t), (app("run", [|g|], l, v)))), (app("run", [|f|], l, v) bind "trues"))$,
-  $f "as" var(x) | g$, $app("run", [|f|], l, v) bind (lam(var(x)) app("run", [|g|], l, v))$,
-  $"try" f "catch" g$, $app("run", [|f|], l, v) bindl lam(r) app(r, (lam(o) stream(r)), (app("run", [|g|], l)))$,
-  $"label" var(x) | f$, $app("label", l, (app((lam(var(x)) app("run", [|f|], (app("succ", l)), v)), l)))$,
+  $f, g$, $app("run", [|f|], v) + app("run", [|g|], v)$,
+  $f | g$, $app("run", [|f|], v) bind app("run", [|g|])$,
+  $f alt g$, $app((lam(t) app(t, (lam(\_, \_) t), (app("run", [|g|], v)))), (app("run", [|f|], v) bind "trues"))$,
+  $f "as" var(x) | g$, $app("run", [|f|], v) bind (lam(var(x)) app("run", [|g|], v))$,
+  $"try" f "catch" g$, $app("run", [|f|], v) bindl lam(r) app(r, (lam(o) stream(r)), (app("run", [|g|])), (lam(b) stream(r)))$,
+  $"label" var(x) | f$, $app("label", fresh, (app((lam(var(x), fresh) app("run", [|f|], v)), fresh, (app("succ", fresh)))))$,
   $"break" var(x)$, $stream(app("break", var(x)))$,
-  $"if" var(x) "then" f "else" g$, $app("run", (app((app("bool", var(x))), [|f|], [|g|])), l, v)$,
+  $"if" var(x) "then" f "else" g$, $app("run", (app((app("bool", var(x))), [|f|], [|g|])), v)$,
   // TODO?
   $.[p]^?$, $v[p]^?$,
-  $"reduce" x "as" var(x) (.; f)$, $app("reduce", (lam(var(x)) app("run", [|f|], l)), (app("run", [|x|], l, v)), v)$,
-  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach", (lam(var(x)) app("run", [|f|], l)), (lam(var(x)) app("run", [|g|], l)), (app("run", [|x|], l, v)), v)$,
-  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("run", [|g|], l, v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
-  $x(f_1; ...; f_n)$, $app("run", (app(x, [|f_1|], ..., [|f_n|])), l, v)$,
-  $f update g$, $app("upd", [|f|], (app("run", [|g|], l)), l, v)$,
+  $"reduce" x "as" var(x) (.; f)$, $app("reduce", (lam(var(x)) app("run", [|f|])), (app("run", [|x|], v)), v)$,
+  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach", (lam(var(x)) app("run", [|f|])), (lam(var(x)) app("run", [|g|])), (app("run", [|x|], v)), v)$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("run", [|g|], v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
+  $x(f_1; ...; f_n)$, $app("run", (app(x, [|f_1|], ..., [|f_n|])), v)$,
+  $f update g$, $app("upd", [|f|], (app("run", [|g|])), v)$,
 )) <tab:eval-semantics>
 
 The evaluation semantics are given in @tab:eval-semantics.
@@ -240,19 +245,19 @@ $"foreach" x "as" var(x) (.; f; g)$.
 
 Let us start by defining a general folding function $"fold"$:
 $ "fold"&: (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(S)) -> cal(S) -> cal(V) -> cal(S) \
-        &:= lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, h, v) bind (lam(y) app(g, h, y) + app(F, t, y))), (app(n, v))))) $
+        &:= lam(f, g, n) app(Y_2, (lam(F, s, v) app(s, (lam(h, t) app(f, h, v) bind (lam(y) app(g, h, y) + app(F, t, y))), (app(n, v))))) $
 This function takes
 two functions $f$ and $g$ that both take two values --- a stream element and an accumulator --- and return a stream of value results, and
 a function $n$ (for the nil case) from a value $x$ to a stream of value results.
 From that, it creates a recursive function that
-takes a stream of value results $l$ and an accumulator value $v$ and
+takes a stream of value results $s$ and an accumulator value $v$ and
 returns a stream of value results.
-This function folds over the elements in $l$, starting from the accumulator value $v$.
-For every element $h$ in $l$,
+This function folds over the elements in $s$, starting from the accumulator value $v$.
+For every element $h$ in $s$,
 $f$ is evaluated with $h$ and the current accumulator value $v$ as input.
 Every output $y$ of $f$ is output after passing through $g$, then
 used as new accumulator value with the remaining stream $t$.
-If $l$ is empty, then $v$ is called a _final_ accumulator value and $app(n, v)$ is returned.
+If $s$ is empty, then $v$ is called a _final_ accumulator value and $app(n, v)$ is returned.
 
 We use two different functions for $n$;
 the first returns just its input, corresponding to $"reduce"$ which returns a final value, and
@@ -394,7 +399,7 @@ In the remainder of this section, we will show
 semantics that extend this idea to all update operations.
 The resulting update semantics can be understood to _interleave_ calls to $f$ and $g$.
 By doing so, these semantics can abandon the construction of paths altogether,
-which results in higher performance when evaluating updates.
+which results in higher performance when evaluating updates, see @impl.
 
 == Properties of new semantics <update-props>
 
@@ -519,27 +524,27 @@ whereas errors stemming from $f$ are caught.
 == New semantics <new-semantics>
 
 We will now give semantics that define the output of
-$app("run", [|f update g|], l, v)$ as referred to in @semantics.
+$app("run", [|f update g|], v)$ as referred to in @semantics.
 
 We will first combine the techniques in @limiting-interactions to define
-$ app("run", [|f update g|], l, v) := app("upd", [|f|], sigma, l, v), "where" sigma: cal(V) -> cal(S) := app("run", [|g|], l) $
+$ app("run", [|f update g|], v) := app("upd", [|f|], sigma, v), "where" sigma: cal(V) -> cal(S) := app("run", [|g|]) $
 We use the function $sigma$ instead of a filter on the right-hand side to
 limit the scope of variable bindings as explained in @limiting-interactions.
 
-#figure(caption: [Update semantics. Here, $mu$ is a filter and $sigma(v)$ is a function from a value $v$ to a stream of value results.], table(columns: 2,
-  $phi$, $app("upd", [|phi|], sigma, l, v)$,
+#figure(caption: [Update semantics. Here, $phi$ is a filter and $sigma: cal(V) -> cal(S)$ is a function from a value to a stream of value results.], table(columns: 2,
+  $phi$, $app("upd", [|phi|], sigma, v)$,
   $.$, $app(sigma, v)$,
-  $f | g$, $app("upd", [|f|], (app("upd", [|g|], sigma, l)), l, v)$,
-  $f, g$, $app("upd", [|f|], sigma, l, v) bind app("upd", [|g|], sigma, l)$,
-  $f alt g$, $app("upd", (app((app("run", [|f|], l, v) bind "trues"), (lam(\_, \_) [|f|]), [|g|])), l, v)$,
+  $f | g$, $app("upd", [|f|], (app("upd", [|g|], sigma)), v)$,
+  $f, g$, $app("upd", [|f|], sigma, v) bind app("upd", [|g|], sigma)$,
+  $f alt g$, $app("upd", (app((app("run", [|f|], v) bind "trues"), (lam(\_, \_) [|f|]), [|g|])), v)$,
   $.[p]^?$, $stream(v[c(p)]^? update sigma)$,
-  $f "as" var(x) | g$, $app("reduce", (lam(var(x)) app("upd", [|g|], sigma, l)), (app("run", [|f|], l, v)), v)$,
-  $"if" var(x) "then" f "else" g$, $app("upd", (app((app("bool", var(x))), [|f|], [|g|])), sigma, l, v)$,
+  $f "as" var(x) | g$, $app("reduce", (lam(var(x)) app("upd", [|g|], sigma)), (app("run", [|f|], v)), v)$,
+  $"if" var(x) "then" f "else" g$, $app("upd", (app((app("bool", var(x))), [|f|], [|g|])), sigma, v)$,
   $"break" var(x)$, $stream(app("break", var(x)))$,
-  $"reduce" x "as" var(x) (.; f)$, $app("reduce"_update, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (app("run", [|x|], l, v)), v)$,
-  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach"_update, (lam(sigma, var(x)) app("upd", [|f|], sigma, l)), (lam(var(x)) app("upd", [|g|], sigma, l)), (app("run", [|x|], l, v)), v)$,
-  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("upd", [|g|], sigma, l, v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
-  $x(f_1; ...; f_n)$, $app("upd", (app(x, [|f_1|], ..., [|f_n|])), sigma, l, v)$,
+  $"reduce" x "as" var(x) (.; f)$, $app("reduce"_update, (lam(var(x)) app("upd", [|f|])), (app("run", [|x|], v)), v)$,
+  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach"_update, (lam(var(x)) app("upd", [|f|])), (lam(var(x)) app("upd", [|g|], sigma)), (app("run", [|x|], v)), v)$,
+  $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("upd", [|g|], sigma, v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
+  $x(f_1; ...; f_n)$, $app("upd", (app(x, [|f_1|], ..., [|f_n|])), sigma, v)$,
 )) <tab:update-semantics>
 
 @tab:update-semantics shows the definition of $(mu update sigma)|^c_v$.
@@ -608,9 +613,9 @@ We discuss the remaining cases for $mu$:
   This is defined analogously to @tab:eval-semantics.
 
 There are many filters $phi$ for which
-$app("upd", [|phi|], sigma, l, v)$ is not defined,
+$app("upd", [|phi|], sigma, v)$ is not defined,
 for example $var(x)$, $[f]$, and ${}$.
-In such cases, we assume that $app("upd", [|phi|], sigma, l, v)$ returns an error just like jq,
+In such cases, we assume that $app("upd", [|phi|], sigma, v)$ returns an error just like jq,
 because these filters do not return paths to their input data.
 Our semantics support all kinds of filters $phi$ that are supported by jq, except for
 $"label" var(x) | g$ and $"try" f "catch" g$.
@@ -671,7 +676,7 @@ Let us start with an example to understand folding on the left-hand side of an u
   Let $v = [[[2], 1], 0]$ be our input value
   and $phi$ be the filter $fold (0, 0) "as" var(x) (.; .[var(x)])$.
   The regular evaluation of $phi$ with the input value as described in @semantics yields
-  $ "run" phi "zero" v = cases(
+  $ app("run", [|phi|], v) = cases(
     stream(#hide($[[2], 1], $) [2]) & "if" fold = "reduce",
     stream(       [[2], 1],    [2]) & "if" fold = "foreach",
   ) $
@@ -680,7 +685,7 @@ Let us start with an example to understand folding on the left-hand side of an u
   Given that all outputs have corresponding paths, we can update over them.
   For example, taking $. + [3]$ as filter $sigma$, we should obtain the output
   #let h3 = hide($, 3$)
-  $ app("upd", phi, (app("run", sigma, "zero")), "zero", v) = cases(
+  $ app("upd", [|phi|], (app("run", [|sigma|])), v) = cases(
     stream([[[2, 3], 1#h3], 0]) & "if" fold = "reduce",
     stream([[[2, 3], 1, 3], 0]) & "if" fold = "foreach",
   ) $
@@ -732,21 +737,12 @@ $
 ]
 
 We will now formally define the functions used in @tab:update-semantics.
-For this, we first introduce a function $"fold"^c_v (l, var(x), f, g, sigma, o)$,
-which resembles its corresponding function in @folding,
+For this, we first introduce a function $"fold"_update$,
+which resembles its corresponding function $"fold"$ in @folding,
 but which adds an argument for the update filter $sigma$:
 
 $ "fold"_update&: ((cal(V) -> cal(S)) -> cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(S)) -> cal(S) -> cal(V) -> cal(S) \
-               &:= lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, (lam(x) app(g, h, x) bind app(F, t)), h, v)), (app(n, v))))) $
-
-/*
-$ "fold"^c_v (l, var(x), f, g, sigma, o) := cases(
-  (f update sigma')|^(c{var(x) |-> h})_v & "if" l = stream(h) + t,
-  o(v) & "otherwise" (l = stream()),
-) $
-where
-$ sigma'(x) = sum_(y in (g update sigma)|^(c{var(x) |-> h})_x) "fold"^c_y (t, var(x), f, g, sigma, o). $
-*/
+               &:= lam(f, g, n) app(Y_2, (lam(F, s, v) app(s, (lam(h, t) app(f, (lam(x) app(g, h, x) bind app(F, t)), h, v)), (app(n, v))))) $
 
 Using this function, we can now define
 
