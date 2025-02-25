@@ -235,7 +235,6 @@ this would inherently require linear time to yield a result, instead of
 constant time that can be achieved by a proper jq implementation.
 */
 
-
 == Folding <folding>
 
 In this subsection, we will define the functions
@@ -348,27 +347,6 @@ missing paths.
   we cannot index the array $[]$ at the path $.[qs(a)]$ by $.[qs(b)]$.
 ] <ex:obj-update-arr>
 
-/*
-// TODO: this actually returns [1, 3] in jq 1.7
-One of these problems is that if $g$ returns no output,
-the collected paths may point to values that do not exist any more.
-
-#example[
-  Consider the input value $[1, 2, 2, 3]$ and the filter
-  // '.[] |= (if . == 2 then empty else . end)'
-  "$.[] update g$", where $g$ is "$"if" . eq.quest 2 "then" "empty"() "else" .$",
-  which we might suppose to delete all values equal to 2 from the input list.
-  However, the output of jq is $[1, 2, 3]$.
-  What happens here is perhaps unexpected,
-  but consistent with the above explanation of jq's semantics:
-  jq builds the paths $.[0]$, $.[1]$, $.[2]$, and $.[3]$.
-  Next, it applies $g$ to all paths.
-  Applying $g$ to $.[1]$ removes the first occurrence of the number 2 from the list,
-  leaving the list $[1, 2, 3]$ and the paths $.[2]$, $.[3]$ to update.
-  However, $.[2]$ now refers to the number 3, and $.[3]$ points beyond the list.
-] <ex:update>
-*/
-
 We can also have surprising behaviour that does not manifest any error.
 
 #example[
@@ -406,7 +384,7 @@ which results in higher performance when evaluating updates, see @impl.
 // μονοπάτι = path
 // συνάρτηση = function
 #figure(caption: [Update semantics properties.], table(columns: 2,
-  $mu$, $mu update sigma$,
+  $phi$, $phi update sigma$,
   $"empty"$, $.$,
   $.$, $sigma$,
   $f | g$, $f update (g update sigma)$,
@@ -415,9 +393,9 @@ which results in higher performance when evaluating updates, see @impl.
   $f alt g$, $"if" "first"(f alt "null") "then" f update sigma "else" g update sigma$,
 )) <tab:update-props>
 
-@tab:update-props gives a few properties that we want to hold for updates $mu update sigma$.
-Let us discuss these for the different filters $mu$:
-- $"empty"()$: Returns the input unchanged.
+@tab:update-props gives a few properties that we want to hold for updates $phi update sigma$.
+Let us discuss these for the different filters $phi$:
+- $"empty"$: Returns the input unchanged.
 - "$.$": Returns the output of the update filter $sigma$ applied to the current input.
   Note that while jq only returns at most one output of $sigma$,
   these semantics return an arbitrary number of outputs.
@@ -433,93 +411,46 @@ Let us discuss these for the different filters $mu$:
 
 While @tab:update-props allows us to define the behaviour of several filters
 by reducing them to more primitive filters,
-there are several filters $mu$ which cannot be defined this way.
-We will therefore give the actual update semantics of $mu update sigma$ in @new-semantics
-by defining $(mu update sigma)|^c_v$, not
-by translating $mu update sigma$ to equivalent filters.
+there are several filters $phi$ which cannot be defined this way.
+We will therefore give the actual update semantics of $phi update sigma$ in @new-semantics
+by defining $(phi update sigma)|^c_v$, not
+by translating $phi update sigma$ to equivalent filters.
 
 == Limiting interactions <limiting-interactions>
 
-To define $(mu update sigma)|^c_v$, we first have to understand
-how to prevent unwanted interactions between $mu$ and $sigma$.
-In particular, we have to look at variable bindings/* and error catching*/.
+To define $(phi update sigma)|^c_v$, we first have to understand
+how to prevent unwanted interactions between $phi$ and $sigma$.
+In particular, we have to look at variable bindings.
 
-//=== Variable bindings <var-bindings>
-
-We can bind variables in $mu$; that is, $mu$ can have the shape $f "as" var(x) | g$.
+We can bind variables in $phi$; that is, $phi$ can have the shape $f "as" var(x) | g$.
 Here, the intent is that $g$ has access to $var(x)$, whereas $sigma$ does not!
 This is to ensure compatibility with jq's original semantics,
-which execute $mu$ and $sigma$ independently,
-so $sigma$ should not be able to access variables bound in $mu$.
+which execute $phi$ and $sigma$ independently,
+so $sigma$ should not be able to access variables bound in $phi$.
 
 #example[
-  Consider the filter $0 "as" var(x) | mu update sigma$, where
-  $mu$ is $(1 "as" var(x) | .[var(x)])$ and $sigma$ is $var(x)$.
+  Consider the filter $0 "as" var(x) | phi update sigma$, where
+  $phi$ is $(1 "as" var(x) | .[var(x)])$ and $sigma$ is $var(x)$.
   This updates the input array at index $1$.
-  If $sigma$ had access to variables bound in $mu$,
+  If $sigma$ had access to variables bound in $phi$,
   then the array element would be replaced by $1$,
   because the variable binding $0 "as" var(x)$ would be shadowed by $1 "as" var(x)$.
-  However, in jq, $sigma$ does not have access to variables bound in $mu$, so
+  However, in jq, $sigma$ does not have access to variables bound in $phi$, so
   the array element is replaced by $0$, which is the value originally bound to $var(x)$.
   Given the input array $[1, 2, 3]$, the filter yields the final result $[1, 0, 3]$.
 ]
 
-We take the following approach to prevent variables bound in $mu$ to "leak" into $sigma$:
-When evaluating $(mu update sigma)|^c_v$, we want
+We take the following approach to prevent variables bound in $phi$ to "leak" into $sigma$:
+When evaluating $(phi update sigma)|^c_v$, we want
 $sigma$ to always be executed with the same $c$.
-That is, evaluating $(mu update sigma)|^c_v$ should never
+That is, evaluating $(phi update sigma)|^c_v$ should never
 evaluate $sigma$ with any context other than $c$.
 In order to ensure that, we will define
-$(mu update sigma)|^c_v$ not for a _filter_ $sigma$,
+$(phi update sigma)|^c_v$ not for a _filter_ $sigma$,
 but for a _function_ $sigma(x)$, where
 $sigma(x)$ returns the output of the filter $sigma|^c_x$.
 This allows us to extend the context $c$ with bindings on the left-hand side of the update,
 while executing the update filter $sigma$ always with the same original context $c$.
-
-/*
-=== Error catching <error-catching>
-
-We can catch errors in $mu$; that is, $mu$ can have the shape $"try" f "catch" g$.
-However, this should catch only errors that occur in $mu$,
-_not_ errors that are returned by $sigma$.
-
-#example[
-  Consider the filter $mu update sigma$, where $mu$ is $.[]?$ and $sigma$ is $.+1$.
-  The filter $mu$ is lowered to the MIR filter $"try" .[] "catch" "empty"()$.
-  The intention of $mu update sigma$ is to
-  update all elements $.[]$ of the input value, and if $.[]$ returns an error
-  (which occurs when the input is neither an array nor an object, see @accessing),
-  to just return the input value unchanged.
-  When we run $mu update sigma$ with the input $0$,
-  the filter $.[]$ fails with an error, but
-  because the error is caught immediately afterwards,
-  $mu update sigma$ consequently just returns the original input value $0$.
-  The interesting part is what happens when $sigma$ throws an error:
-  This occurs for example when running the filter with the input $[{}]$.
-  This would run $. + 1$ with the input ${}$, which yields an error (see @arithmetic).
-  This error _is_ returned by $mu update sigma$.
-]
-
-This raises the question:
-How can we execute $("try" f "catch" g) update sigma$ and distinguish
-errors stemming from $f$ from errors stemming from $sigma$?
-
-We came up with the solution of _polarised exceptions_.
-In a nutshell, we want every exception that is returned by $sigma$ to be
-marked in a special way such that it can be ignored by a try-catch in $mu$.
-For this, we assume the existence of two functions
-$"polarise"(x)$ and $"depolarise"(x)$ from a value result $x$ to a value result.
-If $x$ is an exception, then
-$"polarise"(x)$ should return a polarised version of it, whereas
-$"depolarise"(x)$ should return an unpolarised version of it, i.e. it should
-remove any polarisation from an exception.
-Every exception created by $"error"(e)$ is unpolarised.
-With this method, when we evaluate an expression $"try" f "catch" g$ in $mu$,
-we can analyse the output of $f update sigma$, and only catch _unpolarised_ errors.
-That way, errors stemming from $mu$ are propagated,
-whereas errors stemming from $f$ are caught.
-*/
-
 
 == New semantics <new-semantics>
 
@@ -547,11 +478,11 @@ limit the scope of variable bindings as explained in @limiting-interactions.
   $x(f_1; ...; f_n)$, $app("upd", (app(x, [|f_1|], ..., [|f_n|])), sigma, v)$,
 )) <tab:update-semantics>
 
-@tab:update-semantics shows the definition of $(mu update sigma)|^c_v$.
-Several of the cases for $mu$, like
+@tab:update-semantics shows the definition of $(phi update sigma)|^c_v$.
+Several of the cases for $phi$, like
 "$.$", "$f | g$", "$f, g$", and "$"if" var(x) "then" f "else" g$"
 are simply relatively straightforward consequences of the properties in @tab:update-props.
-We discuss the remaining cases for $mu$:
+We discuss the remaining cases for $phi$:
 - $f alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
   Here, $f$ is called as a "probe" first.
   If it yields at least one output that is considered "true"
@@ -566,47 +497,6 @@ We discuss the remaining cases for $mu$:
   updating the accumulator by $g update sigma$, where
   $var(x)$ is bound to the current output of $f$.
   The definition of $"reduce"$ is given in @folding.
-/*
-- $"try" f "catch" g$: Returns the output of $f update sigma$,
-  mapping errors occurring in $f$ to $g$. The definition of the function $"catch"$ is
-  $ "catch"(x, g, c, v) := cases(
-    sum_(y in g|^c_(e)) stream("error"(y)) & "if" x = "error"(e)", " x "is unpolarised, and" g|^c_x != stream(),
-    stream(v) & "if" x = "error"(e)", " x "is unpolarised, and" g|^c_x = stream(),
-    stream(x) & "otherwise"
-) $
-  The function $"catch"(x, g, c, v)$ analyses $x$ (the current output of $f$):
-  If $x$ is no unpolarised error, $x$ is returned.
-  For example, that is the case if the original right-hand side of the update
-  returns an error, in which case we do not want this error to be caught here.
-  However, if $x$ is an unpolarised error, that is,
-  an error that was caused on the left-hand side of the update,
-  it has to be caught here.
-  In that case, $"catch"$ analyses the output of $g$ with input $x$:
-  If $g$ yields no output, then it returns the original input value $v$,
-  and if $g$ yields output, all its output is mapped to errors!
-  This behaviour might seem peculiar,
-  but it makes sense when we consider the jq way of implementing updates via paths:
-  When evaluating some update $mu update sigma$ with an input value $v$,
-  the filter $mu$ may only return paths to data contained within $v$.
-  When $mu$ is $"try" f "catch" g$,
-  the filter $g$ only receives inputs that stem from errors,
-  and because $v$ cannot contain errors, these inputs cannot be contained in $v$.
-  Consequentially, $g$ can never return any path pointing to $v$.
-  The only way, therefore, to get out alive from a $"catch"$ is for $g$ to return ... nothing.
-- $"break"(var(x))$: Breaks out from the update.#footnote[
-    Note that unlike in @semantics, we do not define the update semantics of
-    $"label" var(x) | f$, which could be used to resume an update after a $"break"$.
-    The reason for this is that this requires
-    an additional type of $"break"$ exceptions that
-    carries the current value alongside the variable, as well as
-    variants of the value update operators in @updating that can handle unpolarised breaks.
-    Because making update operators handle unpolarised breaks
-    renders them considerably more complex and
-    we estimate that label expressions are
-    rarely used in the left-hand side of updates anyway,
-    we think it more beneficial for the presentation to forgo label expressions here.
-  ]
-*/
 - $fold x "as" var(x) (.; f)$: Folds $f$ over the values returned by $var(x)$.
   We will discuss this in @folding-update.
 - $x(f_1; ...; f_n)$, $x$: Calls filters.
@@ -658,10 +548,7 @@ $"label" var(x) | g$ and $"try" f "catch" g$.
   so $"error" update 1$ is executed, which yields an error.
 ]
 
-
 == Folding <folding-update>
-
-// TODO: update this for `foreach/3` and remove `for`
 
 In @folding, we have seen how to evaluate folding filters of the shape
 $"reduce" x "as" var(x) (.; f)$ and
@@ -730,7 +617,7 @@ $
   the input value and the filters from @ex:folding-update.
   Using some liberty to write $.[0]$ instead of $0 "as" var(x) | .[var(x)]$, we have:
   #let hs = hide($sigma | ($)
-  $ mu update sigma = cases(
+  $ phi update sigma = cases(
     .[0] update #hs      .[0] update sigma   & "if" fold = "reduce",
     .[0] update sigma | (.[0] update sigma)  & "if" fold = "foreach",
   ) $
