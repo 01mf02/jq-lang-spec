@@ -139,6 +139,11 @@ but also yields all intermediate states, not only the last state.
 For example, "`foreach .[] as $x (0; . + $x)`"
 yields the cumulative sum over all array elements.
 
+Wherever we can use `as $x` to bind values to a variable,
+we can also destructure values using a _pattern_.
+For example, given the input value `[1, [2], 3]`, the filter
+`. as [$x, [$y], $z] | $y` yields `2`.
+
 Updating values can be done with the operator "`|=`",
 which has a similar function as lens setters in languages such as Haskell
 #cite(label("DBLP:conf/icfp/FosterPP08"))

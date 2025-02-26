@@ -108,17 +108,16 @@ functional programming language with
 second-class higher-order functions @jq-description.
 The semantics of the jq language are only
 informally specified, for example in the jq manual @jq-manual.
+/*
 However, the documentation frequently does not cover certain cases, and
 historically, the implementation often contradicted the documentation.
-/*
 For example, the documentation stated that the filter `limit(n; f)`
 "extracts up to `n` outputs from `f`".
 However, `limit(0; f)` extracts up to 1 outputs from `f`, and
 for negative values of `n`, `limit(n; f)` extracts all outputs of `f`.
 */
-The underlying issue is that there existed no formally specified semantics to rely on.
-Having such semantics allows to determine whether
-certain behaviour of a jq implementation is accidental or intended.
+This leaves a lot of space for interpretation and makes it difficult to find out
+whether certain behaviour of a jq implementation is accidental or intended.
 
 We have striven to create denotational semantics (@semantics) that
 closely resemble those of jq such that in most common use cases,
@@ -131,12 +130,19 @@ The goals for creating these semantics were, in descending order of importance:
 
 We created these semantics experimentally, by coming up with
 jq filters and observing their output for all kinds of inputs.
-From this, we synthesised mathematical definitions to model the behaviour of jq.
-The most significant improvement over jq behaviour described in this text are
-the new update semantics (@updates), which
-are simpler to describe and implement,
-eliminate a range a potential errors, and
-allow for more performant execution.
+
+One of the least specified, yet most fascinating features of the jq language
+are _updates_:
+An update filter, such as `f |= g`, modifies input data using
+a filter `f` that defines which parts of the input to update, and
+a filter `g` that defines what the values matching the path should be replaced with.
+We found a new approach to updates which
+can be described compactly and unambiguously,
+eliminates many potential errors, and
+allows for more performant execution.
+The semantics of jq and those that will be shown in this text
+differ most notably in the case of updates,
+yet in most common use cases, both semantics yield equal results.
 
 The structure of this text is as follows:
 @tour introduces jq by a series of examples that
@@ -150,18 +156,14 @@ After this, the semantics part starts:
 @values defines the type of JSON values and the elementary operations that jq provides for it.
 Furthermore, it defines other basic data types such as errors, exceptions, and streams.
 @semantics shows how to evaluate jq filters on a given input value.
-@updates then shows how to evaluate a class of jq filters that update values using
-a filter called _path_ that defines which parts of the input to update, and
-a filter that defines what the values matching the path should be replaced with.
-The semantics of jq and those that will be shown in this text
-differ most notably in the case of updates.
-@impl describes and evaluates our implementation `jaq` of the proposed semantics,
-showing that even a relatively straightforward implementation can outperform
-all other established implementations of the jq language.
+@updates presents our new approach to executing updates and
+compares it with the traditional approach used in jq.
+@impl describes and evaluates a jq interpreter based on our proposed semantics.
+We will show that it outperforms all other current implementations of the jq language.
 //Finally, we show how to prove properties of jq programs by equational reasoning in @obj-eq.
 
 // TODO: this shows not what jq does, this shows what *we* do!
-#figure(caption: [Evaluation of a jq program with an input value.
+#figure(caption: [Our approach to evaluate a jq program with an input value.
   Solid lines indicate data flow, whereas a dashed line indicates that
   a component is defined in terms of another.
 ], diagraph.render(read("structure.dot"))) <fig:structure>

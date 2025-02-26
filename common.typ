@@ -13,8 +13,12 @@
 #let or_ = $quad || quad$
 #let app(..xs) = $#xs.pos().join($med$)$
 #let lam(..xs) = $lambda #app(..xs). thick$
+#let bind = $>#h(-0.5em)>#h(-1em / 6)=$
+#let bindl = $class("binary", bind_S)$
+#let bindr = $class("binary", bind_R)$
 #let stream(..xs) = $angle.l #xs.pos().join($, $) angle.r$
 #let var(x) = $\$#x$
+#let ok(x) = $app("ok", #x)$
 #let cartesian = math.op($circle.small$)
 #let arith = math.op($dot.circle$)
 #let mod = math.op($\%$)

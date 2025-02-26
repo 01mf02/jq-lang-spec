@@ -2,30 +2,13 @@
 
 = Evaluation Semantics <semantics>
 
-// TODO: variables and labels must be disjoint!
-
 // TODO!
 In this section, we will show how to transform a filter $phi$ to a lambda term $[|phi|]$,
-such that $[|phi|]$ is a function that takes an input value $v$ and returns
+such that $"eval" [|phi|]$ is a function that takes an input value $v$ and returns
 the stream of values that the filter $phi$ outputs when given the input $v$.
 The evaluation strategy is call-by-name.
 
-== Runtime
-
-#let bind = $>#h(-0.5em)>#h(-1em / 6)=$
-#let bindl = $class("binary", bind_L)$
-
-In this section, we define several data types and functions in
-simply typed lambda calculus.
-To ease the understanding, we will informally give type names to certain terms.
-Furthermore, we assume that the type of values $cal(V)$ that we operate on (@values)
-can be encoded in lambda calculus.
-
-We encode boolean values as follows:
-$  "true": bb(B) := lam(t, f) t \
-  "false": bb(B) := lam(t, f) f $
-We assume the existence of a function $"bool": cal(V) -> bb(B)$ that
-takes a value and returns a boolean.
+== Compilation
 
 We will use pairs to store two functions
 --- a run and an update function --- that characterise each filter $cal(F)$.
@@ -34,54 +17,7 @@ $ "pair"&:           &&(cal(V) -> cal(S)) &&-> ((cal(V) -> cal(S)) -> cal(V) -> 
    "run"&: cal(F) -> &&(cal(V) -> cal(S)) &&                                                      &&:= lam(p) app(p, (lam(x, y) x)) \
    "upd"&: cal(F)    &&                   &&-> ((cal(V) -> cal(S)) -> cal(V) -> cal(S))           &&:= lam(p) app(p, (lam(x, y) y)) $
 
-We assume the existence of functions $"succ": bb(N) -> bb(N)$ and $"zero": bb(N)$
-to construct natural numbers, as well as a function $"nat_eq": bb(N) -> bb(N) -> bb(B)$ that returns
-$"true"$ if two natural numbers are equal, else $"false"$.
-We use natural numbers to store label identifiers.
-
-The elements returned by our filters are _result values_ $cal(R)$, which are
-either OK or an exception (an error or a break).
-
-$ "ok"   &: cal(V) -> cal(R) := lam(x, o, e, b) app(o, x) \
-  "err"  &: cal(V) -> cal(R) := lam(x, o, e, b) app(e, x) \
-  "break"&:  bb(N) -> cal(R) := lam(x, o, e, b) app(b, x) $
-
-We will use streams $cal(S)$ of result values as return type of filters.
-
-$ "cons"&: cal(R) -> cal(S) -> &&cal(S) := lam(h, t) && lam(c, n) app(c, h, t) \
-   "nil"&:                     &&cal(S) :=           && lam(c, n) n $
-
-We assume the existence of a set of Y combinators $Y_n$ that we will use to
-define recursive functions of arity $n$.
-For each $n$, we have that $Y_n f = f (Y_n f)$ holds.
-Furthermore, the types of $Y_n$ are:
-
-$ Y_1:& ((T_1 &&-> U) -> T_1 &&-> U) -> T_1 &&-> U \
-  ... \
-  Y_n:& ((T_1 -> ... -> T_n &&-> U) -> T_1 -> ... -> T_n &&-> U) -> T_1 -> ... -> T_n &&-> U $
-
-We define the concatenation of two streams $l$ and $r$ as
-$ l + r := app(Y_1, (lam(f, l) app(l, (lam(h, t) app("cons", h, (app(f, t)))), r)), l), $
-which satisfies the equational property
-$ l + r = app(l, (lam(h, t) app("cons", h, (t + r))), r). $
-For simplicity, we will define recursive functions from here on mostly by equational properties,
-from which we could easily derive proper definitions using the $Y_n$ combinators.
-
-We define two monadic bind operators to describe composition.
-For a stream $s$ and a function $f$ from a _value result_ to a stream,
-$s bindl f$ applies $f$ to all elements of $s$ and concatenates the outputs.
-For a stream $s$ and a function $f$ from a _value_ to a stream,
-$s bind f$ applies OK values in $s$ to $f$ and returns exception values in $s$.
-$ &bindl&&: cal(S) -> (cal(R) -> cal(S)) -> cal(S) &&:= lam(s, f) app(s, (lam(h, t) app(f, h) + (t bindl f)), "nil") \
-  &bind &&: cal(S) -> (cal(V) -> cal(S)) -> cal(S) &&:= lam(s, f) s bindl (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
-
-Next, we define a function that is used to define alternation.
-$app("trues", x)$ returns its input $x$ if its boolean value is true.
-$ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x)), "nil") $
-
-#let ok(x) = $app("ok", #x)$
-
-== Compilation
+$ "eval" phi = app((lam(kappa) app("run", [|phi|])), "zero") $
 
 The lambda term $[|phi|]$ corresponding to a filter $phi$ that we will define
 will always be a pair of two functions, namely a run and an update function.
@@ -106,6 +42,7 @@ where the two values of the pair were obtained from
   $phi$, $app("run", [|phi|], v)$,
   $.$, $stream(ok(v))$,
   $n "or" s$, $stream(ok(phi))$,
+  $var(x)$, $stream(ok(var(x)))$,
   $[f]$, $stream([ app("run", [|f|], v) ])$,
   ${}$, $stream(ok({}))$,
   ${var(x): var(y)}$, $stream(ok({var(x): var(y)}))$,
@@ -132,9 +69,10 @@ Let us discuss its different cases:
 
 - "$.$": Returns its input value. This is the identity filter.
 - $n$ or $s$: Returns the value corresponding to the number $n$ or string $s$.
-- $var(x)$: Returns the value currently bound to the variable $var(x)$,
-  by looking it up in the context.
-  Wellformedness of the filter (as defined in @mir) ensures that such a value always exists.
+- $var(x)$: Returns the value currently bound to the variable $var(x)$.
+  Wellformedness of the filter (as defined in @mir) ensures that
+  whenever we evaluate $var(x)$, it must have been substituted,
+  for example by a surrounding call to $f "as" var(x) | g$.
 - $[f]$: Creates an array from the output of $f$, using the operator defined in @values.
 - ${}$: Creates an empty object.
 - ${var(x): var(y)}$: Creates an object from the values bound to $var(x)$ and $var(y)$,
@@ -143,6 +81,9 @@ Let us discuss its different cases:
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
 - $f alt g$: Returns $l$ if $l$ is not empty, else the outputs of $g$, where
   $l$ are the outputs of $f$ whose boolean values are not false.
+  Here, we use a function $app("trues", x)$ that
+  returns its input $x$ if its boolean value is true.
+$ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x)), "nil") $
 - $f "as" var(x) | g$: For every output of $f$, binds it to the variable $var(x)$ and
   returns the output of $g$, where $g$ may reference $var(x)$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
@@ -228,6 +169,34 @@ $"keys"|^c_v := "keys"(v)$, see @simple-fns.
 In the case of $"keys"$, for example, there is no obvious way to implement it by definition,
 in particular because there is no simple way to obtain the domain of an object ${...}$
 using only the filters for which we gave semantics in @tab:eval-semantics.
+
+#example("Recursion")[
+  Consider the following MIR filter $phi$: $"def" "repeat" defas ., "repeat" defend "repeat"$.
+  This filter repeatedly outputs its input;
+  for example, given the input $v = 1$, it returns $stream(ok(1), ok(1), ok(1), ...)$.
+  First, let us compile a part of our filter, namely
+  $ rho = [|., "repeat"|] =^[|dot.op|] app("pair", (lam(v) stream(ok(v)) + "run" "repeat" v), (...)). $
+  Here, the second part of the pair $(...)$ does not matter, because
+  it is never evaluated due to our not performing any updates in this example.
+
+  Now, we can evaluate the filter $phi$ by
+  $app("eval", phi, v) = app((lam(kappa) app("run", [|phi|])), "zero", v) $.
+  Because $phi$ does not contain any labels,
+  $[|phi|]$ does not make any reference to $kappa$, therefore
+  $app("eval", phi, v)$ is equivalent to:
+  $ app("run", [|phi|], v)
+  &= app((lam("repeat") app("run", [|"repeat"|], v)), (Y_1 (lam("repeat") rho))) \
+  &=^[|dot.op|] app((lam("repeat") app("run", "repeat", v)), (Y_1 (lam("repeat") rho))) \
+  &=^beta app("run", (Y_1 (lam("repeat") rho)), v) \
+  &=^(Y_1) app("run", ((lam("repeat") rho) (Y_1 (lam("repeat") rho))), v) \
+  &=^rho app("run", ((lam("repeat") app("pair", (lam(v) stream(ok(v)) + "run" "repeat" v), (...))) (app(Y_1, (lam("repeat") rho)))), v) \
+  &=^beta app("run", (app("pair", (lam(v) stream(ok(v)) + app("run", (Y_1 (lam("repeat") rho)), v)), (...))), v) \
+  &=^beta app(stream(ok(v)) + app("run", (Y_1 (lam("repeat") rho)), v)) \
+  &= stream(ok(v)) + app("run", [|phi|], v). $
+  This shows that the evaluation of $phi$ on any input $v$ yields
+  an infinite stream of $ok(v)$ results.
+]
+
 /*
 For $"length"$, we could give a definition, using
 $"reduce" .[] "as" var(x) (0; . + 1)$ to obtain the length of arrays and objects, but

@@ -59,70 +59,82 @@ supports the arithmetic operations $+$, $-$, $times$, $div$, and $mod$ (modulo).
 
 == Construction <json-construction>
 
-In this subsection, we will introduce operators to construct arrays and objects.
+In this subsection, we will introduce functions to construct arrays and objects.
 
-The function $[dot]$ transforms a stream into
+$ "arr"_0:&           &&          && cal(V) := [] \
+  "arr"_1:&           &&cal(V) -> && cal(V) := lam(v) [v] \
+  "obj"_0:&           &&          && cal(V) := {} \
+  "obj"_1:& cal(V) -> &&cal(V) -> && cal(R) := lam(k, v) cases(
+    ok({k |-> v}) & "if" k "is a string",
+    "err" ...     & "otherwise",
+  ) $
+
+The function $"arr"$ transforms a stream into
 an array if all stream elements are values, or into
 the first exception in the stream otherwise:
 
-$ [stream(v_0, ..., v_n)] := cases(
-  v_i & "if" v_i "is an exception and for all" j < i", " v_j "is a value",
-  [v_0, ..., v_n] & "otherwise",
-) $
+$ "sum"&: cal(S) -> cal(V) &&-> cal(R) := lam(s, n) app(s, (lam(h, t) h bindr (lam(o) (n + o bindr app("sum", t)))), (ok(n))) \
+  "arr"&: cal(S)           &&-> cal(R) := lam(s) app("sum", (s bind (lam(v) stream(ok((app("arr"_1, v)))))), "arr"_0) $
 
-Given two values $k$ and $v$, we can make an object out of them:
+Here, the function $"sum"$ takes a stream and a zero value and
+returns the sum of the zero value and the stream elements if they are all OK,
+otherwise it returns the first exception in the stream.
+This uses the addition operator $+: cal(V) -> cal(V) -> cal(R)$ that
+we will define in @arithmetic.
 
-$ {k: v} := cases(
-  {k |-> v} & "if" k "is a string and" v "is a value",
-  "error" & "otherwise",
-) $
-
+/*
 We can construct objects with multiple keys by adding objects, see @arithmetic.
+*/
 
 
 == Simple functions <simple-fns>
 
-We are now going to define several functions that take a value and return a value.
+We are now going to define several functions on values.
 
 The _keys_ of a value are defined as follows:
 
-$ "keys"(v) := cases(
-  stream(0  , ...,   n) & "if" v = [v_0, ..., v_n],
-  stream(k_0) + "keys"(v') & "if" v = {k_0 |-> v_0} union v' "and" k_0 = min("dom"(v)),
+$ "keys": cal(V) -> cal(S) := lam(v) cases(
+  stream(ok(0), ...,   ok(n)) & "if" v = [v_0, ..., v_n],
+  stream(ok(k_0)) + app("keys", v') & "if" v = {k_0 |-> v_0} union v' "and" k_0 = min("dom"(v)),
   stream() & "if" v = {},
-  stream("error") & "otherwise",
+  stream("err" ...) & "otherwise",
 ) $
 
-For an object $v$, $"keys"(v)$ returns
+For an object $v$, $app("keys", v)$ returns
 the domain of the object sorted by ascending order.
 For the used ordering, see @json-order.
 
 We define the _length_ of a value as follows:
 
-$ |v| := cases(
-  0       & "if" v = "null",
-  |n|     & "if" v "is a number" n,
-  n       & "if" v = c_1...c_n,
-  n       & "if" v = [v_1, ..., v_n],
-  n       & "if" v = {k_1 |-> v_1, ..., k_n |-> v_n},
-  "error" & "otherwise (if" v in {"true", "false"}")",
+$ "length": cal(V) -> cal(R) := lam(v) cases(
+  ok(0)       & "if" v = "null",
+  ok(|n|)     & "if" v "is a number" n,
+  ok(n)       & "if" v = c_1...c_n,
+  ok(n)       & "if" v = [v_1, ..., v_n],
+  ok(n)       & "if" v = {k_1 |-> v_1, ..., k_n |-> v_n},
+  "err" ...   & "otherwise (if" v in {"true", "false"}")",
 ) $
 
-Here, $|n|$ denotes the absolute value of a number, e.g.
+Here, if $n$ is a number, then
+$|n|$ denotes the absolute value of a number, e.g.
 $|3.14| = 3.14$ and $|-2| = 2$.
+Similarly,
+$|s|$ is the number of characters of a string $s$,
+$|a|$ is the length of an array $a$, and
+$|o|$ is the size of the domain of an object $o$.
 
 The _boolean value_ of a value $v$ is defined as follows:
 
-$ "bool"(v) := cases(
+$ "bool": cal(V) -> bb(B) := lam(v) cases(
   "false" & "if" v = "null" "or" v = "false",
   "true" & "otherwise",
 ) $
 
 We can draw a link between the functions here and jq:
 When called with the input value $v$,
-the jq filter `keys` yields $stream(["keys"(v)])$,
-the jq filter `length` yields $stream(|v|)$, and
-the jq filter `true and .` yields $stream("bool"(v))$.
+the jq filter `keys` yields $stream(app("arr", (app("keys", v))))$,
+the jq filter `length` yields $stream("length" v)$, and
+the jq filter `true and .` yields $stream(ok((app("bool", v))))$.
 
 == Arithmetic operations <arithmetic>
 
@@ -148,12 +160,12 @@ respectively.
 We define addition of two values $l$ and $r$ as follows:
 
 $ l + r := cases(
-  v & "if" l = "null" "and" r = v", or" l = v "and" r = "null",
-  n_1 + n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
-  c_(l,1)...c_(l,m)c_(r,1)...c_(r,n) & "if" l = c_(l,1)...c_(l,m) "and" r = c_(r,1)...c_(r,n),
-  [stream(l_1, ..., l_m, r_1, ..., r_n)] & "if" l = [l_1, ..., l_m] "and" r = [r_1, ..., r_n],
-  l union r & "if" l = {...} "and" r = {...},
-  "error" & "otherwise",
+  ok(v) & "if" l = "null" "and" r = v", or" l = v "and" r = "null",
+  ok((n_1 + n_2)) & "if" l "is a number" n_1 "and" r "is a number" n_2,
+  ok((c_(l,1)...c_(l,m)c_(r,1)...c_(r,n))) & "if" l = c_(l,1)...c_(l,m) "and" r = c_(r,1)...c_(r,n),
+  ok([l_1, ..., l_m, r_1, ..., r_n]) & "if" l = [l_1, ..., l_m] "and" r = [r_1, ..., r_n],
+  ok((l union r)) & "if" l = {...} "and" r = {...},
+  "err" ... & "otherwise",
 ) $
 
 Here, we can see that $"null"$ serves as a neutral element for addition.
@@ -172,19 +184,19 @@ $ l merge r := cases(
   l & "otherwise (if" r = {} ")",
 ) $
 
-We use this in the following definition of multiplication of two values $l$ and $r$:
+We use $merge$ in the following definition of multiplication of two values $l$ and $r$:
 
 $ l times r := cases(
-  n_1 times n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
-  l + l times (r - 1) & "if" l "is a string and" r in NN without {0},
-  "null" & "if" l "is a string and" r = 0,
+  ok((n_1 times n_2)) & "if" l "is a number" n_1 "and" r "is a number" n_2,
+  sum_(i = 1)^n s & "if" l "is a string" s "and" r "is a number" n in NN without {0},
+  ok("null") & "if" l "is a string and" r = 0,
   r times l & "if" r "is a string and" l in NN,
-  l merge r & "if" l "and" r "are objects",
-  "error" & "otherwise"
+  ok((l merge r)) & "if" l "and" r "are objects",
+  "err" ... & "otherwise"
 ) $
 
 We can see that multiplication of a string $s$ with a natural number $n > 0$ returns
-$sum_(i = 1)^n s$; that is, the concatenation of $n$ times the string $s$.
+the concatenation of $n$ times the string $s$.
 The multiplication of two objects corresponds to their recursive merge as defined above.
 
 === Subtraction
@@ -192,9 +204,9 @@ The multiplication of two objects corresponds to their recursive merge as define
 We now define subtraction of two values $l$ and $r$:
 
 $ l - r := cases(
-  n_1 - n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
-  [sum_(i, l_i in {r_0, ..., r_n}) stream(l_i) ] & "if" l = [l_0, ..., l_n] "and" r = [r_0, ..., r_n],
-  "error" & "otherwise"
+  ok((n_1 - n_2)) & "if" l "is a number" n_1 "and" r "is a number" n_2,
+  "arr" (sum_(i, l_i in.not {r_0, ..., r_n}) stream(ok(l_i))) & "if" l = [l_0, ..., l_n] "and" r = [r_0, ..., r_n],
+  "err" ... & "otherwise"
 ) $
 
 When both $l$ and $r$ are arrays, then $l - r$ returns
@@ -206,20 +218,20 @@ We will now define a function that
 splits a string $y + x$ by some non-empty separator string $s$.
 The function preserves the invariant that $y$ does not contain $s$:
 
-$ "split"(x, s, y) := cases(
-  "split"(c_1...c_n, s, y + c_0) & "if" x = c_0...c_n "and" c_0...c_(|s| - 1) != s,
-  [stream(y)] + "split"(c_(|s|)...c_n, s, qs("")) & "if" x = c_0...c_n "and" c_0...c_(|s| - 1) = s,
-  [stream(y)] & "otherwise" (|x| = 0),
+$ "split" := lam(x, s, y) cases(
+  app("split", (c_1...c_n), s, (y + c_0)) & "if" x = c_0...c_n "and" c_0...c_(|s| - 1) != s,
+  [y] + app("split", (c_(|s|)...c_n), s, qs("")) & "if" x = c_0...c_n "and" c_0...c_(|s| - 1) = s,
+  [y] & "otherwise" (|x| = 0),
 ) $
 
 We use this splitting function to define division of two values:
 
 $ l div r := cases(
-  n_1 div n_2 & "if" l "is a number" n_1 "and" r "is a number" n_2,
-  [] & "if" l "and" r "are strings and " |l| = 0,
-  [sum_i stream(c_i)] & "if" l = c_0...c_n "," r "is a string," |l| > 0", and" |r| = 0,
-  "split"(l, r, qs("")) & "if" l "and" r "are strings," |l| > 0", and" |r| > 0,
-  "error" & "otherwise"
+  ok((n_1 div n_2)) & "if" l "is a number" n_1 "and" r "is a number" n_2,
+  ok([]) & "if" l "and" r "are strings and" |l| = 0,
+  "arr" (sum_i stream(ok(c_i))) & "if" l = c_0...c_n "," thick r "is a string," |l| > 0", and" |r| = 0,
+  ok((app("split", l, r, qs("")))) & "if" l "and" r "are strings," |l| > 0", and" |r| > 0,
+  "err" ... & "otherwise"
 ) $
 
 #example[
@@ -257,12 +269,12 @@ These serve to extract values that are contained within other values.
 The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
 
 $ v[i] := cases(
-  v_i    & "if" v = [v_0, ..., v_n] "," i in NN", and" i <= n,
-  "null" & "if" v = [v_0, ..., v_n] "," i in NN", and" i > n,
-  v[n+i] & "if" v = [v_0, ..., v_n] "," i in ZZ without NN", and" 0 <= n+i,
-  v_j    & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n}"," i "is a string, and" k_j = i,
-  "null" & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n}"," i "is a string, and" i in.not {k_0, ..., k_n},
-  "error" & "otherwise",
+  ok(v_i)    & "if" v = [v_0, ..., v_n] "," thick i in NN", and" i <= n,
+  ok("null") & "if" v = [v_0, ..., v_n] "," thick i in NN", and" i > n,
+  v[n+i]     & "if" v = [v_0, ..., v_n] "," thick i in ZZ without NN", and" 0 <= n+i,
+  ok(v_j)    & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n}"," thick i "is a string, and" k_j = i,
+  ok("null") & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n}"," thick i "is a string, and" i in.not {k_0, ..., k_n},
+  "err" ...  & "otherwise",
 ) $
 
 The idea behind this index operator is as follows:
@@ -280,21 +292,25 @@ The behaviour of this operator for $i < 0$ is that $v[i]$ equals $v[abs(v) + i]$
 
 Using the index operator, we can define the values $v[]$ in a value $v$ as follows:
 
-$ v[] := sum_(i in"keys"(v)) stream(v[i]) $
+$ v[] := "keys" v bind lam(k) stream(v[k]) $
 
 When provided with
 an array $v = [v_0, ..., v_n]$ or
 an object $v = {k_0 |-> v_0, ..., k_n |-> v_n}$ (where $k_0 < ... < k_n$),
-$v[]$ returns the stream $stream(v_0, ..., v_n)$.
+$v[]$ returns the stream $stream(ok(v_0), ..., ok(v_n))$.
+
+/*
+ * TODO! adapt all operators from here!
+ */
 
 Next, we define a slice operator:
 
 $ v[i:j] := cases(
-  [sum_(k = i)^(j-1) stream(v_k)] & "if" v = [v_0, ..., v_n] "and" i","j in NN,
-  sum_(k = i)^(j-1) c_k & "if" v = c_0...c_n "and" i","j in NN,
-  v[(n+i):j] & "if" |v| = n", " i in ZZ without NN", and" 0 <= n+i,
-  v[i:(n+j)] & "if" |v| = n", " j in ZZ without NN", and" 0 <= n+j,
-  "error" & "otherwise",
+  ok([v_i, ..., v_(j-1)]) & "if" v = [v_0, ..., v_n] "and" i"," thick j in NN,
+  ok((c_i  ...  c_(j-1))) & "if" v =  c_0 ...   c_n  "and" i"," thick j in NN,
+  v[(n+i):j] & "if" |v| = n"," thick i in ZZ without NN", and" 0 <= n+i,
+  v[i:(n+j)] & "if" |v| = n"," thick j in ZZ without NN", and" 0 <= n+j,
+  "err" ... & "otherwise",
 ) $
 
 Note that unlike $v[]$ and $v[i]$, $v[i:j]$ may yield a value if $v$ is a string.
@@ -315,10 +331,10 @@ $ v[i]   &:= stream(v[i]) \
 
 Finally, we define the remaining access operators by using the slice operator:
 
-$ v[:j] &:= v[0:  &j] \
-  v[i:] &:= v[i:&|v|] $
+$ v[:j] &:=                                      && v[0 &&: &j&] \
+  v[i:] &:= stream(app("length", v)) bind lam(l) && v[i &&: &l&] $
 
-When $|v|$ yields an error, then $v[i:]$ yields an error, too.
+When $app("length", v)$ yields an error, then $v[i:]$ yields an error, too.
 
 
 == Updating <json-update>
@@ -331,44 +347,43 @@ The access operators will be used in @semantics, and
 the update operators will be used in @updates.
 
 All update operators take at least
-a value $v$ and
-a function $f$ from a value to a stream of value results.
+a value $v: cal(V)$ and a function $f: cal(V) -> cal(S)$, and return a value result.
+/*
 We extend the domain of $f$ to value results such that
 $f(e) = stream(e)$ if $e$ is an exception.
+*/
 
 The first update operator will be a counterpart to $v[]$.
 For all elements $x$ that are yielded by $v[]$,
 $v[] update f$ replaces $x$ by $f(x)$:
 
 $ v[] update f := cases(
-  [sum_i f(v_i)] & "if" v = [v_0, ..., v_n],
-  union.big_i cases({k_i : h} & "if" f(v_i) = stream(h) + t, {} & "otherwise") & "if" v = {k_0 |-> v_0, ..., k_n |-> v_n},
-  "error" & "otherwise",
+  "arr" (sum_i f(v_i)) & "if" v = [v_0, ..., v_n],
+  app("sum", ("keys" v bind lam(k) v[k] bind lam(v) stream(app("obj_if", k, (app(f, v))))), {}) & "if" v "is an object",
+  "err" ... & "otherwise",
 ) $
+
+Here, we use a helper function for the case that $v$ is an object.
+This function takes an object key $k$ and $s: cal(S)$ and returns a value result:
+$ "obj_if" := lam(k, s) app(s, (lam(h, t) h bindr lam(o) ok({k |-> o})), (ok({}))) $
 
 For an input array $v = [v_0, ..., v_n]$,
 $v[] update f$ replaces each $v_i$ by the output of $f(v_i)$, yielding
-$[f(v_0) + ... + f(v_n)]$.
+$[f(v_0)] + ... + [f(v_n)]$.
 For an input object $v = {k_0 |-> v_0, ..., k_n |-> v_n}$,
 $v[] update f$ replaces each $v_i$ by the first output yielded by $f(v_i)$ if such an output exists,
 otherwise it deletes ${k_i |-> v_i}$ from the object.
 Note that updating arrays diverges from jq, because
 jq only considers the first value yielded by $f$.
 
-For the next operators, we will use the following function $"head"(l, e)$, which
-returns the head of a list $l$ if it is not empty, otherwise $e$:
+For the next operators, we will use the following function $app("cut", v, i, j, n, s)$, which
+replaces the slice $[i:j]$ of an array $v$ of length $n$ by a stream $s$:
 
-$ "head"(l, e) := cases(
-  h & "if" l = stream(h) + t,
-  e & "otherwise",
-) $
+$ "cut" := lam(v, i, j, n, s) app("sum", (v[0:i] + s + v[j:n]), []) $
 
-The next function takes a value $v$ and
-replaces its $i$-th element by the first output of $f$,
-or deletes it if $f$ yields no output:
+The next operator replaces the $i$-th element of a value $v$ by the outputs of $f$:
 $ v[i] update f := cases(
-  v[0:i] + ["head"(f(v[i]), stream())] + v[(i+1):n]
-    & "if" v = [v_0, ..., v_n]", " i in NN", and" i <= n,
+  app("cut", v, i, (i+1), n, stream("arr" (f v_i))) & "if" v = [v_0, ..., v_n]", " i in NN", and" i <= n,
   /*
   v[0:i] + [h] + v[(i+1):n]
     & "if" v = [v_0, ..., v_n]", " i in NN"," i <= n", and" f(v[i]) = stream(h) + t,
@@ -376,10 +391,8 @@ $ v[i] update f := cases(
     & "if" v = [v_0, ..., v_n]", " i in NN"," i <= n", and" f(v[i]) = stream(),
   */
   v[n+i] update f & "if" v = [v_0, ..., v_n]", " i in ZZ without NN", and" 0 <= n+i,
-  v + {i: h} & "if" v = {...} "and" f(v[i]) = stream(h) + t,
-  union.big_(k in "dom"(v) without {i}) {k |-> v[k]} & "if" v = {...} "and" f(v[i]) = stream(),
-
-  "error" & "otherwise",
+  app("obj_if", i, (app(f, v'))) bindr lam(y) y + o & "if" v = {i |-> v'} union o,
+  "err" ... & "otherwise",
 ) $
 
 Note that this diverges from jq if $v = [v_0, ..., v_n]$ and $i > n$,
@@ -388,16 +401,14 @@ because jq fills up the array with $"null"$.
 // but we unfortunately cannot use it to define {k: f}, because if f returns the empty list,
 // we cannot provide a default element e that would make the key disappear
 
-The final function here is the update counterpart of the operator $v[i:j]$.
-It replaces the slice $v[i:j]$
-by the first output of $f$ on $v[i:j]$, or
-by the empty array if $f$ yields no output.
+The final operator is the update counterpart of the operator $v[i:j]$.
+It replaces the slice $v[i:j]$ by the concatenation of the outputs of $f$ on $v[i:j]$.
 $ v[i:j] update f := cases(
-  v[0:i] + "head"(f(v[i:j]), []) + v[j:n] & "if" v = [v_0, ..., v_n]", " i","j in NN", and" i <= j,
-  v & "if" v = [v_0, ..., v_n]", " i","j in NN", and" i > j,
+  app("cut", v, i, j, n, (v[i:j] >>= f)) & "if" v = [v_0, ..., v_n]", " i","j in NN", and" i <= j,
+  ok(v) & "if" v = [v_0, ..., v_n]", " i","j in NN", and" i > j,
   v[(n+i):j] update f & "if" |v| = n", " i in ZZ without NN", and" 0 <= n+i,
   v[i:(n+j)] update f & "if" |v| = n", " j in ZZ without NN", and" 0 <= n+j,
-  "error" & "otherwise",
+  "err" ... & "otherwise",
 ) $
 
 Unlike its corresponding access operator $v[i:j]$,
@@ -405,15 +416,17 @@ this operator unconditionally fails when $v$ is a string.
 This operator diverges from jq if $f$ yields $"null"$, in which case
 jq returns an error, whereas
 this operator treats this as equivalent to $f$ returning $[]$.
+Both $v[i] update f$ and $v[i:j] update f$ diverge from jq when
+$f$ returns multiple values, in which case jq considers only the first output of $f$.
 
 #example[
-  If $v = [0, 1, 2, 3]$ and $f(v) = [4, 5, 6]$, then $v[1:3] update f = [0, 4, 5, 6, 3]$.
+  If $v = [0, 1, 2, 3]$ and $f = lam(v) [4, 5, 6]$, then $v[1:3] update f = [0, 4, 5, 6, 3]$.
 ]
 
 Similarly to @json-access, we define the remaining operators by $v[i:j]$:
 
-$ v[:j] update f &:= v[0:  &j] update f \
-  v[i:] update f &:= v[i:&|v|] update f $
+$ v[:j] update f &:=                         && v[0:  &j] update f \
+  v[i:] update f &:= "length" v bindr lam(l) && v[i:  &l] update f $
 
 
 == Order <json-order>
