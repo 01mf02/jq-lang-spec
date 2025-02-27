@@ -55,6 +55,7 @@ both compile jq programs to a list of imperative instructions and execute it, wh
 on a set of 29 benchmarks.#footnote[
   Instructions on how to evaluate the benchmarks are given in `jaq`'s `README.md`.
 ]
+The benchmarks were run on a Linux system with an AMD Ryzen 5 5500U.
 The number for the best performance (lowest runtime) is marked as bold.
 The results show that
 jaq-2.0 is fastest on 25 benchmarks, whereas
@@ -83,7 +84,7 @@ Let us have a look at a simple update benchmark that is not part of @tab:benchma
   Here, we pipe the array output through `length` such that
   only the length of the output array is printed,
   in order not to measure the runtime for printing the whole array.
-  The results are given in @tab:update-bench.
+  The results are given in @tab:update-bench and shall serve as baseline.
 
   Next, we consider the filter `[range(.)] | .[] += 1`, where
   `.[] += 1` increments all elements of its input array by one.

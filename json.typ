@@ -433,6 +433,8 @@ $ v[:j] update f &:=                         && v[0:  &j] update f \
 
 In this subsection, we establish a total order on values.
 
+// TODO: total order is <=, not < !
+
 We have that
 $ "null" < "false" < "true" < n < s < a < o, $ where
 $n$ is a number,

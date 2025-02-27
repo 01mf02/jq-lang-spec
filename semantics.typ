@@ -2,8 +2,7 @@
 
 = Evaluation Semantics <semantics>
 
-// TODO!
-In this section, we will show how to transform a filter $phi$ to a lambda term $[|phi|]$,
+In this section, we will show how to transform --- or compile --- a filter $phi$ to a lambda term $[|phi|]$,
 such that $"eval" [|phi|]$ is a function that takes an input value $v$ and returns
 the stream of values that the filter $phi$ outputs when given the input $v$.
 The evaluation strategy is call-by-name.
@@ -17,8 +16,6 @@ $ "pair"&:           &&(cal(V) -> cal(S)) &&-> ((cal(V) -> cal(S)) -> cal(V) -> 
    "run"&: cal(F) -> &&(cal(V) -> cal(S)) &&                                                      &&:= lam(p) app(p, (lam(x, y) x)) \
    "upd"&: cal(F)    &&                   &&-> ((cal(V) -> cal(S)) -> cal(V) -> cal(S))           &&:= lam(p) app(p, (lam(x, y) y)) $
 
-$ "eval" phi = app((lam(kappa) app("run", [|phi|])), "zero") $
-
 The lambda term $[|phi|]$ corresponding to a filter $phi$ that we will define
 will always be a pair of two functions, namely a run and an update function.
 It has the shape $ [|phi|] = app("pair", (lam(v) t_r), (lam(sigma, v) t_u)) $
@@ -30,22 +27,35 @@ $t_u$ by $app("upd", [|phi|], sigma, v)$.
 For conciseness, we write
 $app("run", [|phi|],        v)$ to define $t_r$ and
 $app("upd", [|phi|], sigma, v)$ to define $t_u$.
-For example, for the identity filter "$.$", we have $ [|.|] = app("pair",
-(lam(v) stream(ok(v))),
-(lam(sigma, v) app(sigma, v))), $
-where the two values of the pair were obtained from
-@tab:eval-semantics and @tab:update-semantics.
+#example("Identity filter compilation")[
+  For the identity filter "$.$", we have $ [|.|] = app("pair",
+  (lam(v) stream(ok(v))),
+  (lam(sigma, v) app(sigma, v))), $ where
+  $t_r = stream(ok(v))$ was obtained from @tab:eval-semantics and
+  $t_u = app(sigma, v)$ was obtained from @tab:update-semantics.
+]
 
 #let fresh = $kappa$
+
+A well-formed filter compiled to a lambda term
+may contain at most one free variable, namely $fresh$.
+This variable is used to generate fresh labels for the execution of
+$"label" var(x) | f$, see @ex:labels.
+In order to create a closed term, we initially bind $fresh$ to zero.
+We can then run a filter using the following function:
+
+$ "eval": cal(F) -> cal(V) -> cal(S) := lam(phi) app((lam(fresh) app("run", phi)), "zero") $
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $app("run", [|phi|], v)$,
   $.$, $stream(ok(v))$,
   $n "or" s$, $stream(ok(phi))$,
   $var(x)$, $stream(ok(var(x)))$,
-  $[f]$, $stream([ app("run", [|f|], v) ])$,
-  ${}$, $stream(ok({}))$,
-  ${var(x): var(y)}$, $stream(ok({var(x): var(y)}))$,
+  $[]$, $stream(ok("arr"_0))$,
+  ${}$, $stream(ok("obj"_0))$,
+  $[f]$, $stream("arr" (app("run", [|f|], v)))$,
+  ${var(x): var(y)}$, $stream(app("obj"_1, var(x), var(y)))$,
+  $var(x) arith var(y)$, $stream(var(x) arith var(y))$,
   $var(x) cartesian var(y)$, $stream(ok((var(x) cartesian var(y))))$,
   $f, g$, $app("run", [|f|], v) + app("run", [|g|], v)$,
   $f | g$, $app("run", [|f|], v) bind app("run", [|g|])$,
@@ -73,35 +83,38 @@ Let us discuss its different cases:
   Wellformedness of the filter (as defined in @mir) ensures that
   whenever we evaluate $var(x)$, it must have been substituted,
   for example by a surrounding call to $f "as" var(x) | g$.
-- $[f]$: Creates an array from the output of $f$, using the operator defined in @values.
-- ${}$: Creates an empty object.
+- $[]$ or ${}$: Creates an empty array or object.
+- $[f]$: Creates an array from the output of $f$, using the function $"arr"$ defined in @values.
 - ${var(x): var(y)}$: Creates an object from the values bound to $var(x)$ and $var(y)$,
-  using the operator defined in @values.
-- $f, g$: Concatenates the outputs of $f$ and $g$.
+  using the function $"obj"_1$ defined in @values.
+- $var(x) arith var(y)$: Returns the output of an arithmetic operation "$arith$"
+  (any of $+$, $-$, $times$, $div$, and $mod$, as given in @tab:binops)
+  on the values bound to $var(x)$ and $var(y)$.
+- $var(x) cartesian var(y)$: Returns the output of a Boolean operation "$cartesian$"
+  (any of $eq.quest$, $eq.not$, $<$, $<=$, $>$, $>=$, as given in @tab:binops)
+  on the values bound to $var(x)$ and $var(y)$.
+  Because we assumed that Boolean operations return $cal(V)$ and are thus infallible
+  (unlike the arithmetic operations $arith$, which return $cal(R)$),
+  we have to wrap their outputs with an $"ok"$.
+- $f, g$: Concatenates the outputs of $f$ and $g$, both applied to the same input.
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
-- $f alt g$: Returns $l$ if $l$ is not empty, else the outputs of $g$, where
-  $l$ are the outputs of $f$ whose boolean values are not false.
+- $f alt g$: Let $l$ be the outputs of $f$ whose boolean values are not false.
+  This filter returns $l$ if $l$ is not empty, else the outputs of $g$.
   Here, we use a function $app("trues", x)$ that
   returns its input $x$ if its boolean value is true.
-$ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x)), "nil") $
+$ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x)), stream()) $
 - $f "as" var(x) | g$: For every output of $f$, binds it to the variable $var(x)$ and
   returns the output of $g$, where $g$ may reference $var(x)$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
   We can show that the evaluation of $f | g$ is equivalent to that of
   $f "as" var(x') | var(x') | g$, where $var(x')$ is a fresh variable.
   Therefore, we could be tempted to lower $f | g$ to
-  $floor(f) "as" var(x') | var(x') | floor(g)$ in @tab:lowering.
+  $floor(f) "as" var(x') | var(x') | floor(g)$ in @tab:lowering,
+  in order to further simplify MIR and thus the semantics.
   However, we cannot do this because we will see in @updates that
   this equivalence does _not_ hold for updates; that is,
   $(f | g) update sigma$ is _not_ equal to $(f "as" var(x') | var(x') | g) update sigma$.
-- $var(x) cartesian var(y)$: Returns the output of a Cartesian operation "$cartesian$"
-  (any of $eq.quest$, $eq.not$, $<$, $<=$, $>$, $>=$, $+$, $-$, $times$, $div$, and $mod$,
-  as given in @tab:binops) on the values bound to $var(x)$ and $var(y)$.
-  The semantics of the arithmetic operators are given in @arithmetic,
-  the comparison operators are defined by the value order (see @value-ops),
-  $l eq.quest r$ returns whether $l$ equals $r$, and
-  $l eq.not r$ returns its negation.
-- $"try" f "catch" g$: Replaces all outputs of $f$ that equal $"error"(e)$ for some $e$
+- $"try" f "catch" g$: Replaces all outputs of $f$ that equal $app("err", e)$ for some $e$
   by the output of $g$ on the input $e$.
   At first sight, this seems to diverge from jq, which
   aborts the evaluation of $f$ after the first error.
@@ -110,12 +123,14 @@ $ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x))
   $"label" var(x') | "try" f "catch" (g, "break" var(x'))$ (see @tab:lowering),
   the overall behaviour described here corresponds to jq after all.
 - $"label" var(x) | f$: Returns all values yielded by $f$ until $f$ yields
-  an exception $"break"(var(x))$.
+  an exception $app("break", var(x))$.
   This uses a function $"label"$ that
-  takes a label $l$ and a stream $s$ of value results,
-  returning the longest prefix of $s$ that does not contain $app("break", l)$:
+  takes a label $fresh$ and a stream $s$ of value results,
+  returning the longest prefix of $s$ that does not contain $app("break", fresh)$:
   $ "label"&: bb(N) -> cal(S) -> cal(S) \
-         &:= lam(l, s) app(s, (lam(h, t) app((lam(c) app(h, (lam(o) c), (lam(e) c), (lam(b) app("nat_eq", l, b, stream(), c)))), (stream(h) + app("label", l, t)))), stream()) $
+         &:= lam(fresh, s) app(s, (lam(h, t) app((lam(c) app(h, (lam(o) c), (lam(e) c), (lam(b) app("nat_eq", fresh, b, stream(), c)))), (stream(h) + app("label", fresh, t)))), stream()) $
+  In this function, $c$ gets bound to $stream(h) + app("label", fresh, t)$,
+  which is the function output when the head $h$ is not equal to $app("label", fresh)$.
   /*
   // TODO!
   To see that this is necessary, consider the example
@@ -138,34 +153,40 @@ $ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x))
 - $"break" var(x)$: Returns a value result $app("break", var(x))$.
   Similarly to the evaluation of variables $var(x)$ described above,
   wellformedness of the filter (as defined in @hir) ensures that
-  the returned value $"break"(var(x))$ will be
+  the returned value $app("break", var(x))$ will be
   eventually handled by a corresponding filter
   $"label" var(x) | f$.
-  That means that the evaluation of a wellformed filter can only yield
-  values and errors, but never $"break"(var(x))$.
-- $"if" var(x) "then" f "else" g$: Returns the output of $f$ if $var(x)$ is bound to either null or false, else returns the output of $g$.
-- $.[p]$: Accesses parts of the input value;
+  That means that $"eval" [|phi|]$ for a wellformed filter $phi$ can only yield
+  values and errors, but never a $"break"$ result.
+- $"if" var(x) "then" f "else" g$: Returns the output of $f$ if $var(x)$ is bound to
+  a "true" value (neither null nor false for JSON, see @simple-fns), else returns the output of $g$.
+- $.[p]^?$: Accesses parts of the input value;
   see @value-ops for the definitions of the operators.
-  We apply $c$ to the path indices (which are variables)
-  to replace them by their corresponding values.
+  When evaluating this, the indices contained in $p$ have been substituted by values.
 - $fold x "as" var(x) (.; f)$: Folds $f$ over the values returned by $x$,
   starting with the current input as accumulator.
   The current accumulator value is provided to $f$ as input value and
   $f$ can access the current value of $x$ by $var(x)$.
   If $fold = "reduce" $, this returns only the final        values of the accumulator, whereas
   if $fold = "foreach"$, this returns also the intermediate values of the accumulator.
-  We will define the functions
-  $"reduce" ^c_v (l, var(x), f)$ and
-  $"foreach"^c_v (l, var(x), f)$ in @folding.
+  We will further explain this and define the functions
+  $app( "reduce", f,    s, v)$ and
+  $app("foreach", f, g, s, v)$ in @folding.
+- $"def" x(x_1; ...; x_n) defas f defend g$: Binds the $n$-ary filter $x$ in $g$.
+  The definition of $x$, namely $f$, may refer to
+  any of the arguments $x_i$ as well as to $x$ itself.
+  In other words, filters can be defined recursively,
+  which is why we use the Y combinator $Y_(n+1)$ here.
+  @ex:recursion shows how a recursive call is evaluated.
 - $x(f_1; ...; f_n)$: Calls an $n$-ary filter $x$.
   This also handles the case of calling nullary filters such as $"empty"$.
 - $f update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @updates.
 
-An implementation may also define custom semantics for named filters.
+An implementation may also define semantics for builtin named filters.
 For example, an implementation may define
-$"error"|^c_v := "error"(v)$ and
-$"keys"|^c_v := "keys"(v)$, see @simple-fns.
+$app("run", [|"error"|], v) := stream(app("err", v))$ and
+$app("run", [|"keys" |], v) := stream("arr" app("keys", v))$, see @simple-fns.
 In the case of $"keys"$, for example, there is no obvious way to implement it by definition,
 in particular because there is no simple way to obtain the domain of an object ${...}$
 using only the filters for which we gave semantics in @tab:eval-semantics.
@@ -180,9 +201,9 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
   it is never evaluated due to our not performing any updates in this example.
 
   Now, we can evaluate the filter $phi$ by
-  $app("eval", phi, v) = app((lam(kappa) app("run", [|phi|])), "zero", v) $.
+  $app("eval", phi, v) = app((lam(fresh) app("run", [|phi|])), "zero", v) $.
   Because $phi$ does not contain any labels,
-  $[|phi|]$ does not make any reference to $kappa$, therefore
+  $[|phi|]$ does not make any reference to $fresh$, therefore
   $app("eval", phi, v)$ is equivalent to:
   $ app("run", [|phi|], v)
   &= app((lam("repeat") app("run", [|"repeat"|], v)), (Y_1 (lam("repeat") rho))) \
@@ -195,7 +216,24 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
   &= stream(ok(v)) + app("run", [|phi|], v). $
   This shows that the evaluation of $phi$ on any input $v$ yields
   an infinite stream of $ok(v)$ results.
-]
+] <ex:recursion>
+
+#example("Labels")[
+  Let us consider the filter $phi equiv "label" var(x) | "break" var(x)$.
+  We have:
+  $ app("eval", [|phi|], v)
+  &= (lam(fresh) "run" [|"label" var(x) | "break" var(x)|]) "zero" v \
+  &= (lam(fresh, v) app("label", fresh, (app((lam(var(x), fresh) app("run", [|"break" var(x)|], v)), fresh, ("succ" fresh))))) "zero" v \
+  &= "label" "zero" ((lam(var(x), fresh) stream("break" var(x))) "zero" ("succ" "zero")) \
+  &= "label" "zero" stream("break" "zero") \
+  &= stream() $
+  It is interesting to note that if instead of $"break" var(x)$,
+  we would have used a more complex filter, e.g. $"label" var(y) | ...$,
+  then $var(y)$ would have been substituted by $"succ" "zero"$
+  (which we can already see in our large equation above).
+  This mechanism reliably allows us to generate fresh labels and to
+  differentiate for each $"break"$ the corresponding $"label"$ that handles it.
+] <ex:labels>
 
 /*
 For $"length"$, we could give a definition, using
@@ -376,18 +414,19 @@ Let us discuss these for the different filters $phi$:
   We have already seen this at the end of @jq-updates.
 - $"if" var(x) "then" f "else" g$: Applies $sigma$ at $f$ if $var(x)$ holds, else at $g$.
 - $f alt g$: Applies $sigma$ at $f$ if $f$ yields some output whose boolean value (see @simple-fns) is not false, else applies $sigma$ at $g$.
-  See @folding for the definition of $"first"$.
+  Here, $"first"(f)$ is a filter that returns
+  the first output of its argument $f$ if there is one, else the empty stream.
 
 While @tab:update-props allows us to define the behaviour of several filters
 by reducing them to more primitive filters,
 there are several filters $phi$ which cannot be defined this way.
 We will therefore give the actual update semantics of $phi update sigma$ in @new-semantics
-by defining $(phi update sigma)|^c_v$, not
+by defining $app("upd", [|phi|], sigma, v)$, not
 by translating $phi update sigma$ to equivalent filters.
 
 == Limiting interactions <limiting-interactions>
 
-To define $(phi update sigma)|^c_v$, we first have to understand
+To define $app("upd", [|phi|], sigma, v)$, we first have to understand
 how to prevent unwanted interactions between $phi$ and $sigma$.
 In particular, we have to look at variable bindings.
 
@@ -410,16 +449,13 @@ so $sigma$ should not be able to access variables bound in $phi$.
 ]
 
 We take the following approach to prevent variables bound in $phi$ to "leak" into $sigma$:
-When evaluating $(phi update sigma)|^c_v$, we want
-$sigma$ to always be executed with the same $c$.
-That is, evaluating $(phi update sigma)|^c_v$ should never
-evaluate $sigma$ with any context other than $c$.
-In order to ensure that, we will define
-$(phi update sigma)|^c_v$ not for a _filter_ $sigma$,
-but for a _function_ $sigma(x)$, where
-$sigma(x)$ returns the output of the filter $sigma|^c_x$.
-This allows us to extend the context $c$ with bindings on the left-hand side of the update,
-while executing the update filter $sigma$ always with the same original context $c$.
+When evaluating $phi update sigma$, we want
+$sigma$ to always be executed with the same variable bindings.
+In order to ensure that, we define
+$app("upd", [|phi|], sigma', v)$ not for a _filter_ $sigma$,
+but for a _function_ $sigma': cal(V) -> cal(S)$, where
+$app(sigma', x)$ returns the output of the filter $app("run", sigma, x)$.
+This allows us to bind variables in $phi$ without impacting $sigma$.
 
 == New semantics <new-semantics>
 
@@ -427,7 +463,8 @@ We will now give semantics that define the output of
 $app("run", [|f update g|], v)$ as referred to in @semantics.
 
 We will first combine the techniques in @limiting-interactions to define
-$ app("run", [|f update g|], v) := app("upd", [|f|], sigma, v), "where" sigma: cal(V) -> cal(S) := app("run", [|g|]) $
+$ app("run", [|f update g|], v) := app("upd", [|f|], sigma, v), "where"
+  sigma: cal(V) -> cal(S) := app("run", [|g|]) $
 We use the function $sigma$ instead of a filter on the right-hand side to
 limit the scope of variable bindings as explained in @limiting-interactions.
 
@@ -436,18 +473,18 @@ limit the scope of variable bindings as explained in @limiting-interactions.
   $.$, $app(sigma, v)$,
   $f | g$, $app("upd", [|f|], (app("upd", [|g|], sigma)), v)$,
   $f, g$, $app("upd", [|f|], sigma, v) bind app("upd", [|g|], sigma)$,
-  $f alt g$, $app("upd", (app((app("run", [|f|], v) bind "trues"), (lam(\_, \_) [|f|]), [|g|])), v)$,
-  $.[p]^?$, $stream(v[c(p)]^? update sigma)$,
+  $f alt g$, $app("upd", (app((app("run", [|f|], v) bind "trues"), (lam(\_, \_) [|f|]), [|g|])), sigma, v)$,
+  $.[p]^?$, $stream(v[p]^? update sigma)$,
   $f "as" var(x) | g$, $app("reduce", (lam(var(x)) app("upd", [|g|], sigma)), (app("run", [|f|], v)), v)$,
   $"if" var(x) "then" f "else" g$, $app("upd", (app((app("bool", var(x))), [|f|], [|g|])), sigma, v)$,
   $"break" var(x)$, $stream(app("break", var(x)))$,
-  $"reduce" x "as" var(x) (.; f)$, $app("reduce"_update, (lam(var(x)) app("upd", [|f|])), (app("run", [|x|], v)), v)$,
-  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach"_update, (lam(var(x)) app("upd", [|f|])), (lam(var(x)) app("upd", [|g|], sigma)), (app("run", [|x|], v)), v)$,
+  $"reduce" x "as" var(x) (.; f)$, $app("reduce"_update, (lam(var(x)) app("upd", [|f|])), sigma, (app("run", [|x|], v)), v)$,
+  $"foreach" x "as" var(x) (.; f; g)$, $app("foreach"_update, (lam(var(x)) app("upd", [|f|])), (lam(var(x)) app("upd", [|g|])), sigma, (app("run", [|x|], v)), v)$,
   $"def" x(x_1; ...; x_n) defas f defend g$, $(lam(x) app("upd", [|g|], sigma, v)) (app(Y_(n+1), (lam(x, x_1, ..., x_n) [|f|])))$,
   $x(f_1; ...; f_n)$, $app("upd", (app(x, [|f_1|], ..., [|f_n|])), sigma, v)$,
 )) <tab:update-semantics>
 
-@tab:update-semantics shows the definition of $(phi update sigma)|^c_v$.
+@tab:update-semantics shows the definition of $app("upd", [|phi|], sigma, v)$.
 Several of the cases for $phi$, like
 "$.$", "$f | g$", "$f, g$", and "$"if" var(x) "then" f "else" g$"
 are simply relatively straightforward consequences of the properties in @tab:update-props.
@@ -457,8 +494,9 @@ We discuss the remaining cases for $phi$:
   If it yields at least one output that is considered "true"
   (see @semantics for the definition of $"trues"$),
   then we update at $f$, else at $g$.
-  This filter is unusual because is the only kind where a subexpression is both
-  updated with ($(f update sigma)|^c_v$) and evaluated ($f|^c_v$).
+  This filter is unusual because is the only kind where a subexpression may be both
+  evaluated ($app("run", [|f|], v)$) as well as
+  updated with ($app("upd", [|f|], sigma, v)$).
 - $.[p]^?$: Applies $sigma$ to the current value at the path part $p$
   using the update operators in @value-ops.
 - $f "as" var(x) | g$:
@@ -468,7 +506,9 @@ We discuss the remaining cases for $phi$:
   The definition of $"reduce"$ is given in @folding.
 - $fold x "as" var(x) (.; f)$: Folds $f$ over the values returned by $var(x)$.
   We will discuss this in @folding-update.
-- $x(f_1; ...; f_n)$, $x$: Calls filters.
+- $"def" x(x_1; ...; x_n) defas f defend g$: Defines a filter.
+  This is defined analogously to @tab:eval-semantics.
+- $x(f_1; ...; f_n)$, $x$: Calls a filter.
   This is defined analogously to @tab:eval-semantics.
 
 There are many filters $phi$ for which
@@ -476,8 +516,33 @@ $app("upd", [|phi|], sigma, v)$ is not defined,
 for example $var(x)$, $[f]$, and ${}$.
 In such cases, we assume that $app("upd", [|phi|], sigma, v)$ returns an error just like jq,
 because these filters do not return paths to their input data.
-Our semantics support all kinds of filters $phi$ that are supported by jq, except for
+Our update semantics support all kinds of filters $phi$ that are supported by jq, except for
 $"label" var(x) | g$ and $"try" f "catch" g$.
+
+#example("Update compilation")[
+  Let us consider the filter $phi' equiv (.[] update .+.)$.
+  When given an array as input, this filter outputs a new array where
+  each value in the input array is replaced by the output of $.+.$ on the value.
+  The filter $.+.$ returns the sum of the input and the input,
+  effectively doubling its input.
+  For example, when given the input $[1, 2, 3]$, the output of $phi$ is $[2, 4, 6]$.
+  Before we can execute $phi'$, we have to convert it to MIR, e.g. to
+  $phi equiv .[] update (. "as" var(x) | var(x) + var(x))$.#footnote[
+    Note that $floor(phi') = (.[] update (. "as" var(x) | . "as" var(y) | var(x) + var(y)))$ is a bit longer than the $phi$ given here, but
+    because the two are semantically equivalent, we continue with $phi$.
+  ]
+  Let us now trace the execution of the filter, namely
+  $app("eval", [|phi|], v) = app((lam(fresh) app("run", [|phi|])), "zero", v)$.
+  Because $phi$ does not use any labels,
+  this is equivalent to just $app("run", [|phi|], v) = app("upd", [|(.[])|], sigma, v) = (v[] update sigma)$.
+  Here, we introduced $sigma equiv app("run", [|. "as" var(x) | var(x) + var(x)|])$.
+  We can further expand $sigma$:
+  $ sigma &= lam(v) app("run", [|. "as" var(x) | var(x) + var(x)|], v) \
+  &= lam(v) app("run", [|.|]) bind (lam(var(x)) app("run", [|var(x) + var(x)|], v)) \
+  &= lam(v) stream(ok(v)) bind (lam(var(x)) stream(var(x) + var(x))) \
+  &= lam(v) stream(v + v) $
+  In summary, $"eval" [|phi|] v = (v[] update (lam(v) stream(v + v)))$.
+]
 
 #example("The Curious Case of Alternation")[
   The semantics of $(f alt g) update sigma$ can be rather surprising:
@@ -512,7 +577,7 @@ $"label" var(x) | g$ and $"try" f "catch" g$.
   Finally, on the input
   $[]$, the filter
   $(.[] alt "error") update 1$ yields
-  $"error"([])$.
+  $stream(app("err", []))$.
   That is because $.[]$ does not yield any value for the input,
   so $"error" update 1$ is executed, which yields an error.
 ]
@@ -587,20 +652,19 @@ $
   Using some liberty to write $.[0]$ instead of $0 "as" var(x) | .[var(x)]$, we have:
   #let hs = hide($sigma | ($)
   $ phi update sigma = cases(
-    .[0] update #hs      .[0] update sigma   & "if" fold = "reduce",
-    .[0] update sigma | (.[0] update sigma)  & "if" fold = "foreach",
+    .[0] update #hs      .[0] update sigma   & "if " fold = "reduce",
+    .[0] update sigma | (.[0] update sigma)  & "if " fold = "foreach",
   ) $
 ]
 
 We will now formally define the functions used in @tab:update-semantics.
 For this, we first introduce a function $"fold"_update$,
-which resembles its corresponding function $"fold"$ in @folding,
-but which adds an argument for the update filter $sigma$:
+as counterpart to the function $"fold"$ in @folding:
 
-$ "fold"_update&: ((cal(V) -> cal(S)) -> cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(S)) -> cal(S) -> cal(V) -> cal(S) \
-               &:= lam(f, g, n) app(Y_2, (lam(F, s, v) app(s, (lam(h, t) app(f, (lam(x) app(g, h, x) bind app(F, t)), h, v)), (app(n, v))))) $
+$ "fold"_update&: (cal(V) -> (cal(V) -> cal(S)) -> cal(V) -> cal(S)) -> (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(S)) -> cal(S) -> cal(V) -> cal(S) \
+               &:= lam(f, g, n) app(Y_2, (lam(F, s, v) app(s, (lam(h, t) app(f, h, (lam(x) app(g, h, x) bind app(F, t)), v)), (app(n, v))))) $
 
 Using this function, we can now define
 
-$  "reduce"_update &:= lam(f   &&) app("fold", f, (lam(h, v) stream(v)), && sigma) \
-  "foreach"_update &:= lam(f, g&&) app("fold", f, g, && (lam(v) stream(ok(v)))) $
+$  "reduce"_update &:= lam(f,    &&sigma) app("fold"_update, f, (lam(h, v) stream(ok(v))), && sigma) \
+  "foreach"_update &:= lam(f, g, &&sigma) app("fold"_update, f, (lam(h, v) app(g, h, sigma, v)), && (lam(v) stream(ok(v)))) $

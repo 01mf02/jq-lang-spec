@@ -34,7 +34,7 @@ We will use _streams_ $cal(S)$ of value results as return type of filters.
 $ "cons"&: cal(R) -> cal(S) -> &&cal(S) := lam(h, t) && lam(c, n) app(c, h, t) \
    "nil"&:                     &&cal(S) :=           && lam(c, n) n $
 
-We write a stream
+We write the empty stream
 $"nil"$ as $stream()$ and
 $app("cons", r_1, (app("cons", r_2, ...)))$ as $stream(r_1, r_2, ...)$.
 
@@ -104,6 +104,7 @@ if $l$ is a value, but $r$ is an exception, then $l + r$ returns just $r$.
 
 In this subsection, we specify the functions and operations
 that a value type must implement.
+Their concrete definitions for JSON values are given in @json.
 
 For the value type $cal(V)$, there must be a type of numbers and a type of strings, such that
 for any number $n$, $n$ is a value, and
@@ -115,9 +116,18 @@ $n$ for numbers, and
 $s$ for strings
 in the remainder of this text.
 
-There is a total order $<=$ on values.
-We say that $v_1 = v_2$ if and only if both $v_1 <= v_2$ and $v_2 <= v_1$.
-For JSON values, this order is given in @json-order.
+The value type must provide arithmetic operations ${+, -, times, div, mod}$
+such that every arithmetic operation $arith$ returns a value result, i.e.
+$arith: cal(V) -> cal(V) -> cal(R)$.
+That means that every arithmetic operation can fail.
+Definitions of the arithmetic operators for JSON values are given in @arithmetic.
+
+The value type must also provide Boolean operations
+${<, <=, >, >=, eq.quest, eq.not}$, where
+$l eq.quest r$ returns whether $l$ equals $r$, and
+$l eq.not r$ returns its negation.
+Each of these Boolean operations is of type $cal(V) -> cal(V) -> cal(V)$.
+The order on JSON values is defined in @json-order.
 
 We assume the existence of several functions:
 
@@ -126,8 +136,21 @@ We assume the existence of several functions:
 - $"obj"_0: cal(V)$ yields an empty object.
 - $"obj"_1: cal(V) -> cal(V) -> cal(R)$ constructs a singleton object from a key and value.
   (It returns a value result instead of a value because it
-  may fail in case that the provided key is not a string.)
+  may fail in case that the provided value is not a valid key.)
 - $"bool": cal(V) -> bb(B)$ takes a value and returns a boolean.
+
+We use $"arr"_0$ and $"arr"_1$ to define a convenience function $"arr"$
+that transforms a stream into a value result:
+It returns an array if all stream elements are values, or into
+the first exception in the stream otherwise:
+
+$ "sum"&: cal(S) -> cal(V) &&-> cal(R) := lam(s, n) app(s, (lam(h, t) h bindr (lam(o) (n + o bindr app("sum", t)))), (ok(n))) \
+  "arr"&: cal(S)           &&-> cal(R) := lam(s) app("sum", (s bind (lam(v) stream(ok((app("arr"_1, v)))))), "arr"_0) $
+
+Here, the function $"sum"$ takes a stream $s$ and a zero value $n$ and
+returns the sum of the zero value and the stream elements if they are all OK,
+otherwise it returns the first exception in the stream.
+This uses the addition operator $+: cal(V) -> cal(V) -> cal(R)$.
 
 Let $p$ a path part (as defined in @syntax) containing values as indices.
 We assume two operators:

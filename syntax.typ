@@ -46,7 +46,7 @@ The potential instances of the operators $star$ and $cartesian$ are given in @ta
 All operators $star$ and $cartesian$ are left-associative, except for
 "$|$", "$=$", "$update$", and "$aritheq$".
 
-We will handle $"reduce"$ and $"foreach"$ very similarly; therefore,
+We will handle the operators $"reduce"$ and $"foreach"$ very similarly; therefore,
 we introduce $fold$ to stand for either $"reduce"$ or $"foreach"$.
 However, because $"reduce"$ takes one argument less than $"foreach"$,
 we simply ignore the superfluous argument when handling $"reduce"$.
@@ -56,8 +56,8 @@ we simply ignore the superfluous argument when handling $"reduce"$.
     columns: 3,
     [Name], [Symbol], [Operators],
     [Complex], $star$, ["$|$", ",", ("=", "$update$", "$aritheq$", "$alteq$"), "$alt$", "or", "and"],
-    [Cartesian], $cartesian$, [($eq.quest$, $!=$), ($<$, $<=$, $>$, $>=$), $dot.circle$],
-    [Arithmetic], $dot.circle$, [($+$, $-$), ($times$, $div$), $mod$],
+    [Cartesian], $cartesian$, [($eq.quest$, $!=$), ($<$, $<=$, $>$, $>=$), $arith$],
+    [Arithmetic], $arith$, [($+$, $-$), ($times$, $div$), $mod$],
   ),
   caption: [
     Binary operators, given in order of increasing precedence.
@@ -78,11 +78,11 @@ We consider equivalent the following notations:
 
 We are now going to identify a subset of HIR called MIR and
 show how to _lower_ a HIR filter to a semantically equivalent MIR filter.
-Later, we define semantics for MIR, which is less verbose than defining it for HIR.
+This allows us later to define semantics for MIR in a much less verbose way than for HIR.
 
 A MIR filter $f$ is defined by the grammar
 $ f :=& quad n #or_ s #or_ . \
-  #or_& [] #or_ [var(x)] #or_ {} #or_ {var(x): var(x)} #or_ .[p] \
+  #or_& [] #or_ [f] #or_ {} #or_ {var(x): var(x)} #or_ .[p] \
   #or_& f star f #or_ var(x) cartesian var(x) \
   #or_& f "as" var(x) | f #or_  "reduce" f "as" var(x) (.; f) #or_ "foreach" f "as" var(x) (.; f; f) #or_ var(x) \
   #or_& "if" var(x) "then" f "else" f #or_ "try" f "catch" f \
@@ -106,8 +106,8 @@ replace certain occurrences of filters by variables
   $..$, $"def" "recurse" defas ., (.[]? | "recurse") defend "recurse"$,
   $(f)$, $floor(f)$,
   $f?$, $"label" var(x') | "try" floor(f) "catch" ("break" var(x'))$,
-  [$[]$, $[var(x)]$, or ${}$], $phi$,
-  $[f]$, $floor("reduce" f "as" var(x') ([]; . + [var(x')]))$,
+  [$[]$  or ${}$], $phi$,
+  $[f]$, $[floor(f)]$,
   ${f: g}$, $floor(f) "as" var(x') | floor(g) "as" var(y') | {var(x'): var(y')}$,
   ${f_1: g_1, ..., f_n: g_n}$, $floor({f_1: g_1} + ... + {f_n: g_n})$,
   $f [p_1]^? ... [p_n]^?$, $. "as" var(x') | floor(f) | floor([p_1]^?)_var(x') | ... | floor([p_n]^?)_var(x')$,
@@ -160,7 +160,8 @@ we define it in this complicated manner.
 We define filters that yield the boolean values as
 $ "true"  &:= 0  = 0, \
   "false" &:= 0 != 0. $
-The filter $"bool" &:= "if" . "then" "true" "else" "false"$ maps its input to its boolean value.
+The filter $"bool" &:= "if" . "then" "true" "else" "false"$
+maps its input to its boolean value.
 
 In the lowering of the folding operators $fold f_x "as" P (f_y; f; g)$
 (where $fold$ stands for either $"reduce"$ or $"foreach"$),
@@ -179,7 +180,8 @@ because $beta P$ can be interpreted both as pattern and as filter.
 #example[
   Consider the filter $phi equiv f "as" [var(x), [var(y)], var(z)] | g$.
   This filter destructures all outputs of $f$ that are of the shape
-  $[x, [y, ...], z, ...]$ and bind $x$, $y$, and $z$ to the respective variables.
+  $[x, [y, ...], z, ...]$ and binds the values
+  $x$, $y$, and $z$ to the respective variables.
   Here, $phi$ uses the pattern
   $P = [var(x), [var(y)], var(z)]$ for which
   $beta P = [var(x), var(y), var(z)]$.
@@ -188,8 +190,8 @@ because $beta P$ can be interpreted both as pattern and as filter.
   | [var(x), var(y), var(z)] "as" var(x')
   | var(x') "as" [var(x), var(y), var(z)] | g. $
   Here, we first used $beta P$ as filter
-  ($[var(x), var(y), var(z)] "as" var(x') | ...$), then as pattern
-  ($var(x') "as" [var(x), var(y), var(z)] | ...$).
+  ($[var(x), var(y), var(z)] "as" var(x') | ...$) to "serialise" the pattern variables to an array, then as pattern
+  ($var(x') "as" [var(x), var(y), var(z)] | ...$) to "deserialise" the array to retrieve the pattern variables.
 ]
 
 // TODO!
@@ -224,6 +226,7 @@ all occurrences of superscript "?" in the second column stand for "?", otherwise
   Semantically, we will see that $floor(mu)$ is equivalent to $0 "as" var(y) | .[var(y)]$.
   The HIR filter $phi equiv [3] | .[0] = ("length", 2)$ is lowered to the MIR filter
   $floor(phi) equiv [3] | ("length", 2) "as" var(z) | floor(mu) update var(z)$.
+  // TODO: where is this example?
   In @semantics, we will see that its output is $stream([1], [2])$.
 ]
 
@@ -277,13 +280,22 @@ $"wf"(phi, c)$ is true.
   $x(f_1; ...; f_n)$, $(x, n) in d and "wf"(f_i, c)$,
 )) <tab:wf>
 
-For hygienic reasons, we assume that labels are disjoint from variables.
+For hygienic reasons, we require that labels are disjoint from variables.
 This can be easily ensured by prefixing labels and variables differently.
 
 #example[
   Consider the filter $"label" var(x) | . "as" var(x) | var(x) + var(x), "break" var(x)$.
   Here, we have to rename to ensure that labels and variables are disjoint, yielding e.g.
   $"label" var(l_x) | . "as" var(v_x) | var(v_x) + var(v_x), "break" var(l_x)$.
+]
+
+Furthermore, we require that identifiers with the same name represent filters with equal arity.
+This can be ensured by postfixing all identifiers with their arity.
+
+#example[
+  Consider the filter $"def" f(g) defas g defend "def" f defas . defend f(f)$.
+  Here, we have to rename identifiers to prevent shadowing issues in the semantics, yielding e.g.
+  $"def" f^1(g^0) defas g^0 defend "def" f^0 defas . defend f^1(f^0)$.
 ]
 
 
@@ -381,4 +393,4 @@ To convert a jq filter `f` to MIR, we convert `f` to HIR, then to MIR, using @ta
 ]
 
 @semantics shows how to run the resulting MIR filter $f$.
-For a given input value $v$, the output of $f$ will be given by $f|^{}_v$.
+For a given input value $v$, the output of $f$ will be given by $app("eval", [|f|], v)$.

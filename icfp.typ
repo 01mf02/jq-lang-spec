@@ -32,6 +32,7 @@
     making it difficult to reason about its behaviour.
     To this end, we provide a formal syntax and denotational semantics for
     a large subset of the jq language.
+    In particular, we give a translation from jq programs to lambda terms.
     Our most significant contribution is to provide a new way to interpret updates
     that allows for more predictable and performant execution.
   ],
@@ -135,13 +136,13 @@ One of the least specified, yet most fascinating features of the jq language
 are _updates_:
 An update filter, such as `f |= g`, modifies input data using
 a filter `f` that defines which parts of the input to update, and
-a filter `g` that defines what the values matching the path should be replaced with.
+a filter `g` that defines what the matching input parts should be replaced with.
 We found a new approach to updates which
 can be described compactly and unambiguously,
 eliminates many potential errors, and
 allows for more performant execution.
-The semantics of jq and those that will be shown in this text
-differ most notably in the case of updates,
+The original semantics of jq and those that will be shown in this text
+differ most notably in the case of updates;
 yet in most common use cases, both semantics yield equal results.
 
 The structure of this text is as follows:
@@ -153,8 +154,8 @@ the execution of a jq program as shown in @fig:structure.
 transformed to increasingly low-level intermediate representations called
 HIR (@hir) and MIR (@mir).
 After this, the semantics part starts:
-@values defines the type of JSON values and the elementary operations that jq provides for it.
-Furthermore, it defines other basic data types such as errors, exceptions, and streams.
+@values defines several data types and corresponding lambda terms, such as
+values, value results, and streams.
 @semantics shows how to evaluate jq filters on a given input value.
 @updates presents our new approach to executing updates and
 compares it with the traditional approach used in jq.
@@ -297,7 +298,7 @@ We finally showed how a subset of actual jq syntax can be translated into HIR an
 On the semantics side, we gave formal semantics based on MIR.
 First, we defined values and basic operations on them.
 Then, we used this to define the semantics of jq programs,
-by specifying the outcome of the execution of a jq program.
+by specifying how to compile a jq program to a lambda term.
 A large part of this was dedicated to the evaluation of updates:
 In particular, we showed a new approach to evaluate updates.
 This approach, unlike the approach implemented in jq,
@@ -309,6 +310,11 @@ thus improving performance.
 This approach is also mostly compatible with the original jq behaviour,
 yet it is unavoidable that it diverges in some corner cases.
 
+Finally, we presented our implementation `jaq` of the new semantics and
+showed that its performance is best-in-class for jq implementations.
+Furthermore, we showed that indeed, the new update semantics yield
+particularly large speed-ups, compared to other operations.
+
 We hope that our work is useful in several ways:
 For users of the jq programming language, it provides
 a succinct reference that precisely documents the language.
@@ -316,9 +322,6 @@ Our work should also benefit implementers of tools that process jq programs,
 such as compilers, interpreters, or linters.
 In particular, this specification should be sufficient to
 implement the core of a jq compiler or interpreter.
-Finally, our work enables equational reasoning about jq programs.
-This makes it possible to prove correctness of jq programs or to
-implement provably correct optimisations in jq compilers/interpreters.
 
 #bibliography("literature.bib")
 
