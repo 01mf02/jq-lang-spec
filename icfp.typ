@@ -8,6 +8,7 @@
   format: "acmsmall",
   // TODO: set to true!
   draft: false,
+  anonymous: true,
 
   title: [A formal specification of the jq language],
   authors: (
@@ -19,7 +20,6 @@
     ),
   ),
   authors-short: "Färber",
-  anonymous: false,
   ccs: (
     ([Software and its engineering], (
       (500, [Semantics]),
@@ -27,14 +27,16 @@
     )),
   ),
   abstract: [
-    jq is a widely used tool that provides a programming language to manipulate JSON data.
-    However, the jq language is currently only specified by its implementation,
-    making it difficult to reason about its behaviour.
-    To this end, we provide a formal syntax and denotational semantics for
-    a large subset of the jq language.
-    In particular, we give a translation from jq programs to lambda terms.
-    Our most significant contribution is to provide a new way to interpret updates
-    that allows for more predictable and performant execution.
+jq is a widely used tool that provides a programming language to manipulate JSON data.
+However, the jq language is currently only specified by its implementation,
+making it difficult to reason about its behaviour.
+To this end, we provide a formal syntax and denotational semantics for
+a large subset of the jq language.
+In particular, we give a translation from jq programs to lambda terms.
+Our most significant contribution is to provide a new way to interpret updates
+that allows for more predictable and performant execution.
+We implement our semantics in a interpreter and evaluate its performance,
+showing that it executes jq programs faster than any other jq implementation.
   ],
   keywords: ("jq", "JSON", "semantics"),
 
