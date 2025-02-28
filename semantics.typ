@@ -369,7 +369,7 @@ In the remainder of this section, we will show
 semantics that extend this idea to all update operations.
 The resulting update semantics can be understood to _interleave_ calls to $f$ and $g$.
 By doing so, these semantics can abandon the construction of paths altogether,
-which results in higher performance when evaluating updates, see @impl.
+which results in higher performance when evaluating updates.
 
 == Properties of new semantics <update-props>
 
