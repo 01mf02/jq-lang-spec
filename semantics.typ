@@ -4,7 +4,7 @@
 
 In this section, we will show how to transform --- or compile --- a filter $phi$ to a lambda term $[|phi|]$,
 such that $"eval" [|phi|]$ is a function that takes an input value $v$ and returns
-the stream of values that the filter $phi$ outputs when given the input $v$.
+the list of values that the filter $phi$ outputs when given the input $v$.
 The evaluation strategy is call-by-name.
 
 == Compilation
@@ -12,15 +12,15 @@ The evaluation strategy is call-by-name.
 We will use pairs to store two functions
 --- a run and an update function --- that characterise each filter $cal(F)$.
 
-$ "pair"&:           &&(cal(V) -> cal(S)) &&-> ((cal(V) -> cal(S)) -> cal(V) -> cal(S)) -> cal(F) &&:= lam(x, y, f)   app(f, x, y)  \
-   "run"&: cal(F) -> &&(cal(V) -> cal(S)) &&                                                      &&:= lam(p) app(p, (lam(x, y) x)) \
-   "upd"&: cal(F)    &&                   &&-> ((cal(V) -> cal(S)) -> cal(V) -> cal(S))           &&:= lam(p) app(p, (lam(x, y) y)) $
+$ "pair"&:           &&(cal(V) -> cal(L)) &&-> ((cal(V) -> cal(L)) -> cal(V) -> cal(L)) -> cal(F) &&:= lam(x, y, f)   app(f, x, y)  \
+   "run"&: cal(F) -> &&(cal(V) -> cal(L)) &&                                                      &&:= lam(p) app(p, (lam(x, y) x)) \
+   "upd"&: cal(F)    &&                   &&-> ((cal(V) -> cal(L)) -> cal(V) -> cal(L))           &&:= lam(p) app(p, (lam(x, y) y)) $
 
 The lambda term $[|phi|]$ corresponding to a filter $phi$ that we will define
 will always be a pair of two functions, namely a run and an update function.
 It has the shape $ [|phi|] = app("pair", (lam(v) t_r), (lam(sigma, v) t_u)) $
 for some terms $t_r$ (run function) and $t_u$ (update function).
-We retrieve the two functions from a pair by $"run"$ and $"upd"$.
+We retrieve the two functions from a pair with the functions $"run"$ and $"upd"$.
 For a given $phi$, we can obtain
 $t_r$ by $app("run", [|phi|],        v)$ and
 $t_u$ by $app("upd", [|phi|], sigma, v)$.
@@ -37,14 +37,14 @@ $app("upd", [|phi|], sigma, v)$ to define $t_u$.
 
 #let fresh = $kappa$
 
-A well-formed filter compiled to a lambda term
+The lambda term $[|phi|]$ obtained from a well-formed filter $phi$
 may contain at most one free variable, namely $fresh$.
 This variable is used to generate fresh labels for the execution of
 $"label" var(x) | f$, see @ex:labels.
 In order to create a closed term, we initially bind $fresh$ to zero.
 We can then run a filter using the following function:
 
-$ "eval": cal(F) -> cal(V) -> cal(S) := lam(phi) app((lam(fresh) app("run", phi)), "zero") $
+$ "eval": cal(F) -> cal(V) -> cal(L) := lam(phi) app((lam(fresh) app("run", phi)), "zero") $
 
 #figure(caption: "Evaluation semantics.", table(columns: 2,
   $phi$, $app("run", [|phi|], v)$,
@@ -65,7 +65,6 @@ $ "eval": cal(F) -> cal(V) -> cal(S) := lam(phi) app((lam(fresh) app("run", phi)
   $"label" var(x) | f$, $app("label", fresh, (app((lam(var(x), fresh) app("run", [|f|], v)), fresh, (app("succ", fresh)))))$,
   $"break" var(x)$, $stream(app("break", var(x)))$,
   $"if" var(x) "then" f "else" g$, $app("run", (app((app("bool", var(x))), [|f|], [|g|])), v)$,
-  // TODO?
   $.[p]^?$, $v[p]^?$,
   $"reduce" x "as" var(x) (.; f)$, $app("reduce", (lam(var(x)) app("run", [|f|])), (app("run", [|x|], v)), v)$,
   $"foreach" x "as" var(x) (.; f; g)$, $app("foreach", (lam(var(x)) app("run", [|f|])), (lam(var(x)) app("run", [|g|])), (app("run", [|x|], v)), v)$,
@@ -102,7 +101,7 @@ Let us discuss its different cases:
   This filter returns $l$ if $l$ is not empty, else the outputs of $g$.
   Here, we use a function $app("trues", x)$ that
   returns its input $x$ if its boolean value is true.
-$ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x)), stream()) $
+$ "trues": cal(V) -> cal(L) := lam(x) app((app("bool", x)), stream(app("ok", x)), stream()) $
 - $f "as" var(x) | g$: For every output of $f$, binds it to the variable $var(x)$ and
   returns the output of $g$, where $g$ may reference $var(x)$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
@@ -125,31 +124,12 @@ $ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x))
 - $"label" var(x) | f$: Returns all values yielded by $f$ until $f$ yields
   an exception $app("break", var(x))$.
   This uses a function $"label"$ that
-  takes a label $fresh$ and a stream $s$ of value results,
-  returning the longest prefix of $s$ that does not contain $app("break", fresh)$:
-  $ "label"&: bb(N) -> cal(S) -> cal(S) \
-         &:= lam(fresh, s) app(s, (lam(h, t) app((lam(c) app(h, (lam(o) c), (lam(e) c), (lam(b) app("nat_eq", fresh, b, stream(), c)))), (stream(h) + app("label", fresh, t)))), stream()) $
+  takes a label $fresh$ and a list $l$ of value results,
+  returning the longest prefix of $l$ that does not contain $app("break", fresh)$:
+  $ "label"&: bb(N) -> cal(L) -> cal(L) \
+         &:= lam(fresh, l) app(l, (lam(h, t) app((lam(c) app(h, (lam(o) c), (lam(e) c), (lam(b) app("nat_eq", fresh, b, stream(), c)))), (stream(h) + app("label", fresh, t)))), stream()) $
   In this function, $c$ gets bound to $stream(h) + app("label", fresh, t)$,
   which is the function output when the head $h$ is not equal to $app("label", fresh)$.
-  /*
-  // TODO!
-  To see that this is necessary, consider the example
-  $ "def" f(x) defas ("label" var(x) | x), 0 defend "label" var(x) | f("break" var(x)). $
-  With substitution, this is equivalent to
-  $"label" var(x') | ("label" var(x'') | "break" var(x')), 0$
-  and yields $stream(0)$, whereas
-  without substitution, this would be equivalent to
-  $"label" var(x) | ("label" var(x) | "break" var(x)), 0$
-  and would yield $stream()$.#footnote[
-    Would renaming all labels during lowering make the substitution step obsolete?
-    Alas, no, because filter execution may generate an arbitrary number of labels.
-    Consider the example $"def" f(x) defas "label" var(x) | f(x | "break" var(x)); f(.)$.
-    This evaluates to
-    $"label" var(x_1) | ... | "label" var(x_n) | f(. |
-     "break" var(x_1) | ... | "break" var(x_n))$
-    after $n$ evaluations of $f$, involving $n$ different labels.
-  ]
-  */
 - $"break" var(x)$: Returns a value result $app("break", var(x))$.
   Similarly to the evaluation of variables $var(x)$ described above,
   wellformedness of the filter (as defined in @hir) ensures that
@@ -170,8 +150,8 @@ $ "trues": cal(V) -> cal(S) := lam(x) app((app("bool", x)), stream(app("ok", x))
   If $fold = "reduce" $, this returns only the final        values of the accumulator, whereas
   if $fold = "foreach"$, this returns also the intermediate values of the accumulator.
   We will further explain this and define the functions
-  $app( "reduce", f,    s, v)$ and
-  $app("foreach", f, g, s, v)$ in @folding.
+  $app( "reduce", f,    l, v)$ and
+  $app("foreach", f, g, l, v)$ in @folding.
 - $"def" x(x_1; ...; x_n) defas f defend g$: Binds the $n$-ary filter $x$ in $g$.
   The definition of $x$, namely $f$, may refer to
   any of the arguments $x_i$ as well as to $x$ itself.
@@ -201,18 +181,18 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
   it is never evaluated due to our not performing any updates in this example.
 
   Now, we can evaluate the filter $phi$ by
-  $app("eval", phi, v) = app((lam(fresh) app("run", [|phi|])), "zero", v) $.
+  $app("eval", [|phi|], v) = app((lam(fresh) app("run", [|phi|])), "zero", v) $.
   Because $phi$ does not contain any labels,
   $[|phi|]$ does not make any reference to $fresh$, therefore
-  $app("eval", phi, v)$ is equivalent to:
+  $app("eval", [|phi|], v)$ is equivalent to:
   $ app("run", [|phi|], v)
-  &= app((lam("repeat") app("run", [|"repeat"|], v)), (Y_1 (lam("repeat") rho))) \
-  &=^[|dot.op|] app((lam("repeat") app("run", "repeat", v)), (Y_1 (lam("repeat") rho))) \
-  &=^beta app("run", (Y_1 (lam("repeat") rho)), v) \
-  &=^(Y_1) app("run", ((lam("repeat") rho) (Y_1 (lam("repeat") rho))), v) \
-  &=^rho app("run", ((lam("repeat") app("pair", (lam(v) stream(ok(v)) + "run" "repeat" v), (...))) (app(Y_1, (lam("repeat") rho)))), v) \
-  &=^beta app("run", (app("pair", (lam(v) stream(ok(v)) + app("run", (Y_1 (lam("repeat") rho)), v)), (...))), v) \
-  &=^beta app(stream(ok(v)) + app("run", (Y_1 (lam("repeat") rho)), v)) \
+  &= app((lam("repeat") app("run", [|"repeat"|], v)), (app(Y_1, (lam("repeat") rho)))) \
+  &=^[|dot.op|] app((lam("repeat") app("run", "repeat", v)), (app(Y_1, (lam("repeat") rho)))) \
+  &=^beta app("run", (app(Y_1, (lam("repeat") rho))), v) \
+  &=^(Y_1) app("run", (app((lam("repeat") rho), (app(Y_1, (lam("repeat") rho))))), v) \
+  &=^rho app("run", (app((lam("repeat") app("pair", (lam(v) stream(ok(v)) + "run" "repeat" v), (...))), (app(Y_1, (lam("repeat") rho))))), v) \
+  &=^beta app("run", (app("pair", (lam(v) stream(ok(v)) + app("run", (app(Y_1, (lam("repeat") rho))), v)), (...))), v) \
+  &=^beta app(stream(ok(v)) + app("run", (app(Y_1, (lam("repeat") rho))), v)) \
   &= stream(ok(v)) + app("run", [|phi|], v). $
   This shows that the evaluation of $phi$ on any input $v$ yields
   an infinite stream of $ok(v)$ results.
@@ -250,20 +230,20 @@ $"reduce"  x "as" var(x) (.; f)$ and
 $"foreach" x "as" var(x) (.; f; g)$.
 
 Let us start by defining a general folding function $"fold"$:
-$ "fold"&: (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(S)) -> cal(S) -> cal(V) -> cal(S) \
-        &:= lam(f, g, n) app(Y_2, (lam(F, s, v) app(s, (lam(h, t) app(f, h, v) bind (lam(y) app(g, h, y) + app(F, t, y))), (app(n, v))))) $
+$ "fold"&: (cal(V) -> cal(V) -> cal(L)) -> (cal(V) -> cal(V) -> cal(L)) -> (cal(V) -> cal(L)) -> cal(L) -> cal(V) -> cal(L) \
+        &:= lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, h, v) bind (lam(y) app(g, h, y) + app(F, t, y))), (app(n, v))))) $
 This function takes
-two functions $f$ and $g$ that both take two values --- a stream element and an accumulator --- and return a stream of value results, and
-a function $n$ (for the nil case) from a value $x$ to a stream of value results.
+two functions $f$ and $g$ that both take two values --- a list element and an accumulator --- and return a list of value results, and
+a function $n$ (for the nil case) from a value $x$ to a list of value results.
 From that, it creates a recursive function that
-takes a stream of value results $s$ and an accumulator value $v$ and
-returns a stream of value results.
-This function folds over the elements in $s$, starting from the accumulator value $v$.
-For every element $h$ in $s$,
+takes a list of value results $l$ and an accumulator value $v$ and
+returns a list of value results.
+This function folds over the elements in $l$, starting from the accumulator value $v$.
+For every element $h$ in $l$,
 $f$ is evaluated with $h$ and the current accumulator value $v$ as input.
 Every output $y$ of $f$ is output after passing through $g$, then
-used as new accumulator value with the remaining stream $t$.
-If $s$ is empty, then $v$ is called a _final_ accumulator value and $app(n, v)$ is returned.
+used as new accumulator value with the remaining list $t$.
+If $l$ is empty, then $v$ is called a _final_ accumulator value and $app(n, v)$ is returned.
 
 We use two different functions for $n$;
 the first returns just its input, corresponding to $"reduce"$ which returns a final value, and
@@ -274,6 +254,11 @@ $ "reduce" &:= lam(f)     && app("fold", f, (lam(h, v) stream()), && (lam(v) str
   "foreach" &:= lam(f, g) && app("fold", f, g, && (lam(v) stream(&&))) $
 
 Here, $"reduce"$ and $"foreach"$ are the functions used in @tab:eval-semantics.
+Their types are:
+
+$  "reduce"&: (cal(V) -> cal(V) -> cal(L)) &&-> cal(L) -> cal(V) -> cal(L) \
+  "foreach"&: (cal(V) -> cal(V) -> cal(L)) -> (cal(V) -> cal(V) -> cal(L)) &&-> cal(L) -> cal(V) -> cal(L) $
+
 
 We will now look at what the evaluation of the various folding filters expands to.
 Assuming that the filter $x$ evaluates to $stream(x_0, ..., x_n)$,
@@ -415,7 +400,7 @@ Let us discuss these for the different filters $phi$:
 - $"if" var(x) "then" f "else" g$: Applies $sigma$ at $f$ if $var(x)$ holds, else at $g$.
 - $f alt g$: Applies $sigma$ at $f$ if $f$ yields some output whose boolean value (see @simple-fns) is not false, else applies $sigma$ at $g$.
   Here, $"first"(f)$ is a filter that returns
-  the first output of its argument $f$ if there is one, else the empty stream.
+  the first output of its argument $f$ if there is one, else the empty list.
 
 While @tab:update-props allows us to define the behaviour of several filters
 by reducing them to more primitive filters,
@@ -453,7 +438,7 @@ When evaluating $phi update sigma$, we want
 $sigma$ to always be executed with the same variable bindings.
 In order to ensure that, we define
 $app("upd", [|phi|], sigma', v)$ not for a _filter_ $sigma$,
-but for a _function_ $sigma': cal(V) -> cal(S)$, where
+but for a _function_ $sigma': cal(V) -> cal(L)$, where
 $app(sigma', x)$ returns the output of the filter $app("run", sigma, x)$.
 This allows us to bind variables in $phi$ without impacting $sigma$.
 
@@ -464,11 +449,11 @@ $app("run", [|f update g|], v)$ as referred to in @semantics.
 
 We will first combine the techniques in @limiting-interactions to define
 $ app("run", [|f update g|], v) := app("upd", [|f|], sigma, v), "where"
-  sigma: cal(V) -> cal(S) := app("run", [|g|]) $
+  sigma: cal(V) -> cal(L) := app("run", [|g|]) $
 We use the function $sigma$ instead of a filter on the right-hand side to
 limit the scope of variable bindings as explained in @limiting-interactions.
 
-#figure(caption: [Update semantics. Here, $phi$ is a filter and $sigma: cal(V) -> cal(S)$ is a function from a value to a stream of value results.], table(columns: 2,
+#figure(caption: [Update semantics. Here, $phi$ is a filter and $sigma: cal(V) -> cal(L)$ is a function from a value to a list of value results.], table(columns: 2,
   $phi$, $app("upd", [|phi|], sigma, v)$,
   $.$, $app(sigma, v)$,
   $f | g$, $app("upd", [|f|], (app("upd", [|g|], sigma)), v)$,
@@ -659,12 +644,18 @@ $
 
 We will now formally define the functions used in @tab:update-semantics.
 For this, we first introduce a function $"fold"_update$,
-as counterpart to the function $"fold"$ in @folding:
+as counterpart to the function $"fold"$ in @folding.
+Its first argument is of type $cal(V) -> (cal(V) -> cal(L)) -> cal(V) -> cal(L)$, which we abbreviate as $cal(U)$:
 
-$ "fold"_update&: (cal(V) -> (cal(V) -> cal(S)) -> cal(V) -> cal(S)) -> (cal(V) -> cal(V) -> cal(S)) -> (cal(V) -> cal(S)) -> cal(S) -> cal(V) -> cal(S) \
-               &:= lam(f, g, n) app(Y_2, (lam(F, s, v) app(s, (lam(h, t) app(f, h, (lam(x) app(g, h, x) bind app(F, t)), v)), (app(n, v))))) $
+$ "fold"_update&: cal(U) -> (cal(V) -> cal(V) -> cal(L)) -> (cal(V) -> cal(L)) -> cal(L) -> cal(V) -> cal(L) \
+               &:= lam(f, g, n) app(Y_2, (lam(F, l, v) app(l, (lam(h, t) app(f, h, (lam(x) app(g, h, x) bind app(F, t)), v)), (app(n, v))))) $
 
 Using this function, we can now define
 
 $  "reduce"_update &:= lam(f,    &&sigma) app("fold"_update, f, (lam(h, v) stream(ok(v))), && sigma) \
   "foreach"_update &:= lam(f, g, &&sigma) app("fold"_update, f, (lam(h, v) app(g, h, sigma, v)), && (lam(v) stream(ok(v)))) $
+
+The types of the functions are:
+
+$  "reduce"_update&: cal(U)           &&-> (cal(V) -> cal(L)) -> cal(L) -> cal(V) -> cal(L) \
+  "foreach"_update&: cal(U) -> cal(U) &&-> (cal(V) -> cal(L)) -> cal(L) -> cal(V) -> cal(L) $

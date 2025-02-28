@@ -165,13 +165,14 @@ maps its input to its boolean value.
 
 In the lowering of the folding operators $fold f_x "as" P (f_y; f; g)$
 (where $fold$ stands for either $"reduce"$ or $"foreach"$),
-we use the fact that we can both "serialise" and "deserialise"
-the variables bound by $P$ with $beta P$.
+we replace the pattern $P$ by a variable by
+"serialising" and "deserialising" the variables bound by $P$ with $beta P$.
 Here, $beta P$ denotes the sequence of variables bound by $P$:
 $ beta P = cases(
   sum_i beta P_i & "if" P = [P_1, ..., P_n] "or" P = {f_1: P_1, ..., f_n: P_n},
   [var(x)] & "if" P = var(x),
 ) $
+(We used $sum_i x_i = x_1 + ... + x_n$ and $[x_1, ..., x_n] + [y_1, ..., y_m] = [x_1, ..., x_n, y_1, ..., y_m]$.)
 In particular, we exploit the property that
 $f "as" P | g$ can be rewritten to
 $ f "as" P | beta P "as" var(x') | var(x') "as" beta P | g, $
@@ -194,7 +195,6 @@ because $beta P$ can be interpreted both as pattern and as filter.
   ($var(x') "as" [var(x), var(y), var(z)] | ...$) to "deserialise" the array to retrieve the pattern variables.
 ]
 
-// TODO!
 #figure(caption: [Lowering of a path part $[p]^?$ with input $var(x)$ to a MIR filter.], table(columns: 2, align: left,
   $[p]  ^?$, $floor([p]^?)_var(x)$,
   $[   ]^?$, $.[]^?$,

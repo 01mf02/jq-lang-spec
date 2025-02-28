@@ -145,15 +145,16 @@ For example, given the input value `[1, [2], 3]`, the filter
 `. as [$x, [$y], $z] | $y` yields `2`.
 
 We can halt filter evaluation with `label`-`break`:
-A filter of the shape `label $x | f` yields all outputs of `f`
+The filter `label $x | f` yields all outputs of `f`
 until `f` invokes `break $x`, at which point `f` is not evaluated further.
 For example, the filter
 `(label $x | 1, break $x, 2), 3` yields the stream `1, 3`.
 It is possible to break out from arguments passed to filters;
-for example, `label $x | recurse(break $x)` is a filter that returns its input.
+for example, the filter `label $x | recurse(break $x)` returns its input.
 We can also nest labels; for example, the filter
-`label $x | 1, (label $y | 2, break $x, 3), 4` yields `1, 2`, and
-if we replace `break $x` by `break $y`, then it yields `1, 2, 4`.
+`label $x | 1, (label $y | 2, break $x, 3), 4` yields `1, 2`.
+If we replace `break $x` by `break $y`, then it yields `1, 2, 4`.
+If we replace `break $x` by `empty`, then it yields `1, 2, 3, 4`.
 
 Updating values can be done with the operator "`|=`",
 which has a similar function as lens setters in languages such as Haskell

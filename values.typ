@@ -3,7 +3,7 @@
 = Values <values>
 
 In this section, we define several data types, such as
-values, value results, and streams, in simply typed lambda calculus.
+values, value results, and lists, in simply typed lambda calculus.
 To ease the understanding, we will informally give type names to certain terms.
 
 While jq operates uniquely on JSON values,
@@ -29,12 +29,13 @@ $ "ok"   &: cal(V) -> cal(R) := lam(x, o, e, b) app(o, x) \
   "err"  &: cal(V) -> cal(R) := lam(x, o, e, b) app(e, x) \
   "break"&:  bb(N) -> cal(R) := lam(x, o, e, b) app(b, x) $
 
-We will use _streams_ $cal(S)$ of value results as return type of filters.
+We will use _lists_ $cal(L)$ of value results as return type of filters.
+Because the jq language is evaluated lazily, lists can be infinite.
 
-$ "cons"&: cal(R) -> cal(S) -> &&cal(S) := lam(h, t) && lam(c, n) app(c, h, t) \
-   "nil"&:                     &&cal(S) :=           && lam(c, n) n $
+$ "cons"&: cal(R) -> cal(L) -> &&cal(L) := lam(h, t) && lam(c, n) app(c, h, t) \
+   "nil"&:                     &&cal(L) :=           && lam(c, n) n $
 
-We write the empty stream
+We write the empty list
 $"nil"$ as $stream()$ and
 $app("cons", r_1, (app("cons", r_2, ...)))$ as $stream(r_1, r_2, ...)$.
 
@@ -47,7 +48,7 @@ $ Y_1:& ((T_1 &&-> U) -> T_1 &&-> U) -> T_1 &&-> U \
   ... \
   Y_n:& ((T_1 -> ... -> T_n &&-> U) -> T_1 -> ... -> T_n &&-> U) -> T_1 -> ... -> T_n &&-> U $
 
-We define the concatenation of two streams $l$ and $r$ as
+We define the concatenation of two lists $l$ and $r$ as
 $ l + r := app(Y_1, (lam(f, l) app(l, (lam(h, t) app("cons", h, (app(f, t)))), r)), l), $
 which satisfies the equational property
 $ l + r = app(l, (lam(h, t) app("cons", h, (t + r))), r). $
@@ -56,14 +57,14 @@ from which we could easily derive proper definitions using the $Y_n$ combinators
 
 We define three monadic bind operators to describe composition.
 For a result $r$ and a function $f$ from a value to a result,
-$s bindr f$ applies $f$ to $r$ if it is OK, else returns $r$ unchanged.
-For a stream $s$ and a function $f$ from a _value result_ to a stream,
-$s bindl f$ applies $f$ to all elements of $s$ and concatenates the outputs.
-For a stream $s$ and a function $f$ from a _value_ to a stream,
-$s bind f$ applies OK values in $s$ to $f$ and returns exception values in $s$.
+$l bindr f$ applies $f$ to $r$ if it is OK, else returns $r$ unchanged.
+For a list $l$ and a function $f$ from a _value result_ to a list,
+$l bindl f$ applies $f$ to all elements of $l$ and concatenates the outputs.
+For a list $l$ and a function $f$ from a _value_ to a list,
+$l bind f$ applies OK values in $l$ to $f$ and returns exception values in $l$.
 $ &bindr&&: cal(R) &&-> (cal(V) &&-> &cal(R)&) &&-> cal(R) &&:= lam(r, f) app(r, (lam(o) app(f, o)), (lam(e) r), (lam(b) r)) \
-  &bindl&&: cal(S) &&-> (cal(R) &&-> &cal(S)&) &&-> cal(S) &&:= lam(s, f) app(s, (lam(h, t) app(f, h) + (t bindl f)), "nil") \
-  &bind &&: cal(S) &&-> (cal(V) &&-> &cal(S)&) &&-> cal(S) &&:= lam(s, f) s bindl (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
+  &bindl&&: cal(L) &&-> (cal(R) &&-> &cal(L)&) &&-> cal(L) &&:= lam(l, f) app(l, (lam(h, t) app(f, h) + (t bindl f)), "nil") \
+  &bind &&: cal(L) &&-> (cal(V) &&-> &cal(L)&) &&-> cal(L) &&:= lam(l, f) l bindl (lam(x) app(x, (lam(o) app(f, o)), (lam(e) stream(x)), (lam(b) stream(x)))) $
 
 
 /*
@@ -140,27 +141,27 @@ We assume the existence of several functions:
 - $"bool": cal(V) -> bb(B)$ takes a value and returns a boolean.
 
 We use $"arr"_0$ and $"arr"_1$ to define a convenience function $"arr"$
-that transforms a stream into a value result:
-It returns an array if all stream elements are values, or into
-the first exception in the stream otherwise:
+that transforms a list into a value result:
+It returns an array if all list elements are values, or into
+the first exception in the list otherwise:
 
-$ "sum"&: cal(S) -> cal(V) &&-> cal(R) := lam(s, n) app(s, (lam(h, t) h bindr (lam(o) (n + o bindr app("sum", t)))), (ok(n))) \
-  "arr"&: cal(S)           &&-> cal(R) := lam(s) app("sum", (s bind (lam(v) stream(ok((app("arr"_1, v)))))), "arr"_0) $
+$ "sum"&: cal(L) -> cal(V) &&-> cal(R) := lam(l, n) app(l, (lam(h, t) h bindr (lam(o) (n + o bindr app("sum", t)))), (ok(n))) \
+  "arr"&: cal(L)           &&-> cal(R) := lam(l) app("sum", (l bind (lam(v) stream(ok((app("arr"_1, v)))))), "arr"_0) $
 
-Here, the function $"sum"$ takes a stream $s$ and a zero value $n$ and
-returns the sum of the zero value and the stream elements if they are all OK,
-otherwise it returns the first exception in the stream.
+Here, the function $"sum"$ takes a list $l$ and a zero value $n$ and
+returns the sum of the zero value and the list elements if they are all OK,
+otherwise it returns the first exception in the list.
 This uses the addition operator $+: cal(V) -> cal(V) -> cal(R)$.
 
 Let $p$ a path part (as defined in @syntax) containing values as indices.
 We assume two operators:
 - The _access operator_ $v[p]$ extracts values contained within $v$
-  at positions given by $p$, yielding a stream of value results.
+  at positions given by $p$, yielding a list of value results.
   This operator will be used in @semantics and
   is defined for JSON values in @json-access.
 - The _update operator_ $v[p]^? update f$ replaces
   those elements $v' = v[p]$ in $v$ by
-  the output of $app(f, v')$, where $f: cal(V) -> cal(S)$.
+  the output of $app(f, v')$, where $f: cal(V) -> cal(L)$.
   The update operator yields a single value result.
   This operator will be used in @updates and
   is defined for JSON values in @json-update.

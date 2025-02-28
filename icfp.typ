@@ -86,7 +86,9 @@ a string,
 an array of values, or
 an associative map from strings to values.
 
-jq is a tool that provides a language to define filters and an interpreter to execute them.
+jq is a tool that
+provides a language to define filters and
+executes programs written in that language.
 Where UNIX filters operate on streams of characters,
 jq filters operate on streams of JSON values.
 This allows to manipulate JSON data with relatively compact filters.
@@ -157,20 +159,18 @@ transformed to increasingly low-level intermediate representations called
 HIR (@hir) and MIR (@mir).
 After this, the semantics part starts:
 @values defines several data types and corresponding lambda terms, such as
-values, value results, and streams.
+values, value results, and lists.
 @semantics shows how to evaluate jq filters on a given input value.
 @updates presents our new approach to executing updates and
 compares it with the traditional approach used in jq.
 @impl describes and evaluates a jq interpreter based on our proposed semantics.
-We will show that it outperforms all other current implementations of the jq language.
-//Finally, we show how to prove properties of jq programs by equational reasoning in @obj-eq.
+It turns out that on 25 out of 29 benchmark programs,
+our interpreter is the fastest of all evaluated jq implementations.
 
-// TODO: this shows not what jq does, this shows what *we* do!
 #figure(caption: [Our approach to evaluate a jq program with an input value.
   Solid lines indicate data flow, whereas a dashed line indicates that
   a component is defined in terms of another.
 ], diagraph.render(read("structure.dot"))) <fig:structure>
-
 
 
 #include "tour.typ"
@@ -179,112 +179,6 @@ We will show that it outperforms all other current implementations of the jq lan
 #include "semantics.typ"
 #include "impl.typ"
 
-/*
-
-= Equational reasoning showcase: Object Construction <obj-eq>
-
-We will now show how to prove properties about HIR filters by equational reasoning.
-For this, we use the lowering in @mir and the semantics defined in @semantics.
-As an example, we will show a few properties of object construction.
-
-Let us start by proving a few helper lemmas, where
-$c$ and $v$ always denote some arbitrary context and value, respectively.
-
-#lemma[
-  For any HIR filters $f$ and $g$ and any Cartesian operator $cartesian$
-  (such as addition, see @tab:binops),
-  we have $floor(f cartesian g)|^c_v = sum_(x in floor(f)|^c_v) sum_(y in floor(g)|^c_v) stream(x cartesian y)$.
-] <lem:cart-sum>
-
-#proof[
-  The lowering in @tab:lowering yields
-  $floor(f cartesian g)|^c_v = (floor(f) "as" var(x') | floor(g) "as" var(y') | var(x') cartesian var(y'))|^c_v$.
-  Using the evaluation semantics in @tab:eval-semantics, we can further expand this to
-  $sum_(x in floor(f)|^c_v) sum_(y in floor(g)^c{var(x') |-> x}_v)
-  (var(x') cartesian var(y'))|^c{var(x') |-> x, var(y') |-> y}_v$.
-  Because $var(x')$ and $var(y')$ are fresh variables,
-  we know that they cannot occur in $floor(g)$, so
-  $floor(g)^c{var(x') |-> x}_v = floor(g)^c_v$.
-  Furthermore, by the evaluation semantics, we have
-  $(var(x') cartesian var(y'))|^c{var(x') |-> x, var(y') |-> y}_v = stream(x cartesian y)$.
-  From these two observations, the conclusion immediately follows.
-]
-
-#lemma[
-  For any HIR filters $f$ and $g$, we have
-  $floor({f: g})|^c_v = sum_(x in floor(f)|^c_v) sum_(y in floor(g)|^c_v) stream({x: y})$.
-] <lem:obj-sum>
-
-#proof[Analogously to the proof of @lem:cart-sum.]
-
-We can now proceed by stating a central property of object construction.
-
-#theorem[
-  For any $n in NN$ with $n > 0$, we have that
-  $floor({k_1: v_1, ..., k_n: v_n})|^c_v$ is equivalent to
-  $ sum_(k_1 in floor(k_1)|^c_v)
-    sum_(v_1 in floor(v_1)|^c_v) ...
-    sum_(k_n in floor(k_n)|^c_v)
-    sum_(v_n in floor(v_n)|^c_v)
-    stream(sum_i {k_i: v_i}).
-  $
-]
-
-#proof[
-  We will prove by induction on $n$.
-  The base case $n = 1$ directly follows from @lem:obj-sum.
-  For the induction step, we have to show that
-  $floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v$ is equivalent to
-  $ sum_(k_1 in floor(k_1)|^c_v)
-    sum_(v_1 in floor(v_1)|^c_v) ...
-    sum_(k_(n+1) in floor(k_(n+1))|^c_v)
-    sum_(v_(n+1) in floor(v_(n+1))|^c_v)
-    stream(sum_i^(n+1) {k_i: v_i}).
-  $
-  We start by
-  $ & floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v =^"(lowering)" \
-  = & floor(sum_i {k_i: v_i})|^c_v = \
-  = & floor(sum_(i = 1)^n {k_i: v_i} + {k_(n+1): v_(n+1)})|^c_v =^#[(@lem:cart-sum)] \
-  = & sum_(x in floor(sum_(i=1)^n {k_i: v_i})|^c_v)
-      sum_(y in floor({k_(n+1): v_(n+1)})|^c_v)
-      stream(x + y).
-  $
-  Here, we observe that
-  $floor(sum_(i=1)^n {k_i: v_i})|^c_v = floor({k_1: v_1, ..., k_n: v_n})|^c_v$,
-  which by the induction hypothesis equals
-  $ sum_(k_1 in floor(k_1)|^c_v)
-    sum_(v_1 in floor(v_1)|^c_v) ...
-    sum_(k_n in floor(k_n)|^c_v)
-    sum_(v_n in floor(v_n)|^c_v)
-    stream(sum_i^n {k_i: v_i}).
-  $
-  We can use this to resume the simplification of
-  $floor({k_1: v_1, ..., k_(n+1): v_(n+1)})|^c_v$ to
-  $ sum_(k_1 in floor(k_1)|^c_v)
-    sum_(v_1 in floor(v_1)|^c_v) ...
-    sum_(k_n in floor(k_n)|^c_v)
-    sum_(v_n in floor(v_n)|^c_v)
-    sum_(y in floor({k_(n+1): v_(n+1)})|^c_v)
-    stream(sum_i^n {k_i: v_i} + y)
-  $
-  Finally, applying @lem:obj-sum to $floor({k_(n+1): v_(n+1)})|^c_v$ proves the induction step.
-]
-
-We can use this theorem to simplify the evaluation of filters such as the following one.
-
-#example[
-  The evaluation of
-  ${qs(a): (1, 2), (qs(b), qs(c)): 3, qs(d): 4}$
-  //(with arbitrary context and input)
-  yields $stream(v_0, v_1, v_2, v_3)$, where $
-  v_0 = {qs(a) |-> 1, qs(b) |-> 3, qs(d) |-> 4},\
-  v_1 = {qs(a) |-> 1, qs(c) |-> 3, qs(d) |-> 4},\
-  v_2 = {qs(a) |-> 2, qs(b) |-> 3, qs(d) |-> 4},\
-  v_3 = {qs(a) |-> 2, qs(c) |-> 3, qs(d) |-> 4}.
-  $
-]
-
-*/
 
 = Conclusion
 

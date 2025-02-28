@@ -36,10 +36,8 @@ if we have two objects $l$ and $r = {k |-> v, ...}$, then $(l union r)(k) = v$
 By convention, we will write in the remainder of this section
 $c$ for characters and
 $k$ for object keys.
-We will sometimes write arrays as $[v_0, ..., v_n]$ and sometimes as $[v_1, ..., v_n]$:
-The former case is useful to express that $n$ is the maximal index of the array (having length $n+1$), and
-the latter case is useful to express that the array has length $n$.
-The same idea applies also to strings, objects, and streams.
+We also write $app("err", ...)$ to denote $app("err", e)$ where we do not want to specify $e$.
+(In actual jq implementations, $e$ is frequently an error message string.)
 
 A number can be an integer or a decimal, optionally followed by an integer exponent.
 For example, $0$, $-42$, $3.14$, $3 times 10^8$ are valid JSON numbers.
@@ -69,22 +67,8 @@ $ "arr"_0:&           &&          && cal(V) := [] \
     "err" ...     & "otherwise",
   ) $
 
-The function $"arr"$ transforms a stream into
-an array if all stream elements are values, or into
-the first exception in the stream otherwise:
-
-$ "sum"&: cal(S) -> cal(V) &&-> cal(R) := lam(s, n) app(s, (lam(h, t) h bindr (lam(o) (n + o bindr app("sum", t)))), (ok(n))) \
-  "arr"&: cal(S)           &&-> cal(R) := lam(s) app("sum", (s bind (lam(v) stream(ok((app("arr"_1, v)))))), "arr"_0) $
-
-Here, the function $"sum"$ takes a stream and a zero value and
-returns the sum of the zero value and the stream elements if they are all OK,
-otherwise it returns the first exception in the stream.
-This uses the addition operator $+: cal(V) -> cal(V) -> cal(R)$ that
-we will define in @arithmetic.
-
-/*
-We can construct objects with multiple keys by adding objects, see @arithmetic.
-*/
+In the remainder of this section, we will also use the function
+$"arr"$ defined in @value-ops based on $"arr"_0$ and $"arr"_1$.
 
 
 == Simple functions <simple-fns>
@@ -121,7 +105,7 @@ $|3.14| = 3.14$ and $|-2| = 2$.
 Similarly,
 $|s|$ is the number of characters of a string $s$,
 $|a|$ is the length of an array $a$, and
-$|o|$ is the size of the domain of an object $o$.
+$|o|$ is the cardinality of the domain of an object $o$.
 
 The _boolean value_ of a value $v$ is defined as follows:
 
@@ -363,7 +347,8 @@ $ v[] update f := cases(
   "err" ... & "otherwise",
 ) $
 
-Here, we use a helper function for the case that $v$ is an object.
+Here, we use the function $"sum"$ from @value-ops as well as
+a helper function for the case that $v$ is an object.
 This function takes an object key $k$ and $s: cal(S)$ and returns a value result:
 $ "obj_if" := lam(k, s) app(s, (lam(h, t) h bindr lam(o) ok({k |-> o})), (ok({}))) $
 
