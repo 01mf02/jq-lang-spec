@@ -339,7 +339,7 @@ jq  `|` `,` `=` `|=`      `//=`    `//`   `==`              `!=`   `<` `<=`   `>
 HIR $|$ $,$ $=$ $\update$ $\alteq$ $\alt$ $\stackrel{?}{=}$ $\neq$ $<$ $\leq$ $>$ $\geq$ $+$ $-$ $\times$ $\div$ $\%$
 --- --- --- --- --------- -------- ------ ----------------- ------ --- ------ --- ------ --- --- -------- ------ ----
 
-Table: Operators in concrete jq syntax and their corresponding HIR operators. {tab:op-correspondence}
+Table: Operators in concrete jq syntax and their corresponding HIR operators. {#tab:op-correspondence}
 
 To convert a jq filter `f` to MIR, we convert `f` to HIR, then to MIR, using @tab:lowering.
 
