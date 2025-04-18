@@ -1,5 +1,5 @@
 FILENAME=defs.tex icfp-intro.md tour.md syntax.md semantics.md icfp-concl.md
-FILENAME=defs.tex json.md
+#FILENAME=defs.tex json.md
 
 pdf:
 	pandoc $(FILENAME) \
@@ -8,9 +8,11 @@ pdf:
 	--from=markdown+tex_math_single_backslash+tex_math_dollars+raw_tex \
 	--to=latex \
 	--bibliography=literature.bib \
+	--natbib \
 	--output=icfp.pdf \
 	--pdf-engine=xelatex \
 	--standalone \
+	--template template.tex \
 	--include-in-header header.tex \
 	--columns 10000 # TODO!
 
