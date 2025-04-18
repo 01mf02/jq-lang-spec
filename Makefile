@@ -1,5 +1,5 @@
 FILENAME=defs.tex icfp-intro.md tour.md syntax.md semantics.md icfp-concl.md
-#FILENAME=defs.tex semantics.md
+#FILENAME=defs.tex values.md
 
 pdf:
 	pandoc $(FILENAME) \
