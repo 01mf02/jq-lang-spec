@@ -65,7 +65,7 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $\ite{\$x}{f}{g}$ | $\run\, ((\bool\, \$x)\, \sem f\, \sem g)\, v$ |
 | $.[p]^?$ | $v[p]^?$ |
 | $\reduce f_x \as \$x (.; f)$ | $\reduce\, (\lambda \$x. \run\, \sem f)\, (\run\, \sem{f_x}\, v)\, v$ |
-| $\foreach f_x \as \$x (.; f; g)$ | $\foreach\, (\lambda \$x. \run\, \sem f)\, (\lambda \$x. \run\, \sem g)\, (\run\, \sem{f_x}\, v)\, v$ |
+| $\foreac f_x \as \$x (.; f; g)$ | $\foreac\, (\lambda \$x. \run\, \sem f)\, (\lambda \$x. \run\, \sem g)\, (\run\, \sem{f_x}\, v)\, v$ |
 | $\deff x(x_1; ...; x_n): f; g$ | $(\lambda x. \run\, \sem g\, v) (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
 | $x(f_1; ...; f_n)$ | $\run\, (x\, \sem{f_1}\, ...\, \sem{f_n})\, v$ |
 | $f \update g$ | $\upd\, \sem f\, (\run\, \sem g)\, v$ |
@@ -147,10 +147,10 @@ Let us discuss its different cases:
   The current accumulator value is provided to $f$ as input value and
   $f$ can access the current value of $f_x$ by $\$x$.
   If $\fold = \reduce$, this returns only the final        values of the accumulator, whereas
-  if $\fold = \foreach$, this returns also the intermediate values of the accumulator.
+  if $\fold = \foreac$, this returns also the intermediate values of the accumulator.
   We will further explain this and define the functions
   $\reduce  f\,     l\, v$ and
-  $\foreach f\, g\, l\, v$ in @sec:folding.
+  $\foreac f\, g\, l\, v$ in @sec:folding.
 - $\deff x(x_1; ...; x_n): f; g$: Binds the $n$-ary filter $x$ in $g$.
   The definition of $x$, namely $f$, may refer to
   any of the arguments $x_i$ as well as to $x$ itself.
@@ -228,9 +228,9 @@ constant time that can be achieved by a proper jq implementation.
 ## Folding {#sec:folding}
 
 In this subsection, we will define the functions
-$\reduce$ and $\foreach$ which underlie the semantics for the folding operators
+$\reduce$ and $\foreac$ which underlie the semantics for the folding operators
 $\reduce  f_x \as \$x (.; f)$ and
-$\foreach f_x \as \$x (.; f; g)$.
+$\foreac f_x \as \$x (.; f; g)$.
 
 Let us start by defining a general folding function $\foldf$:
 \begin{align*}
@@ -252,24 +252,24 @@ If $l$ is empty, then $v$ is called a _final_ accumulator value and $n\, v$ is r
 
 We use two different functions for $n$;
 the first returns just its input, corresponding to $\reduce$ which returns a final value, and
-the second returns nothing,  corresponding to $\foreach$.
+the second returns nothing,  corresponding to $\foreac$.
 Instantiating $\foldf$ with these two functions, we obtain the following:
 \begin{alignat*}{4}
 \reduce &\coloneqq \lambda f.     && \foldf\, f\, (\lambda h\, v. \stream{})\, && (\lambda v. \stream{\ok v &&}) \\
-\foreach &\coloneqq \lambda f\, g. && \foldf\, f\, g\, && (\lambda v. \stream{&&})
+\foreac &\coloneqq \lambda f\, g. && \foldf\, f\, g\, && (\lambda v. \stream{&&})
 \end{alignat*}
-Here, $\reduce$ and $\foreach$ are the functions used in @tab:eval-semantics.
+Here, $\reduce$ and $\foreac$ are the functions used in @tab:eval-semantics.
 Their types are:
 \begin{alignat*}{2}
 \reduce &: (\valt \to \valt \to \listt)                                  &&\to \listt \to \valt \to \listt \\
-\foreach&: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) &&\to \listt \to \valt \to \listt
+\foreac&: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) &&\to \listt \to \valt \to \listt
 \end{alignat*}
 We will now look at what the evaluation of the various folding filters expands to.
 Assuming that the filter $f_x$ evaluates to $\stream{x_0, ..., x_n}$,
-then $\reduce$ and $\foreach$ expand to
+then $\reduce$ and $\foreac$ expand to
 \begin{alignat*}{2}
 \reduce   f_x \as \$x (.; f   ) ={}& x_0 \as \$x | f & \quad
-\foreach  f_x \as \$x (.; f; g) ={}& x_0 \as \$x | f | g, ( \\
+\foreac  f_x \as \$x (.; f; g) ={}& x_0 \as \$x | f | g, ( \\
 |\; & ... &
     & ... \\
 |\; & x_n \as \$x | f &
@@ -474,7 +474,7 @@ Table: Update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \lis
 | $\ite{\$x}{f}{g}$ | $\upd\, ((\bool\, \$x)\, \sem f\, \sem g)\, \sigma\, v$ |
 | $\breakx x$ | $\stream{\breakx x}$ |
 | $\reduce x \as \$x (.; f)$ | $\reduce_{\update}\, (\lambda(\$x). \upd\, \sem f)\, \sigma\, (\run\, \sem x\, v)\, v$ |
-| $\foreach x \as \$x (.; f; g)$ | $\foreach_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem x\, v)\, v$ |
+| $\foreac x \as \$x (.; f; g)$ | $\foreac_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem x\, v)\, v$ |
 | $\deff x(x_1; ...; x_n): f; g$ | $(\lambda x. \upd\, \sem g\, \sigma\, v)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
 | $x(f_1; ...; f_n)$ | $\upd\, (x\, \sem{f_1}\, ...\, \sem{f_n})\, \sigma\, v$ |
 
@@ -584,7 +584,7 @@ $\labelx x | g$ and $\try f \catch g$.
 
 In @sec:folding, we have seen how to evaluate folding filters of the shape
 $\reduce  x \as \$x (.; f)$ and
-$\foreach x \as \$x (.; f; g)$.
+$\foreac x \as \$x (.; f; g)$.
 Here, we will define update semantics for these filters.
 These update operations are _not_ supported in jq 1.7; however,
 we will show that they arise quite naturally from previous definitions.
@@ -597,15 +597,15 @@ Let us start with an example to understand folding on the left-hand side of an u
   The regular evaluation of $\varphi$ with the input value as described in @sec:semantics yields
   $$\run\, \sem \varphi\, v = \begin{cases}
     \stream{\phantom{[[2], 1],\,} [2]} & \text{if } \fold = \reduce \\
-    \stream{         [[2], 1],    [2]} & \text{if } \fold = \foreach
+    \stream{         [[2], 1],    [2]} & \text{if } \fold = \foreac
   \end{cases}$$
-  When $\fold = \foreach$, the paths corresponding to the output are $.[0]$ and $.[0][0]$, and
+  When $\fold = \foreac$, the paths corresponding to the output are $.[0]$ and $.[0][0]$, and
   when $\fold = \reduce$, the paths are just $.[0][0]$.
   Given that all outputs have corresponding paths, we can update over them.
   For example, taking $. + [3]$ as filter $\sigma$, we should obtain the output
   $$\upd\, \sem \varphi\, (\run\, \sem \sigma)\, v = \begin{cases}
     \stream{[[[2, 3], 1\phantom{, 3}], 0]} & \text{if } \fold = \reduce \\
-    \stream{[[[2, 3], 1         , 3 ], 0]} & \text{if } \fold = \foreach
+    \stream{[[[2, 3], 1         , 3 ], 0]} & \text{if } \fold = \foreac
   \end{cases}$$
 :::
 
@@ -637,7 +637,7 @@ This yields
  & ... \\
  & x_n \as \$x | (f \update (  \\
  & \sigma))...)) \\
-\foreach x \as \$x (.; f; g) \update \sigma
+\foreac x \as \$x (.; f; g) \update \sigma
 ={}& x_0 \as \$x | (f \update ((g \update \sigma) | \\
  & ... \\
  & x_n \as \$x | (f \update ((g \update \sigma) | \\
@@ -650,7 +650,7 @@ This yields
   Using some liberty to write $.[0]$ instead of $0 \as \$x | .[\$x]$, we have:
   $$\varphi \update \sigma = \begin{cases}
     .[0] \update \phantom{\sigma | (}.[0] \update \sigma   & \text{if } \fold = \reduce \\
-    .[0] \update          \sigma | ( .[0] \update \sigma)  & \text{if } \fold = \foreach
+    .[0] \update          \sigma | ( .[0] \update \sigma)  & \text{if } \fold = \foreac
   \end{cases}$$
 :::
 
@@ -665,10 +665,10 @@ Its first argument is of type $\valt \to (\valt \to \listt) \to \valt \to \listt
 Using this function, we can now define
 \begin{alignat*}{4}
 \reduce_{\update} &\coloneqq \lambda f\,      &&\sigma. \foldf_{\update}\, f\, (\lambda h\, v. \stream{\ok v})\, && \sigma \\
-\foreach_{\update} &\coloneqq \lambda f\, g\, &&\sigma. \foldf_{\update}\, f\, (\lambda h\, v. g\, h\, \sigma\, v)\, && (\lambda v. \stream{\ok v})
+\foreac_{\update} &\coloneqq \lambda f\, g\, &&\sigma. \foldf_{\update}\, f\, (\lambda h\, v. g\, h\, \sigma\, v)\, && (\lambda v. \stream{\ok v})
 \end{alignat*}
 The types of the functions are:
 \begin{alignat*}{2}
 \reduce _{\update}&: \mathcal U                &&\to (\valt \to \listt) \to \listt \to \valt \to \listt \\
-\foreach_{\update}&: \mathcal U \to \mathcal U &&\to (\valt \to \listt) \to \listt \to \valt \to \listt
+\foreac_{\update}&: \mathcal U \to \mathcal U &&\to (\valt \to \listt) \to \listt \to \valt \to \listt
 \end{alignat*}

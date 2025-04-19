@@ -21,7 +21,7 @@ A _filter_ $f$ is defined by the grammar
 f &\coloneqq \quad n \gror s \gror . \gror .. \\
   &\gror (f) \gror f? \gror [] \gror [f] \gror \{f: f, ..., f: f\} \gror f [p]^? ... [p]^? \\
   &\gror f \star f \gror f \cartesian f \\
-  &\gror f \as P | f \gror \reduce f \as P\; (f; f) \gror \foreach f \as P\; (f; f; f) \gror \$x \\
+  &\gror f \as P | f \gror \reduce f \as P\; (f; f) \gror \foreac f \as P\; (f; f; f) \gror \$x \\
   &\gror \labelx x | f \gror \breakx x \\
   &\gror \ite{f}{f}{f} \gror \try f \gror \try f \catch f \\
   &\gror \deff x\!: f;\; f \gror \deff x(x; ...; x)\!: f;\; f \\
@@ -65,7 +65,7 @@ We consider equivalent the following notations:
 
 - $f?$ and $\try f$,
 - $x()$ and $x$,
-- $\foreach f_x \as P (f_y; f)$ and $\foreach f_x \as P (f_y; f; .)$,
+- $\foreac f_x \as P (f_y; f)$ and $\foreac f_x \as P (f_y; f; .)$,
 - $\deff x(): f; g$ and
   $\deff x: f; g$.
 
@@ -81,7 +81,7 @@ A MIR filter $f$ is defined by the grammar
 f \coloneqq& \quad n \gror s \gror . \\
   \gror& [] \gror [f] \gror {} \gror \{\$x: \$x\} \gror .[p] \\
   \gror& f \star f \gror \$x \cartesian \$x \\
-  \gror& f \as \$x | f \gror \reduce f \as \$x (.; f) \gror \foreach f \as \$x (.; f; f) \gror \$x \\
+  \gror& f \as \$x | f \gror \reduce f \as \$x (.; f) \gror \foreac f \as \$x (.; f; f) \gror \$x \\
   \gror& \ite{\$x}{f}{f} \gror \try f \catch f \\
   \gror& \labelx x | f \gror \breakx x \\
   \gror& \deff x(x; ...; x): f; f \\
@@ -164,7 +164,7 @@ The filter $\bool \coloneqq \ite{.}{\true}{\false}$
 maps its input to its boolean value.
 
 In the lowering of the folding operators $\fold f_x \as P (f_y; f; g)$
-(where $\fold$ stands for either $\reduce$ or $\foreach$),
+(where $\fold$ stands for either $\reduce$ or $\foreac$),
 we replace the pattern $P$ by a variable by
 "serialising" and "deserialising" the variables bound by $P$ with $\beta P$.
 Here, $\beta P$ denotes the sequence of variables bound by $P$:
