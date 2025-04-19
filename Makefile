@@ -25,3 +25,6 @@ html:
 	--output=$(FILENAME).html \
 	--mathjax \
 	#--standalone
+
+structure.tex: structure.dot
+	dot2tex structure.dot --autosize --figonly -o structure.tex
