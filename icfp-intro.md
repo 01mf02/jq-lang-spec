@@ -84,23 +84,15 @@ compares it with the traditional approach used in jq.
 It turns out that on 25 out of 29 benchmark programs,
 our interpreter is the fastest of all evaluated jq implementations.
 
-<!-- TODO:
-#figure(caption: [Our approach to evaluate a jq program with an input value.
+\begin{figure}
+\centering
+\resizebox{\textwidth}{!}{
+\input{structure}
+}
+\caption{
+  Our approach to evaluate a jq program with an input value.
   Solid lines indicate data flow, whereas a dashed line indicates that
   a component is defined in terms of another.
-], diagraph.render(read("structure.dot"))) <fig:structure>
--->
-
-<!--
-::: {.example #ex:bla name="Hello"}
-Blabla.
-:::
-
-Let us reference [@tab:bla].
-
-A | B
-- | -
-C | D
-
-Table: Foo. {#tab:bla}
--->
+}
+\label{fig:structure}
+\end{figure}
