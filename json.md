@@ -1,3 +1,5 @@
+\appendix
+
 # JSON values {#sec:json}
 
 In this section, we will define JSON values.
