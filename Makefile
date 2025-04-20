@@ -3,6 +3,7 @@ FILENAME=defs.tex icfp-intro.md tour.md syntax.md semantics.md icfp-concl.md
 
 pdf:
 	pandoc $(FILENAME) \
+	--metadata-file meta.yaml \
 	--lua-filter filter.lua \
 	--citeproc \
 	--from=markdown+tex_math_single_backslash+tex_math_dollars+raw_tex \
