@@ -8,7 +8,7 @@ For now, let us consider a filter to be a function from a value to
 a (lazy, possibly infinite) stream of values.
 Furthermore, in this section, let us assume a value to be either
 a boolean, an integer, or an array of values.
-(We introduce the full set of JSON values in @json.)
+(We introduce the full set of JSON values in @sec:json.)
 
 The identity filter "`.`" returns a stream containing the input.^[
   The filters in this section can be executed on most UNIX shells by
@@ -183,4 +183,4 @@ This behaviour of jq is cumbersome to define and to reason about.
 This motivates in part the definition of more simple and elegant semantics
 that behave like jq in most typical use cases
 but eliminate corner cases like the ones shown.
-We will show such semantics in @updates.
+We will show such semantics in @sec:updates.

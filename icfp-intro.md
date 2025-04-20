@@ -41,7 +41,7 @@ informally specified, for example in the jq manual @jq-manual.
 This leaves a lot of space for interpretation and makes it difficult to find out
 whether certain behaviour of a jq implementation is accidental or intended.
 
-We have striven to create denotational semantics (@semantics) that
+We have striven to create denotational semantics (@sec:semantics) that
 closely resemble those of jq such that in most common use cases,
 their behaviour coincides, whereas they may differ in more exotic cases.
 The goals for creating these semantics were, in descending order of importance:
@@ -67,20 +67,20 @@ differ most notably in the case of updates;
 yet in most common use cases, both semantics yield equal results.
 
 The structure of this text is as follows:
-@tour introduces jq by a series of examples that
+@sec:tour introduces jq by a series of examples that
 give a glimpse of actual jq syntax and behaviour.
 From that point on, the structure of the text follows
 the execution of a jq program as shown in @fig:structure.
-@syntax formalises a subset of jq syntax and shows how jq syntax can be
+@sec:syntax formalises a subset of jq syntax and shows how jq syntax can be
 transformed to increasingly low-level intermediate representations called
-HIR (@hir) and MIR (@mir).
+HIR (@sec:hir) and MIR (@sec:mir).
 After this, the semantics part starts:
-@values defines several data types and corresponding lambda terms, such as
+@sec:values defines several data types and corresponding lambda terms, such as
 values, value results, and lists.
-@semantics shows how to evaluate jq filters on a given input value.
-@updates presents our new approach to executing updates and
+@sec:semantics shows how to evaluate jq filters on a given input value.
+@sec:updates presents our new approach to executing updates and
 compares it with the traditional approach used in jq.
-@impl describes and evaluates a jq interpreter based on our proposed semantics.
+@sec:impl describes and evaluates a jq interpreter based on our proposed semantics.
 It turns out that on 25 out of 29 benchmark programs,
 our interpreter is the fastest of all evaluated jq implementations.
 

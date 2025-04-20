@@ -1,18 +1,18 @@
 # Syntax {#sec:syntax}
 
 This section describes the syntax for a subset of the jq language
-that will be used later to define the semantics in @semantics.
+that will be used later to define the semantics in @sec:semantics.
 To set the formal syntax apart from
-the concrete syntax introduced in @tour,
+the concrete syntax introduced in @sec:tour,
 we use cursive font (as in "$f$", "$v$") for the specification
 instead of the previously used typewriter font (as in "`f`", "`v`").
 
-We will start by introducing high-level intermediate representation (HIR) syntax in @hir.
+We will start by introducing high-level intermediate representation (HIR) syntax in @sec:hir.
 This syntax is very close to actual jq syntax.
-Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @mir
+Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @sec:mir
 and provide a way to translate from HIR to MIR.
-This will simplify our semantics in @semantics.
-Finally, in @jq-syntax, we will show how HIR relates to actual jq syntax.
+This will simplify our semantics in @sec:semantics.
+Finally, in @sec:jq-syntax, we will show how HIR relates to actual jq syntax.
 
 ## HIR {#sec:hir}
 
