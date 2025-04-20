@@ -1,4 +1,4 @@
-FILENAME=defs.tex icfp-intro.md tour.md syntax.md semantics.md icfp-concl.md
+FILENAME=defs.tex icfp-intro.md tour.md syntax.md values.md semantics.md impl.md icfp-concl.md json.md
 #FILENAME=defs.tex json.md
 
 pdf:
