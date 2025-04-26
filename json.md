@@ -57,10 +57,10 @@ supports the arithmetic operations $+$, $-$, $\times$, $\div$, and $\modulo$ (mo
 
 In this subsection, we will introduce functions to construct arrays and objects.
 \begin{alignat*}{3}
-\arr _0:&             &&            && \valt \coloneqq [] \\
-\arr _1:&             &&\valt \to{} && \valt \coloneqq \lambda v. [v] \\
-\objf_0:&             &&            && \valt \coloneqq \obj{} \\
-\objf_1:& \valt \to{} &&\valt \to{} && \resultt \coloneqq \lambda k\, v. \begin{cases}
+\arr _0:{}&             &&            && \valt \coloneqq [] \\
+\arr _1:{}&             &&\valt \to{} && \valt \coloneqq \lambda v. [v] \\
+\objf_0:{}&             &&            && \valt \coloneqq \obj{} \\
+\objf_1:{}& \valt \to{} &&\valt \to{} && \resultt \coloneqq \lambda k\, v. \begin{cases}
   \ok(\obj{k \mapsto v}) & \text{if $k$ is a string} \\
   \err ... & \text{otherwise}
 \end{cases}

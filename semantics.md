@@ -10,9 +10,9 @@ The evaluation strategy is call-by-name.
 We will use pairs to store two functions
 --- a run and an update function --- that characterise each filter $\filtert$.
 \begin{alignat*}{4}
-  \pair&:              &(\valt \to \listt) &\to ((\valt \to \listt) \to \valt \to \listt) \to \filtert &&\coloneqq \lambda x\, y\, f. f\, x\, y  \\
-   \run&: \filtert \to &(\valt \to \listt) &                                                           &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
-   \upd&: \filtert     &                   &\to ((\valt \to \listt) \to \valt \to \listt)              &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
+  \pair&:                &(\valt \to \listt) &\to ((\valt \to \listt) \to \valt \to \listt) \to \filtert &&\coloneqq \lambda x\, y\, f. f\, x\, y  \\
+   \run&: \filtert \to{} &(\valt \to \listt) &                                                           &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
+   \upd&: \filtert       &                   &\to ((\valt \to \listt) \to \valt \to \listt)              &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
 \end{alignat*}
 The lambda term $\sem \varphi$ corresponding to a filter $\varphi$ that we will define
 will always be a pair of two functions, namely a run and an update function.
@@ -596,16 +596,16 @@ Let us start with an example to understand folding on the left-hand side of an u
   and $\varphi$ be the filter $\fold (0, 0) \as \$x (.; .[\$x])$.
   The regular evaluation of $\varphi$ with the input value as described in @sec:semantics yields
   $$\run\, \sem \varphi\, v = \begin{cases}
-    \stream{\phantom{[[2], 1],\,} [2]} & \text{if } \fold = \reduce \\
-    \stream{         [[2], 1],    [2]} & \text{if } \fold = \foreac
+    \stream{\phantom{[[2], 1],\,} [2]} & \text{if } \fold =\> \reduce \\
+    \stream{         [[2], 1],    [2]} & \text{if } \fold =\> \foreac
   \end{cases}$$
   When $\fold = \foreac$, the paths corresponding to the output are $.[0]$ and $.[0][0]$, and
   when $\fold = \reduce$, the paths are just $.[0][0]$.
   Given that all outputs have corresponding paths, we can update over them.
   For example, taking $. + [3]$ as filter $\sigma$, we should obtain the output
   $$\upd\, \sem \varphi\, (\run\, \sem \sigma)\, v = \begin{cases}
-    \stream{[[[2, 3], 1\phantom{, 3}], 0]} & \text{if } \fold = \reduce \\
-    \stream{[[[2, 3], 1         , 3 ], 0]} & \text{if } \fold = \foreac
+    \stream{[[[2, 3], 1\phantom{, 3}], 0]} & \text{if } \fold =\> \reduce \\
+    \stream{[[[2, 3], 1         , 3 ], 0]} & \text{if } \fold =\> \foreac
   \end{cases}$$
 :::
 
@@ -649,8 +649,8 @@ This yields
   the input value and the filters from @ex:folding-update.
   Using some liberty to write $.[0]$ instead of $0 \as \$x | .[\$x]$, we have:
   $$\varphi \update \sigma = \begin{cases}
-    .[0] \update \phantom{\sigma | (}.[0] \update \sigma   & \text{if } \fold = \reduce \\
-    .[0] \update          \sigma | ( .[0] \update \sigma)  & \text{if } \fold = \foreac
+    .[0] \update \phantom{\sigma | (}.[0] \update \sigma   & \text{if } \fold =\> \reduce \\
+    .[0] \update          \sigma | ( .[0] \update \sigma)  & \text{if } \fold =\> \foreac
   \end{cases}$$
 :::
 
@@ -669,6 +669,6 @@ Using this function, we can now define
 \end{alignat*}
 The types of the functions are:
 \begin{alignat*}{2}
-\reduce _{\update}&: \mathcal U                &&\to (\valt \to \listt) \to \listt \to \valt \to \listt \\
+\reduce_{\update}&: \mathcal U                &&\to (\valt \to \listt) \to \listt \to \valt \to \listt \\
 \foreac_{\update}&: \mathcal U \to \mathcal U &&\to (\valt \to \listt) \to \listt \to \valt \to \listt
 \end{alignat*}
