@@ -27,5 +27,6 @@ html:
 	--mathjax \
 	#--standalone
 
+# remove trailing semicolons to suppress error messages
 structure.tex: structure.dot
-	dot2tex structure.dot --autosize --figonly -o structure.tex
+	dot2tex structure.dot --autosize --figonly | sed 's/0};/0}/' > $@
