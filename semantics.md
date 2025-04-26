@@ -57,7 +57,7 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $\$x \cartesian \$y$ | $\stream{\ok{(\$x \cartesian \$y)}}$ |
 | $f, g$ | $\run\, \sem f\, v + \run\, \sem g\, v$ |
 | $f | g$ | $\run\, \sem f\, v \bind \run\, \sem g$ |
-| $f \alt g$ | $(\lambda t. t\, (\lambda \_\, \_. t)\, (\run\, \sem g\, v))\, (\run\, \sem f\, v \bind "trues")$ |
+| $f \alt g$ | $(\lambda t. t\, (\lambda \_\, \_. t)\, (\run\, \sem g\, v))\, (\run\, \sem f\, v \bind \trues)$ |
 | $f \as \$x | g$ | $\run\, \sem f\, v \bind (\lambda \$x. \run, \sem g\, v)$ |
 | $\try f \catch g$ | $\run\, \sem f\, v \bind_L \lambda r. r\, (\lambda o. \stream r)\, (\run\, \sem g)\, (\lambda b. \stream r)$ |
 | $\labelx x | f$ | $\labelf \fresh\, ((\lambda \$x\, \fresh. \run\, \sem f\, v)\, \fresh\, (\operatorname{succ}\, \fresh))$ |
@@ -487,7 +487,7 @@ We discuss the remaining cases for $\varphi$:
 - $f \alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
   Here, $f$ is called as a "probe" first.
   If it yields at least one output that is considered "true"
-  (see @sec:semantics for the definition of $"trues"$),
+  (see @sec:semantics for the definition of $\trues$),
   then we update at $f$, else at $g$.
   This filter is unusual because is the only kind where a subexpression may be both
   evaluated ($\run\, \sem f\, v$) as well as
