@@ -1,2 +1,4 @@
 title: A formal specification of the jq language
 author: Michael Färber
+
+geometry: margin=3cm
