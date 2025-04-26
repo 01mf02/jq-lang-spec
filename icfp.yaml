@@ -1,5 +1,8 @@
 title: A formal specification of the jq language
-author: Michael Färber
+acmauthor:
+  name: Michael Färber
+  orcid: 0000-0003-1634-9525
+  email: michael.faerber@gedenkt.at
 abstract: >
   jq is a widely used tool that provides a programming language to manipulate JSON data.
   However, the jq language is currently only specified by its implementation,
@@ -11,13 +14,17 @@ abstract: >
   that allows for more predictable and performant execution.
   We implement our semantics in a interpreter and evaluate its performance,
   showing that it executes jq programs faster than any other jq implementation.
+keywords:
+  - jq
+  - JSON
+  - semantics
 
 documentclass: acmart
 classoption:
   - acmsmall
   - screen
-  - anonymous
-  - review
+# - anonymous
+# - review
 topmatter:
   - printfolios=false
   - printccs=true

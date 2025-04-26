@@ -92,7 +92,28 @@ $endif$
 $if(title)$
 \title{$title$$if(thanks)$\thanks{$thanks$}$endif$}
 $endif$
+
+$if(acmauthor)$
+$for(acmauthor)$
+\author{$it.name$}
+\orcid{$it.orcid$}
+$for(it.affiliation)$
+\affiliation{
+  \institution{$it.institution$}
+  \city{$it.city$}
+  \country{$it.country$}
+}
+$endfor$
+\email{$it.email$}
+$endfor$
+$else$
 \author{$for(author)$$author$$sep$ \and $endfor$}
+$endif$
+
+$if(keywords)$
+\keywords{$for(keywords)$$keywords$$sep$, $endfor$}
+$endif$
+
 \date{$date$}
 
 \begin{document}
