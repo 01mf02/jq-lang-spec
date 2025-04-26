@@ -16,6 +16,9 @@ $for(classoption)$
   $classoption$$sep$,
 $endfor$
 ]{$documentclass$}
+$if(topmatter)$
+\settopmatter{$for(topmatter)$$topmatter$$sep$,$endfor$}
+$endif$
 \usepackage{amsmath,amssymb}
 $if(fontfamily)$
 $else$
@@ -101,12 +104,12 @@ $if(has-frontmatter)$
 \frontmatter
 $endif$
 $if(title)$
-\maketitle
 $if(abstract)$
 \begin{abstract}
 $abstract$
 \end{abstract}
 $endif$
+\maketitle
 $endif$
 
 $for(include-before)$
