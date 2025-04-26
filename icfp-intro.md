@@ -1,8 +1,8 @@
-UNIX has popularised the concept of _filters_ and _pipes_ @Ritchie84:
+UNIX has popularised the concept of _filters_ and _pipes_ [@Ritchie84]:
 A filter is a program that reads from an input stream and writes to an output stream.
 Pipes are used to compose filters.
 
-JSON (JavaScript Object Notation) is a widely used data serialisation format @rfc8259.
+JSON (JavaScript Object Notation) is a widely used data serialisation format [@rfc8259].
 A JSON value is either
 null,
 a boolean,
@@ -17,7 +17,7 @@ executes programs written in that language.
 Where UNIX filters operate on streams of characters,
 jq filters operate on streams of JSON values.
 This allows to manipulate JSON data with relatively compact filters.
-For example, given as input the public JSON dataset of streets in Paris @paris-voies,
+For example, given as input the public JSON dataset of streets in Paris [@paris-voies],
 jq retrieves
 the number of streets (6528) with the filter "`length`",
 the names of the streets with the filter "`.[].nomvoie`", and
@@ -35,9 +35,9 @@ We refer to the program jq as "jq" and to its language as "the jq language".
 
 The jq language is a dynamically typed, lazily evaluated
 functional programming language with
-second-class higher-order functions @jq-description.
+second-class higher-order functions [@jq-description].
 The semantics of the jq language are only
-informally specified, for example in the jq manual @jq-manual.
+informally specified, for example in the jq manual [@jq-manual].
 This leaves a lot of space for interpretation and makes it difficult to find out
 whether certain behaviour of a jq implementation is accidental or intended.
 

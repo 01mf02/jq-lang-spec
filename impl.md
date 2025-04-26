@@ -4,7 +4,7 @@ We have created an interpreter for the jq language called `jaq`
 based on the semantics in @sec:semantics.
 `jaq` is written in Rust and can execute sufficiently large and complex jq programs such as
 a Brainfuck interpreter and
-a jq interpreter written in the jq language itself @jqjq.
+a jq interpreter written in the jq language itself [@jqjq].
 In practice,
 the differences between our new semantics and the semantics implemented by `jq`
 can often be neglected.
