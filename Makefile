@@ -17,8 +17,8 @@ all: icfp.pdf spec.pdf
 clean:
 	rm *.aux *.bbl *.blg *.log *.pdf structure.tex icfp.tex spec.tex
 
-icfp.tex: icfp.yaml $(ICFP) $(DEPS) structure.tex
-	pandoc --metadata-file $< $(ICFP) $(PANOPTS) -o $@
+icfp.tex: icfp.yaml $(ICFP) $(DEPS) structure.tex ccs.tex
+	pandoc --metadata-file $< $(ICFP) $(PANOPTS) -o $@ -H ccs.tex
 
 spec.tex: spec.yaml $(SPEC) $(DEPS)
 	pandoc --metadata-file $< $(SPEC) $(PANOPTS) -o $@
