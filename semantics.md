@@ -7,6 +7,7 @@ The evaluation strategy is call-by-name.
 
 ## Compilation
 
+
 We will use pairs to store two functions
 --- a run and an update function --- that characterise each filter $\filtert$.
 \begin{alignat*}{4}
@@ -33,6 +34,8 @@ For the identity filter "$.$", we have $$ \sem{.} = \pair\,
 $t_r = \stream{\ok v}$ was obtained from @tab:eval-semantics and
 $t_u = \sigma\, v$ was obtained from @tab:update-semantics.
 :::
+
+\newcommand{\fresh}{\kappa}
 
 The lambda term $\sem \varphi$ obtained from a well-formed filter $\varphi$
 may contain at most one free variable, namely $\fresh$.
@@ -97,7 +100,8 @@ Let us discuss its different cases:
 - $f \alt g$: Let $l$ be the outputs of $f$ whose boolean values are not false.
   This filter returns $l$ if $l$ is not empty, else the outputs of $g$.
   Here, we use a function $\trues\, x$ that
-  returns its input $x$ if its boolean value is true. $$\trues: \valt \to \listt \coloneqq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
+  returns its input $x$ if its boolean value is true.
+  $$\trues: \valt \to \listt \coloneqq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
 - $f \as \$x | g$: For every output of $f$, binds it to the variable $\$x$ and
   returns the output of $g$, where $g$ may reference $\$x$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
@@ -577,13 +581,13 @@ $\labelx x | g$ and $\try f \catch g$.
   $(.[] \alt \error) \update 1$ yields
   $\stream{\err\, []}$.
   That is because $.[]$ does not yield any value for the input,
-  so $\error \update 1$ is executed, which yields an error.
+  so ${\error} \update 1$ is executed, which yields an error.
 :::
 
 ## Folding {#sec:folding-update}
 
 In @sec:folding, we have seen how to evaluate folding filters of the shape
-$\reduce  x \as \$x (.; f)$ and
+$\reduce x \as \$x (.; f)$ and
 $\foreac x \as \$x (.; f; g)$.
 Here, we will define update semantics for these filters.
 These update operations are _not_ supported in jq 1.7; however,
@@ -649,8 +653,8 @@ This yields
   the input value and the filters from @ex:folding-update.
   Using some liberty to write $.[0]$ instead of $0 \as \$x | .[\$x]$, we have:
   $$\varphi \update \sigma = \begin{cases}
-    .[0] \update \phantom{\sigma | (}.[0] \update \sigma   & \text{if } \fold =\> \reduce \\
-    .[0] \update          \sigma | ( .[0] \update \sigma)  & \text{if } \fold =\> \foreac
+    .[0] \update \phantom{\sigma | (}.[0] \update \sigma   & \text{if } \fold = {\reduce} \\
+    .[0] \update          \sigma | ( .[0] \update \sigma)  & \text{if } \fold = {\foreac}
   \end{cases}$$
 :::
 
