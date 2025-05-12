@@ -61,7 +61,7 @@ In this subsection, we will introduce functions to construct arrays and objects.
 \arr _1:{}&             &&\valt \to{} && \valt \coloneqq \lambda v. [v] \\
 \objf_0:{}&             &&            && \valt \coloneqq \obj{} \\
 \objf_1:{}& \valt \to{} &&\valt \to{} && \resultt \coloneqq \lambda k\, v. \begin{cases}
-  \ok(\obj{k \mapsto v}) & \text{if $k$ is a string} \\
+  \ok \obj{k \mapsto v} & \text{if $k$ is a string} \\
   \err ... & \text{otherwise}
 \end{cases}
 \end{alignat*}
@@ -137,10 +137,10 @@ respectively.
 We define addition of two values $l$ and $r$ as follows:
 $$l + r \coloneqq \begin{cases}
   \ok v & \text{if $l = \nullf$ and $r = v$, or $l = v$ and $r = \nullf$} \\
-  \ok(n_1 + n_2) & \text{if $l$ is a number $n_1$ and $r$ is a number $n_2$} \\
-  \ok(c_{l,1}...c_{l,m}c_{r,1}...c_{r,n}) & \text{if $l = c_{l,1}...c_{l,m}$ and $r = c_{r,1}...c_{r,n}$} \\
-  \ok[l_1, ..., l_m, r_1, ..., r_n] & \text{if $l = [l_1, ..., l_m]$ and $r = [r_1, ..., r_n]$} \\
-  \ok(l \cup r) & \text{if $l = \obj{...}$ and $r = \obj{...}$} \\
+  \ok (n_1 + n_2) & \text{if $l$ is a number $n_1$ and $r$ is a number $n_2$} \\
+  \ok (c_{l,1}...c_{l,m}c_{r,1}...c_{r,n}) & \text{if $l = c_{l,1}...c_{l,m}$ and $r = c_{r,1}...c_{r,n}$} \\
+  \ok [l_1, ..., l_m, r_1, ..., r_n] & \text{if $l = [l_1, ..., l_m]$ and $r = [r_1, ..., r_n]$} \\
+  \ok (l \cup r) & \text{if $l = \obj{...}$ and $r = \obj{...}$} \\
   \err ... & \text{otherwise}
 \end{cases}$$
 Here, we can see that $\nullf$ serves as a neutral element for addition.
@@ -410,7 +410,7 @@ For both objects $o_i$ ($i \in \{1, 2\}$),
 we sort the array $[\keys\, o_i]$ by ascending order to obtain the ordered array of keys
 $k_i = [k_1, ..., k_n]$, from which we obtain
 $v_i = [o[k_1], ..., o[k_n]]$.
-We then have $$o_1 < o_2 \Longleftrightarrow \begin{cases}
+We then have $$o_1 < o_2 \iff \begin{cases}
   k_1 < k_2 & \text{if $k_1 < k_2$ or $k_1 > k_2$} \\
   v_1 < v_2 & \text{otherwise ($k_1 = k_2$)}
 \end{cases}$$
