@@ -18,7 +18,7 @@ Finally, in @sec:jq-syntax, we will show how HIR relates to actual jq syntax.
 
 A _filter_ $f$ is defined by the grammar
 \begin{align*}
-f &\coloneqq \quad n \gror s \gror . \gror .. \\
+f &\coloneq \quad n \gror s \gror . \gror .. \\
   &\gror (f) \gror f? \gror [] \gror [f] \gror \{f: f, ..., f: f\} \gror f [p]^? ... [p]^? \\
   &\gror f \star f \gror f \cartesian f \\
   &\gror f \as P | f \gror \reduce f \as P\; (f; f) \gror \foreac f \as P\; (f; f; f) \gror \$x \\
@@ -29,8 +29,8 @@ f &\coloneqq \quad n \gror s \gror . \gror .. \\
 \end{align*}
 where:
 
-- $p$ is a _path part_ defined by the grammar $p \coloneqq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
-- $P$ is a _pattern_ defined by the grammar $P \coloneqq \quad \$x \gror [P, ..., P] \gror \{f: P, ..., f: P\}$.
+- $p$ is a _path part_ defined by the grammar $p \coloneq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
+- $P$ is a _pattern_ defined by the grammar $P \coloneq \quad \$x \gror [P, ..., P] \gror \{f: P, ..., f: P\}$.
 - $x$ is an identifier (such as "empty").
 - $n$ is a number (such as $42$ or $3.14$).
 - $s$ is a string (such as "Hello world!").
@@ -78,7 +78,7 @@ This allows us later to define semantics for MIR in a much less verbose way than
 
 A MIR filter $f$ is defined by the grammar
 \begin{align*}
-f \coloneqq& \quad n \gror s \gror . \\
+f \coloneq& \quad n \gror s \gror . \\
   \gror& [] \gror [f] \gror {} \gror \{\$x: \$x\} \gror .[p] \\
   \gror& f \star f \gror \$x \cartesian \$x \\
   \gror& f \as \$x | f \gror \reduce f \as \$x (.; f) \gror \foreac f \as \$x (.; f; f) \gror \$x \\
@@ -157,10 +157,10 @@ we define it in this complicated manner.
 
 We define filters that yield the boolean values as
 \begin{align*}
-\true  &\coloneqq 0    = 0, \\
-\false &\coloneqq 0 \neq 0.
+\true  &\coloneq 0    = 0, \\
+\false &\coloneq 0 \neq 0.
 \end{align*}
-The filter $\bool \coloneqq \ite{.}{\true}{\false}$
+The filter $\bool \coloneq \ite{.}{\true}{\false}$
 maps its input to its boolean value.
 
 In the lowering of the folding operators $\fold f_x \as P (f_y; f; g)$

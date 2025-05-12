@@ -11,9 +11,9 @@ The evaluation strategy is call-by-name.
 We will use pairs to store two functions
 --- a run and an update function --- that characterise each filter $\filtert$.
 \begin{alignat*}{4}
-  \pair&:                &(\valt \to \listt) &\to ((\valt \to \listt) \to \valt \to \listt) \to \filtert &&\coloneqq \lambda x\, y\, f. f\, x\, y  \\
-   \run&: \filtert \to{} &(\valt \to \listt) &                                                           &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
-   \upd&: \filtert       &                   &\to ((\valt \to \listt) \to \valt \to \listt)              &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
+  \pair&:                &(\valt \to \listt) &\to ((\valt \to \listt) \to \valt \to \listt) \to \filtert &&\coloneq \lambda x\, y\, f. f\, x\, y  \\
+   \run&: \filtert \to{} &(\valt \to \listt) &                                                           &&\coloneq \lambda p. p\, (\lambda x\, y. x) \\
+   \upd&: \filtert       &                   &\to ((\valt \to \listt) \to \valt \to \listt)              &&\coloneq \lambda p. p\, (\lambda x\, y. y)
 \end{alignat*}
 The lambda term $\sem \varphi$ corresponding to a filter $\varphi$ that we will define
 will always be a pair of two functions, namely a run and an update function.
@@ -43,7 +43,7 @@ This variable is used to generate fresh labels for the execution of
 $\labelx x | f$, see @ex:labels.
 In order to create a closed term, we initially bind $\fresh$ to zero.
 We can then run a filter using the following function:
-$$\eval: \filtert \to \valt \to \listt \coloneqq \lambda \varphi. (\lambda \fresh. \run\, \varphi)\, \zero$$
+$$\eval: \filtert \to \valt \to \listt \coloneq \lambda \varphi. (\lambda \fresh. \run\, \varphi)\, \zero$$
 
 Table: Evaluation semantics. {#tab:eval-semantics}
 
@@ -101,7 +101,7 @@ Let us discuss its different cases:
   This filter returns $l$ if $l$ is not empty, else the outputs of $g$.
   Here, we use a function $\trues\, x$ that
   returns its input $x$ if its boolean value is true.
-  $$\trues: \valt \to \listt \coloneqq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
+  $$\trues: \valt \to \listt \coloneq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
 - $f \as \$x | g$: For every output of $f$, binds it to the variable $\$x$ and
   returns the output of $g$, where $g$ may reference $\$x$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
@@ -129,7 +129,7 @@ Let us discuss its different cases:
   returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
   \begin{align*}
   \labelf&: \mathbb N \to \listt \to \listt \\
-         &\coloneqq \lambda \fresh\, l. l\, (\lambda h\, t. (\lambda c. h\, (\lambda o. c)\, (\lambda e. c)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b\, \stream{}\, c))\, (\stream h  + \labelf\, \fresh\, t))\, \stream()
+         &\coloneq \lambda \fresh\, l. l\, (\lambda h\, t. (\lambda c. h\, (\lambda o. c)\, (\lambda e. c)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b\, \stream{}\, c))\, (\stream h  + \labelf\, \fresh\, t))\, \stream()
   \end{align*}
   In this function, $c$ gets bound to $\stream h  + \labelf\, \fresh\, t$,
   which is the function output when the head $h$ is not equal to $\labelf\, \fresh$.
@@ -168,8 +168,8 @@ Let us discuss its different cases:
 
 An implementation may also define semantics for builtin named filters.
 For example, an implementation may define
-$\run\, \sem{\operatorname{error}}\, v \coloneqq \stream{\err\, v}$ and
-$\run\, \sem \keys \, v \coloneqq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
+$\run\, \sem{\operatorname{error}}\, v \coloneq \stream{\err\, v}$ and
+$\run\, \sem \keys \, v \coloneq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
 In the case of $\keys$, for example, there is no obvious way to implement it by definition,
 in particular because there is no simple way to obtain the domain of an object $\{...\}$
 using only the filters for which we gave semantics in @tab:eval-semantics.
@@ -239,7 +239,7 @@ $\foreac f_x \as \$x (.; f; g)$.
 Let us start by defining a general folding function $\foldf$:
 \begin{align*}
 \foldf&: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
-&\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, v \bind (\lambda y. g\, h\, y + F\, t\, y))\, (n\, v))
+&\coloneq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, v \bind (\lambda y. g\, h\, y + F\, t\, y))\, (n\, v))
 \end{align*}
 This function takes
 two functions $f$ and $g$ that both take two values --- a list element and an accumulator --- and return a list of value results, and
@@ -259,8 +259,8 @@ the first returns just its input, corresponding to $\reduce$ which returns a fin
 the second returns nothing,  corresponding to $\foreac$.
 Instantiating $\foldf$ with these two functions, we obtain the following:
 \begin{alignat*}{4}
-\reduce &\coloneqq \lambda f.     && \foldf\, f\, (\lambda h\, v. \stream{})\, && (\lambda v. \stream{\ok v &&}) \\
-\foreac &\coloneqq \lambda f\, g. && \foldf\, f\, g\, && (\lambda v. \stream{&&})
+\reduce &\coloneq \lambda f.     && \foldf\, f\, (\lambda h\, v. \stream{})\, && (\lambda v. \stream{\ok v &&}) \\
+\foreac &\coloneq \lambda f\, g. && \foldf\, f\, g\, && (\lambda v. \stream{&&})
 \end{alignat*}
 Here, $\reduce$ and $\foreac$ are the functions used in @tab:eval-semantics.
 Their types are:
@@ -460,8 +460,8 @@ We will now give semantics that define the output of
 $\run\, \sem{f \update g}\, v$ as referred to in @sec:semantics.
 
 We will first combine the techniques in @sec:limiting-interactions to define
-$$\run\, \sem{f \update g}\, v \coloneqq \upd\, \sem f\, \sigma\, v, \text{where }
-  \sigma: \valt \to \listt \coloneqq \run\, \sem g$$
+$$\run\, \sem{f \update g}\, v \coloneq \upd\, \sem f\, \sigma\, v, \text{where }
+  \sigma: \valt \to \listt \coloneq \run\, \sem g$$
 We use the function $\sigma$ instead of a filter on the right-hand side to
 limit the scope of variable bindings as explained in @sec:limiting-interactions.
 
@@ -664,12 +664,12 @@ as counterpart to the function $\foldf$ in @sec:folding.
 Its first argument is of type $\valt \to (\valt \to \listt) \to \valt \to \listt$, which we abbreviate as $\mathcal U$:
 \begin{align*}
 \foldf_{\update}&: \mathcal U \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
-&\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, (\lambda x. g\, h\, x \bind F\, t)\, v)\, (n\, v))
+&\coloneq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, (\lambda x. g\, h\, x \bind F\, t)\, v)\, (n\, v))
 \end{align*}
 Using this function, we can now define
 \begin{alignat*}{4}
-\reduce_{\update} &\coloneqq \lambda f\,      &&\sigma. \foldf_{\update}\, f\, (\lambda h\, v. \stream{\ok v})\, && \sigma \\
-\foreac_{\update} &\coloneqq \lambda f\, g\, &&\sigma. \foldf_{\update}\, f\, (\lambda h\, v. g\, h\, \sigma\, v)\, && (\lambda v. \stream{\ok v})
+\reduce_{\update} &\coloneq \lambda f\,      &&\sigma. \foldf_{\update}\, f\, (\lambda h\, v. \stream{\ok v})\, && \sigma \\
+\foreac_{\update} &\coloneq \lambda f\, g\, &&\sigma. \foldf_{\update}\, f\, (\lambda h\, v. g\, h\, \sigma\, v)\, && (\lambda v. \stream{\ok v})
 \end{alignat*}
 The types of the functions are:
 \begin{alignat*}{2}
