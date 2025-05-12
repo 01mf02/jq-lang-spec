@@ -157,8 +157,8 @@ we define it in this complicated manner.
 
 We define filters that yield the boolean values as
 \begin{align*}
-"true"  &\coloneqq 0    = 0, \\
-"false" &\coloneqq 0 \neq 0.
+\true  &\coloneqq 0    = 0, \\
+\false &\coloneqq 0 \neq 0.
 \end{align*}
 The filter $\bool \coloneqq \ite{.}{\true}{\false}$
 maps its input to its boolean value.
@@ -169,8 +169,8 @@ we replace the pattern $P$ by a variable by
 "serialising" and "deserialising" the variables bound by $P$ with $\beta P$.
 Here, $\beta P$ denotes the sequence of variables bound by $P$:
 $$\beta P = \begin{cases}
-  \sum_i \beta P_i & \text{if } P = [P_1, ..., P_n] \text{ or } P = \{f_1: P_1, \dots, f_n: P_n\} \\
-  [\$x] & \text{if } P = \$x
+  \sum_i \beta P_i & \text{if $P = [P_1, ..., P_n]$ or $P = \{f_1: P_1, \dots, f_n: P_n\}$} \\
+  [\$x] & \text{if $P = \$x$}
 \end{cases}$$
 (We used $\sum_i x_i = x_1 + ... + x_n$ and $[x_1, ..., x_n] + [y_1, ..., y_m] = [x_1, ..., x_n, y_1, ..., y_m]$.)
 In particular, we exploit the property that
