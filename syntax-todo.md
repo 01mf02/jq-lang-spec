@@ -83,10 +83,9 @@ In particular, we will simplify the following constructions of the jq syntax:
   which repeats the output of the filter `f` ad infinitem.
   Most jq implementations to date take quadratic time to evaluate $n$ outputs of `repeat(0)`,
   because every time that `repeat(f)` calls `repeat(f)`,
-  it creates a new closure around `f` to yield the `f` for the recursive call.#footnote[
+  it creates a new closure around `f` to yield the `f` for the recursive call.^[
     In principle, such calls could be detected and optimized.
     For example, in Haskell, we can express `repeat` by
-    #set raw(lang: "haskell")
     `f x = x () : f (\ () -> x ())` and see that
     `f (\ () -> 0)` executes in linear time.
     However, when we change the definition of `f` to

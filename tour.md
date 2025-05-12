@@ -1,18 +1,16 @@
-#import "common.typ": example
-
-= Tour of jq <tour>
+# Tour of jq {#sec:tour}
 
 This goal of this section is to convey an intuition about how jq functions.
-The official documentation of jq is its user manual @jq-manual.
+The official documentation of jq is its user manual [@jq-manual].
 
 jq programs are called _filters_.
 For now, let us consider a filter to be a function from a value to
 a (lazy, possibly infinite) stream of values.
 Furthermore, in this section, let us assume a value to be either
 a boolean, an integer, or an array of values.
-(We introduce the full set of JSON values in @json.)
+(We introduce the full set of JSON values in @sec:json.)
 
-The identity filter "`.`" returns a stream containing the input.#footnote[
+The identity filter "`.`" returns a stream containing the input.^[
   The filters in this section can be executed on most UNIX shells by
   `echo $INPUT | jq $FILTER`, where
   `$INPUT` is the input value in JSON format and
@@ -68,7 +66,7 @@ For example, jq provides the filter "`recurse(f)`" to calculate fix points,
 which could be defined by "`def recurse(f): ., (f | recurse(f));`".
 Using this, we can define a filter to calculate the factorial function, for example.
 
-#example("Factorial")[
+::: {.example #ex:fac name="Factorial"}
   Let us define a filter `fac` that should return $n!$ for any input number $n$.
   We will define `fac` using the fix point of a filter `update`.
   The input and output of `update` shall be an array `[n, acc]`,
@@ -83,7 +81,7 @@ Using this, we can define a filter to calculate the factorial function, for exam
   So we can write "`[., 1] | last(recurse(update)) | .[1]`", where
   "`last(f)`" is a filter that outputs the last output of `f`.
   This then yields a single value `24` as result.
-] <ex:fac>
+:::
 
 Composition can also be used to bind values to _variables_.
 The filter "`f as $x | g`" performs the following:
@@ -95,9 +93,7 @@ For example, the filter "`(0, 2) as $x | ((1, 2) as $y | ($x + $y))`"
 yields the stream `1, 2, 3, 4`.
 Note that in this particular case, we could also write this as "`(0, 2) + (1, 2)`",
 because arithmetic operators such as "`f + g`" take as inputs
-the Cartesian product of the output of `f` and `g`.
-#footnote[
-  #set raw(lang: "haskell")
+the Cartesian product of the output of `f` and `g`.^[
   Haskell users might appreciate the similarity of the two filters
   to their Haskell analoga
   "`[0, 2] >>= (\x -> [1, 2] >>= (\y -> return (x+y)))`" and
@@ -106,7 +102,7 @@ the Cartesian product of the output of `f` and `g`.
 ]
 However, there are cases where variables are indispensable.
 
-#example("Variables Are Necessary")[
+::: {.example name="Variables Are Necessary"}
   jq defines a filter "`in(xs)`" that expands to "`. as $x | xs | has($x)`".
   Given an input value `i`, "`in(xs)`" binds it to `$x`, then returns
   for every value produced by `xs` whether its domain contains `$x` (and thus `i`).
@@ -120,7 +116,7 @@ However, there are cases where variables are indispensable.
   we wish to pass `xs` as input to `has`, but at the same point,
   we also want to pass the input given to `in` as an argument to `has`.
   Without variables, we could not do both.
-]
+:::
 
 Folding over streams can be done using `reduce` and `foreach`:
 The filter "`reduce xs as $x (init; f)`" keeps
@@ -158,9 +154,7 @@ If we replace `break $x` by `empty`, then it yields `1, 2, 3, 4`.
 
 Updating values can be done with the operator "`|=`",
 which has a similar function as lens setters in languages such as Haskell
-#cite(label("DBLP:conf/icfp/FosterPP08"))
-#cite(label("DBLP:conf/popl/FosterGMPS05"))
-#cite(label("DBLP:journals/programming/PickeringGW17")):
+[@FosterPP08; @FosterGMPS05; @PickeringGW17]:
 Intuitively, the filter "`p |= f`" considers any value `v` returned by `p` and
 replaces it by the output of `f` applied to `v`.
 We call a filter on the left-hand side of "`|=`" a _path expression_.
@@ -189,4 +183,4 @@ This behaviour of jq is cumbersome to define and to reason about.
 This motivates in part the definition of more simple and elegant semantics
 that behave like jq in most typical use cases
 but eliminate corner cases like the ones shown.
-We will show such semantics in @updates.
+We will show such semantics in @sec:updates.

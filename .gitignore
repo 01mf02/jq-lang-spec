@@ -1,2 +1,9 @@
 *.html
 *.pdf
+*.aux
+*.bbl
+*.blg
+*.log
+icfp.tex
+spec.tex
+structure.tex
