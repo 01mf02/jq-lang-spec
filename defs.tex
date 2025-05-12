@@ -1,4 +1,5 @@
-\newcommand{\relname}[1]{\mathrel{\operatorname{#1}}}
+% https://tex.stackexchange.com/questions/742495/spacing-before-and-after-text-operators
+\newcommand{\relname}[1]{\mathrel{\textrm{#1}}}
 \newcommand{\reduce}{\relname{reduce}}
 \newcommand{\foreac}{\relname{foreach}}
 \newcommand{\labelf}{\relname{label}}
@@ -9,7 +10,7 @@
 \newcommand{\try}{\relname{try}}
 \newcommand{\catch}{\relname{catch}}
 \newcommand{\deff}{\relname{def}}
-\newcommand{\ite}[3]{\relname{if} #1 \relname{then} #2 \relname{else} #3}
+\newcommand{\ite}[3]{{\relname{if} #1 \relname{then} #2 \relname{else} #3}}
 \newcommand{\gror}{\quad\|\quad}
 \newcommand{\cartesian}{\mathrel{\circ}}
 \newcommand{\labelx}[1]{\labelf\,\$#1}

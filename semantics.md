@@ -596,16 +596,16 @@ Let us start with an example to understand folding on the left-hand side of an u
   and $\varphi$ be the filter $\fold (0, 0) \as \$x (.; .[\$x])$.
   The regular evaluation of $\varphi$ with the input value as described in @sec:semantics yields
   $$\run\, \sem \varphi\, v = \begin{cases}
-    \stream{\phantom{[[2], 1],\,} [2]} & \text{if } \fold =\> \reduce \\
-    \stream{         [[2], 1],    [2]} & \text{if } \fold =\> \foreac
+    \stream{\phantom{[[2], 1],\,} [2]} & \text{if } \fold = {\reduce} \\
+    \stream{         [[2], 1],    [2]} & \text{if } \fold = {\foreac}
   \end{cases}$$
-  When $\fold = \foreac$, the paths corresponding to the output are $.[0]$ and $.[0][0]$, and
-  when $\fold = \reduce$, the paths are just $.[0][0]$.
+  When $\fold = {\foreac}$, the paths corresponding to the output are $.[0]$ and $.[0][0]$, and
+  when $\fold = {\reduce}$, the paths are just $.[0][0]$.
   Given that all outputs have corresponding paths, we can update over them.
   For example, taking $. + [3]$ as filter $\sigma$, we should obtain the output
   $$\upd\, \sem \varphi\, (\run\, \sem \sigma)\, v = \begin{cases}
-    \stream{[[[2, 3], 1\phantom{, 3}], 0]} & \text{if } \fold =\> \reduce \\
-    \stream{[[[2, 3], 1         , 3 ], 0]} & \text{if } \fold =\> \foreac
+    \stream{[[[2, 3], 1\phantom{, 3}], 0]} & \text{if } \fold = {\reduce} \\
+    \stream{[[[2, 3], 1         , 3 ], 0]} & \text{if } \fold = {\foreac}
   \end{cases}$$
 :::
 
