@@ -160,14 +160,16 @@ $$l \Cup r \coloneq \begin{cases}
 We use $\Cup$ in the following definition of multiplication of two values $l$ and $r$:
 $$l \times r \coloneq \begin{cases}
   \ok(n_1 \times n_2) & \text{if $l$ is a number $n_1$ and $r$ is a number $n_2$} \\
-  \sum_{i = 1}^n s & \text{if $l$ is a string $s$ and $r$ is a number $n \in \mathbb N \setminus \{0\}$} \\
-  \ok \nullf & \text{if $l$ is a string and $r = 0$} \\
-  r \times l & \text{if $r$ is a string and $l \in \mathbb N$} \\
+  \sum_{i = 1}^n s & \text{if $l$ is a string $s$ and $r$ is a number $n \in \mathbb N^+$} \\
+  \ok \nullf & \text{if $l$ is a string and $r$ is a number $n \in \mathbb Z \setminus \mathbb N^+$} \\
+  r \times l & \text{if $r$ is a string and $l \in \mathbb Z$} \\
   \ok(l \Cup r) & \text{if $l$ and $r$ are objects} \\
   \err ... & \text{otherwise}
 \end{cases}$$
-We can see that multiplication of a string $s$ with a natural number $n > 0$ returns
-the concatenation of $n$ times the string $s$.
+We can see that for a string $s$ and an integer $n$,
+their multiplication $s \times n$ yields
+the concatenation of $n$ times the string $s$ if $n > 0$ (i.e., $n \in \mathbb N^+$) and
+$\nullf$ if $n \leq 0$.
 The multiplication of two objects corresponds to their recursive merge as defined above.
 
 ### Subtraction
