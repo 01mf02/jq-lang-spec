@@ -116,13 +116,13 @@ Let us discuss its different cases:
   aborts the evaluation of $f$ after the first error.
   However, because lowering to MIR replaces
   $\try f \catch g$ with
-  $\labelx{x'} | \try f \catch (g, \break \$x')$ (see @tab:lowering),
+  $\labelx{x'} | \try f \catch (g, \breakx{x'})$ (see @tab:lowering),
   the overall behaviour described here corresponds to jq after all.
 - $\labelx x | f$: Returns all values yielded by $f$ until $f$ yields
-  an exception $\break\, \$x$.
+  an exception $\breakx{x}$.
   This uses a function $\labelf$ that
   takes a label $\fresh$ and a list $l$ of value results,
-  returning the longest prefix of $l$ that does not contain $\break\, \fresh$:
+  returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
   \begin{align*}
   \labelf&: \mathbb N \to \listt \to \listt \\
          &\coloneqq \lambda \fresh\, l. l\, (\lambda h\, t. (\lambda c. h\, (\lambda o. c)\, (\lambda e. c)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b\, \stream{}\, c))\, (\stream h  + \labelf\, \fresh\, t))\, \stream()
