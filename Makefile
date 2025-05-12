@@ -1,7 +1,7 @@
 COMMON=tour.md syntax.md values.md semantics.md
-ICFP=defs.tex icfp-intro.md $(COMMON) impl.md icfp-concl.md json.md
-SPEC=defs.tex spec-intro.md $(COMMON) json.md
-DEPS=filter.lua literature.bib template.tex header.tex Makefile
+ICFP=icfp-intro.md $(COMMON) impl.md icfp-concl.md json.md
+SPEC=spec-intro.md $(COMMON) json.md
+DEPS=filter.lua literature.bib template.tex header.tex defs.tex Makefile
 
 PANOPTS= \
   --from=markdown+tex_math_single_backslash+tex_math_dollars+raw_tex \
@@ -10,6 +10,7 @@ PANOPTS= \
   --bibliography=literature.bib --natbib \
   --template template.tex \
   --include-in-header header.tex \
+  --include-in-header defs.tex \
   --standalone \
   --columns 10000 # TODO!
 
