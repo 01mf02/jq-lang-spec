@@ -84,7 +84,7 @@ f \coloneq& \quad n \gror s \gror . \\
   \gror& f \as \$x | f \gror \reduce f \as \$x (.; f) \gror \foreac f \as \$x (.; f; f) \gror \$x \\
   \gror& \ite{\$x}{f}{f} \gror \try f \catch f \\
   \gror& \labelx x | f \gror \breakx x \\
-  \gror& \deff x(x; ...; x): f; f \\
+  \gror& {\deff x(x; ...; x): f; f} \\
   \gror& x(f; ...; f)
 \end{align*}
 where $p$ is a path part containing variables instead of filters as indices.
@@ -100,7 +100,7 @@ replace certain occurrences of filters by variables
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |
 | $n$, $s$, $.$, $\$x$, or $\breakx x$ | $\varphi$ |
-| $..$ | $\deff \recurse: ., (.[]? | recurse); recurse$ |
+| $..$ | $\deff \recurse: ., (.[]? | \recurse); \recurse$ |
 | $(f)$ | $\floor f$ |
 | $f?$ | $\labelx{x'} | \try \floor f \catch (\breakx{x'})$ |
 | $[]$ or $\{\}$ | $\varphi$ |
@@ -160,7 +160,7 @@ We define filters that yield the boolean values as
 \true  &\coloneq 0    = 0, \\
 \false &\coloneq 0 \neq 0.
 \end{align*}
-The filter $\bool \coloneq \ite{.}{\true}{\false}$
+The filter "$\bool \coloneq \ite{.}{\true}{\false}$"
 maps its input to its boolean value.
 
 In the lowering of the folding operators $\fold f_x \as P (f_y; f; g)$
