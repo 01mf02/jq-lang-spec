@@ -13,8 +13,7 @@ digraph {
   node [shape=box margin=0.1 width=0 height=0]
   subgraph cluster_syntax {
     label="Syntax"
-    hir [label="HIR"]
-    mir [label="MIR"]
+    ir [label="IR"]
   }
   subgraph cluster_semantics {
     label = "Semantics"
@@ -23,9 +22,8 @@ digraph {
   }
 
   edge [arrowsize=0.5]
-  program -> hir
-  hir -> mir
-  mir -> eval
+  program -> ir
+  ir -> eval
   input -> above_eval [arrowhead=none]
   above_eval -> eval [tailport=center]
   eval -> output
