@@ -87,10 +87,10 @@ Let us discuss its different cases:
 - $\{\$x: \$y\}$: Creates an object from the values bound to $\$x$ and $\$y$,
   using the function $\objf_1$ defined in @sec:values.
 - $\$x \arith \$y$: Returns the output of an arithmetic operation "$\arith$"
-  (any of $+$, $-$, $\times$, $\div$, and $\%$, as given in @tab:binops)
+  (any of $+$, $-$, $\times$, $\div$, and $\%$, as given in @tab:op-correspondence)
   on the values bound to $\$x$ and $\$y$.
 - $\$x \cartesian \$y$: Returns the output of a Boolean operation "$\cartesian$"
-  (any of $\stackrel{?}{=}$, $\neq$, $<$, $\leq$, $>$, $\geq$, as given in @tab:binops)
+  (any of $\stackrel{?}{=}$, $\neq$, $<$, $\leq$, $>$, $\geq$, as given in @tab:op-correspondence)
   on the values bound to $\$x$ and $\$y$.
   Because we assumed that Boolean operations return $\valt$ and are thus infallible
   (unlike the arithmetic operations $\arith$, which return $\resultt$),
@@ -193,7 +193,7 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
   &= (\lambda \repeatf. \run\, \sem \repeatf\, v)\, (Y_1\, (\lambda \repeatf. \rho)) \\
   &=^{\sem \cdot} (\lambda \repeatf. \run\, \repeatf\, v)\, (Y_1\, (\lambda \repeatf. \rho)) \\
   &=^\beta \run\, (Y_1\, (\lambda \repeatf. \rho))\, v \\
-  &=^{Y_1} \run\, ((\lambda \repeatf. \rho)\, (app(Y_1, (\lambda(\repeatf) \rho))))\, v \\
+  &=^{Y_1} \run\, ((\lambda \repeatf. \rho)\, (Y_1\, (\lambda(\repeatf) \rho)))\, v \\
   &=^\rho \run\, ((\lambda \repeatf. \pair\, (\lambda v. \stream{\ok v} + \run \repeatf v)\, (...))\, (Y_1\, (\lambda \repeatf. \rho)))\, v \\
   &=^\beta \run\, (\pair\, (\lambda v. \stream{\ok v} + \run\, (Y_1\, (\lambda \repeatf. \rho))\, v)\, (...))\, v \\
   &=^\beta \stream{\ok v} + \run\, (Y_1\, (\lambda \repeatf. \rho))\, v \\
