@@ -162,7 +162,7 @@ Let us discuss its different cases:
   which is why we use the Y combinator $Y_{n+1}$ here.
   @ex:recursion shows how a recursive call is evaluated.
 - $x(f_1; ...; f_n)$: Calls an $n$-ary filter $x$.
-  This also handles the case of calling nullary filters such as $\empty$.
+  This also handles the case of calling nullary filters such as $\emptyf$.
 - $f \update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @sec:updates.
 
@@ -279,7 +279,7 @@ then $\reduce$ and $\foreac$ expand to
 |\; & x_n \as \$x | f &
     & x_n \as \$x | f | g, ( \\
     &     &
-    & \empty)...)
+    & \emptyf)...)
 \end{alignat*}
 Note that jq implements only restricted versions of these folding operators
 that consider only the last output of $f$ for the next iteration.
