@@ -87,7 +87,7 @@ For the used ordering, see @sec:json-order.
 We define the _length_ of a value as follows:
 $$\length: \valt \to \resultt \coloneq \lambda v. \begin{cases}
   \ok 0    & \text{if } v = \nullf \\
-  \ok |n|  & \text{if } v \text{ is a number } n \\
+  \ok |n|  & \text{if $v$ is a number $n$} \\
   \ok n    & \text{if } v = c_1...c_n \\
   \ok n    & \text{if } v = [v_1, ..., v_n] \\
   \ok n    & \text{if } v = \obj{k_1 \mapsto v_1, ..., k_n \mapsto v_n} \\
@@ -160,16 +160,15 @@ $$l \Cup r \coloneq \begin{cases}
 We use $\Cup$ in the following definition of multiplication of two values $l$ and $r$:
 $$l \times r \coloneq \begin{cases}
   \ok(n_1 \times n_2) & \text{if $l$ is a number $n_1$ and $r$ is a number $n_2$} \\
-  \sum_{i = 1}^n s & \text{if $l$ is a string $s$ and $r$ is a number $n \in \mathbb N^+$} \\
-  \ok \nullf & \text{if $l$ is a string and $r$ is a number $n \in \mathbb Z \setminus \mathbb N^+$} \\
+  \sum_{i = 1}^n s & \text{if $l$ is a string $s$ and $r$ is a number $n \in \mathbb Z$} \\
   r \times l & \text{if $r$ is a string and $l \in \mathbb Z$} \\
   \ok(l \Cup r) & \text{if $l$ and $r$ are objects} \\
   \err ... & \text{otherwise}
 \end{cases}$$
 We can see that for a string $s$ and an integer $n$,
 their multiplication $s \times n$ yields
-the concatenation of $n$ times the string $s$ if $n > 0$ (i.e., $n \in \mathbb N^+$) and
-$\nullf$ if $n \leq 0$.
+the concatenation of $n$ times the string $s$ if $n > 0$ and
+$\nullf$ if $n \leq 0$ (because $\nullf$ is the neutral element for addition).
 The multiplication of two objects corresponds to their recursive merge as defined above.
 
 ### Subtraction
