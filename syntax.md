@@ -1,39 +1,49 @@
 # Syntax {#sec:syntax}
 
-This section describes the syntax for a subset of the jq language
-that will be used later to define the semantics in @sec:semantics.
-To set the formal syntax apart from
-the concrete syntax introduced in @sec:tour,
-we use cursive font (as in "$f$", "$v$") for the specification
-instead of the previously used typewriter font (as in "`f`", "`v`").
+We first describe the syntax for a subset of the jq language in @sec:hir.
+Next, we define a simplified, formal version of jq syntax called
+intermediate representation (IR) in @sec:mir.
+We provide a way to translate from jq syntax to IR.
+We will use IR later to define the semantics in @sec:semantics.
 
-We will start by introducing high-level intermediate representation (HIR) syntax in @sec:hir.
-This syntax is very close to actual jq syntax.
-Then, we will identify a subset of HIR as mid-level intermediate representation (MIR) in @sec:mir
-and provide a way to translate from HIR to MIR.
-This will simplify our semantics in @sec:semantics.
-Finally, in @sec:jq-syntax, we will show how HIR relates to actual jq syntax.
+We use
+typewriter font (e.g. "`f`", "`v`") for actual jq syntax and
+cursive    font (e.g. "$f$", "$v$") for IR.
 
-## HIR {#sec:hir}
+## jq {#sec:hir}
+
+We will now present a subset of jq syntax^[
+  Actual jq syntax has a few more constructions to offer, including
+  variable arguments, string interpolation, modules, etc.
+  However, these constructions can be transformed into
+  semantically equivalent syntax as treated in this text.
+] of which we have already seen examples in @sec:tour.
+
+\newcommand{\jqkw}[1]{\mathrel{\operatorname{\mathtt{#1}}}}
+\newcommand{\jqas}{\jqkw{as}}
+\newcommand{\jqdef}[3]{{\jqkw{def} #1\!: #2;\; #3}}
+\newcommand{\jqite}[3]{{\jqkw{if} #1 \jqkw{then} #2 \jqkw{else} #3 \jqkw{end}}}
+\newcommand{\jqfold}[4]{{\jqkw{#1} #2 \jqas #3\; #4}}
+\newcommand{\jqlb}[2]{{\jqkw{#1}\, \$#2}}
 
 A _filter_ $f$ is defined by the grammar
 \begin{align*}
 f &\coloneq \quad n \gror s \gror . \gror .. \\
   &\gror (f) \gror f? \gror [] \gror [f] \gror \{f: f, ..., f: f\} \gror f [p]^? ... [p]^? \\
   &\gror f \star f \gror f \cartesian f \\
-  &\gror f \as P | f \gror \reduce f \as P\; (f; f) \gror \foreac f \as P\; (f; f; f) \gror \$x \\
-  &\gror \labelx x | f \gror \breakx x \\
-  &\gror \ite{f}{f}{f} \gror \try f \gror \try f \catch f \\
-  &\gror \deff x\!: f;\; f \gror \deff x(x; ...; x)\!: f;\; f \\
+  &\gror f \jqas P | f \gror \jqfold{reduce}{f}{P}{(f; f)} \gror \jqfold{foreach}{f}{P}{(f; f; f)} \gror \$x \\
+  &\gror \jqlb{label}{x} | f \gror \jqlb{break}{x} \\
+  &\gror \jqite{f}{f}{f} \gror \jqkw{try} f \gror \jqkw{try} f \jqkw{catch} f \\
+  &\gror \jqdef{x}{f}{f} \gror \jqdef{x(x; ...; x)}{f}{f} \\
   &\gror x \gror x(f; ...; f)
 \end{align*}
 where:
 
 - $p$ is a _path part_ defined by the grammar $p \coloneq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
 - $P$ is a _pattern_ defined by the grammar $P \coloneq \quad \$x \gror [P, ..., P] \gror \{f: P, ..., f: P\}$.
-- $x$ is an identifier (such as "empty").
-- $n$ is a number (such as $42$ or $3.14$).
-- $s$ is a string (such as "Hello world!").
+- $x$ is an identifier (such as `empty`).
+- $n$ is a number (such as `42` or `3.14`).
+- $s$ is a string (such as `"Hello world!"`).
 
 We use the superscript "$?$" to denote an optional presence of "?"; in particular,
 $f [p]^?... [p]^?$ can be
@@ -43,40 +53,48 @@ $f [p] [p] [p]$, and so on.
 We write $[]$ instead of $[\emptyset]$.
 The potential instances of the operators $\star$ and $\cartesian$ are given in @tab:binops.
 All operators $\star$ and $\cartesian$ are left-associative, except for
-"$|$", "$=$", "$\update$", and "$\aritheq$".
+"`|`", "`=`", "`|=`", and "$\arith$`=`".
 
-We will handle the operators "reduce" and "foreach" very similarly; therefore,
-we introduce $\fold$ to stand for either "reduce" or "foreach".
-However, because "reduce" takes one argument less than "foreach",
-we simply ignore the superfluous argument when handling "reduce".
+We will handle the operators `reduce` and `foreach` very similarly; therefore,
+we introduce $\fold$ to stand for either `reduce` or `foreach`.
+However, because `reduce` takes one argument less than `foreach`,
+we simply ignore the superfluous argument when handling `reduce`.
 
-| Name | Symbol | Operators |
-| ---- | ------ | --------- |
-| Complex | $\star$ | "$|$", ",", ("=", "$\update$", "$\aritheq$", "$\alteq$"), "$\alt$", "or", "and" |
-| Cartesian | $\cartesian$ | ($\overset{?}{=}$, $\neq$), ($<$, $<=$, $>$, $>=$), $\arith$ |
-| Arithmetic | $\arith$ | ($+$, $-$), ($\times$, $\div$), $\%$
+| Name       | Symbol       | Operators                                                                      |
+| ---------- | ------------ | ------------------------------------------------------------------------------ |
+| Complex    | $\star$      | "`|`", "`,`", ("`=`", "`|=`", "$\arith$`=`", "`//=`"), "`//`", "`or`", "`and`" |
+| Cartesian  | $\cartesian$ | (`==`, `!=`), (`<`, `<=`, `>`, `>=`), $\arith$                                 |
+| Arithmetic | $\arith$     | (`+`, `-`), (`*`, `/`), `%`                                                    |
 
 Table:
   Binary operators, given in order of increasing precedence.
   Operators surrounded by parentheses have equal precedence.
   {#tab:binops}
 
-We consider equivalent the following notations:
+We consider equivalent the following notations^[
+  Note that in jq, it is invalid syntax to
+  call a nullary filter as `x()` instead of `x`, or to
+  define a nullary filter as `def x(): f; g` instead of `def x: f; g`.
+]:
 
-- $f?$ and $\try f$,
-- $x()$ and $x$,
-- $\foreac f_x \as P (f_y; f)$ and $\foreac f_x \as P (f_y; f; .)$,
-- $\deff x(): f; g$ and
-  $\deff x: f; g$.
+- $f?$ and $\jqkw{try} f$,
+- $x$ and $x()$,
+- $\jqfold{foreach}{f_x}{P}{(f_y; f)}$ and
+  $\jqfold{foreach}{f_x}{P}{(f_y; f; .)}$,
+- $\jqdef{x}{f}{g}$ and
+  $\jqdef{x()}{f}{g}$,
+- $\jqkw{if} f_1 \jqkw{then} g_1 \jqkw{elif} f_2 \jqkw{then} g_2 \dots \jqkw{elif} f_n \jqkw{then} g_n \jqkw{else} h \jqkw{end}$ and \newline
+  $\jqite{f_1}{g_1}{(\jqite{f_2}{g_2}{\dots (\jqite{f_n}{g_n}{h}) \dots})}$.
 
 
-## MIR {#sec:mir}
+## IR {#sec:mir}
 
-We are now going to identify a subset of HIR called MIR and
-show how to _lower_ a HIR filter to a semantically equivalent MIR filter.
-This allows us later to define semantics for MIR in a much less verbose way than for HIR.
+We are now going to define IR filters and
+show how to _lower_ a jq filter to an IR filter.
+This allows us later to define semantics for IR
+in a much less verbose way than for actual jq syntax.
 
-A MIR filter $f$ is defined by the grammar
+An IR filter $f$ is defined by the grammar
 \begin{align*}
 f \coloneq& \quad n \gror s \gror . \\
   \gror& [] \gror [f] \gror {} \gror \{\$x: \$x\} \gror .[p] \\
@@ -88,10 +106,20 @@ f \coloneq& \quad n \gror s \gror . \\
   \gror& x(f; ...; f)
 \end{align*}
 where $p$ is a path part containing variables instead of filters as indices.
-Furthermore, the set of complex operators $\star$ in MIR
-does not include "$=$" and "$\aritheq$" anymore.
 
-Compared to HIR, MIR filters
+The set of complex operators $\star$ in IR is reduced compared to full jq syntax ---
+for example, IR does not include "`=`" and "$\arith$`=`".
+@tab:op-correspondence gives an exhaustive list of IR operators and
+their corresponding operators in jq syntax.
+
+-- --- --- --------- ------ ----------------- ------ --- ------ --- ------ --- --- -------- ------ ----
+jq `|` `,` `|=`      `//`   `==`              `!=`   `<` `<=`   `>` `>=`   `+` `-` `*`      `/`    `%`
+IR $|$ $,$ $\update$ $\alt$ $\stackrel{?}{=}$ $\neq$ $<$ $\leq$ $>$ $\geq$ $+$ $-$ $\times$ $\div$ $\%$
+-- --- --- --------- ------ ----------------- ------ --- ------ --- ------ --- --- -------- ------ ----
+
+Table: Operators in concrete jq syntax and their corresponding IR operators. {#tab:op-correspondence}
+
+Compared to actual jq syntax, IR filters
 have significantly simpler path operations
 ($.[p]$ versus $f [p]^?... [p]^?$) and
 replace certain occurrences of filters by variables
@@ -99,7 +127,7 @@ replace certain occurrences of filters by variables
 
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |
-| $n$, $s$, $.$, $\$x$, or $\breakx x$ | $\varphi$ |
+| $n$, $s$, $.$, $\$x$, or $\jqlb{break}{x}$ | $\varphi$ |
 | $..$ | $\deff \recurse: ., (.[]? | \recurse); \recurse$ |
 | $(f)$ | $\floor f$ |
 | $f?$ | $\labelx{x'} | \try \floor f \catch (\breakx{x'})$ |
@@ -108,40 +136,41 @@ replace certain occurrences of filters by variables
 | $\{f: g\}$ | $\floor f \as \$x' | \floor g \as \$y' | \{\$x': \$y'\}$ |
 | $\{f_1: g_1, \dots, f_n: g_n\}$ | $\floor{\{f_1: g_1\} + ... + \{f_n: g_n\}}$ |
 | $f [p_1]^? \dots [p_n]^?$ | $. \as \$x' | \floor f | \floor{[p_1]^?}_{\$x'} | ... | \floor{[p_n]^?}_{\$x'}$ |
-| $f = g$ | $\floor g \as \$x' | \floor{f \update \$x'}$ |
-| $f \aritheq g$ | $\floor g \as \$x' | \floor{f \update . \arith \$x'}$ |
-| $f \alteq g$ | $\floor{f \update . \alt g}$ |
-| $f \andop g$ | $\floor{\ite{f}{(g | \bool)}{\text{false}}}$ |
-| $f \orop g$ | $\floor{\ite{f}{\text{true}}{(g | \bool)}}$ |
+| $f$ `=` $g$ | $\floor g \as \$x' | \floor{f \update \$x'}$ |
+| $f$ $\arith$`=` $g$ | $\floor g \as \$x' | \floor{f \update . \arith \$x'}$ |
+| $f$ `//=` $g$ | $\floor{f \update . \alt g}$ |
+| $f \jqkw{and} g$ | $\floor{\ite{f}{(g | \bool)}{\text{false}}}$ |
+| $f \jqkw{or}  g$ | $\floor{\ite{f}{\text{true}}{(g | \bool)}}$ |
 | $f \star g$ | $\floor f \star \floor g$ |
 | $f \cartesian g$ | $\floor f \as \$x' | \floor g \as \$y' | \$x' \cartesian \$y'$ |
-| $f \as \$x | g$ | $\floor f \as \$x | \floor g$ |
-| $f \as P | g$ | $\floor f \as \$x' | \floor{\$x' \as P | g}$,
-| $\$x \as [P_1, ..., P_n] | g$ | $\floor{\$x \as {(0): P_1, ..., (n-1): P_n} | g}$ |
-| $\$x \as {f_1: P_1, ...} | g$ | $\floor{.[\$x | f_1] \as \$x' | \$x' \as P_1 | \$x \as {f_2: P_2, ...} | g}$ |
-| $\$x \as \{\} | g$ | $\floor g$ |
-| $\fold f_x \as \$x (f_y; f; g)$ | $. \as \$x' | \floor{f_y} | \fold \floor{\$x'} | f_x) \as \$x (.; \floor f; \floor g)$ |
-| $\fold f_x \as P (f_y; f; g)$ | $\floor{\fold (f_x \as P | \beta P) \as \$x' (f_y; \$x' \as \beta P | f; \$x' \as \beta P | g)}$ |
-| $\ite{f_x}{f}{g}$ | $\floor{f_x} \as \$x' | \ite{\$x'}{\floor f}{\floor g}$ |
-| $\try f \catch g$ | $\labelx{x'} | \try \floor f \catch {\floor g, \breakx{x'}}$ |
-| $\labelx x | f$ | $\labelx x | \floor f$ |
-| $\deff x: f; g$ | $\deff x: \floor f; \floor g$ |
-| $\deff x(x_1; ...; x_n): f; g$ | $\deff x(x_1; ...; x_n): \floor f; \floor g$ |
+| $f \jqas \$x | g$ | $\floor f \as \$x | \floor g$ |
+| $f \jqas P | g$ | $\floor f \as \$x' | \floor{\$x' \as P | g}$,
+| $\$x \jqas [P_1, ..., P_n] | g$ | $\floor{\$x \as {(0): P_1, ..., (n-1): P_n} | g}$ |
+| $\$x \jqas {f_1: P_1, ...} | g$ | $\floor{.[\$x | f_1] \as \$x' | \$x' \as P_1 | \$x \as {f_2: P_2, ...} | g}$ |
+| $\$x \jqas \{\} | g$ | $\floor g$ |
+| $\jqfold{\fold}{f_x}{\$x}{(f_y; f; g)}$ | $. \as \$x' | \floor{f_y} | \fold \floor{\$x'} | f_x) \as \$x (.; \floor f; \floor g)$ |
+| $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$ | $\floor{\fold (f_x \as P | \beta P) \as \$x' (f_y; \$x' \as \beta P | f; \$x' \as \beta P | g)}$ |
+| $\jqite{f_x}{f}{g}$ | $\floor{f_x} \as \$x' | \ite{\$x'}{\floor f}{\floor g}$ |
+| $\jqkw{try} f \jqkw{catch} g$ | $\labelx{x'} | \try \floor f \catch {\floor g, \breakx{x'}}$ |
+| $\jqlb{label}{x} | f$ | $\labelx x | \floor f$ |
+| $\jqdef{x}{f}{g}$ | $\deff x: \floor f; \floor g$ |
+| $\jqdef{x(x_1; ...; x_n)}{f}{g}$ | $\deff x(x_1; ...; x_n): \floor f; \floor g$ |
 | $x(f_1; ...; f_n)$ | $x(\floor{f_1}; ...; \floor{f_n})$ |
 
-Table: Lowering of a HIR filter $\phi$ to a MIR filter $\floor \phi$. {#tab:lowering}
+Table: Lowering of a jq filter $\phi$ to an IR filter $\floor \phi$. {#tab:lowering}
 
-@tab:lowering shows how to lower an HIR filter $\varphi$ to
-a semantically equivalent MIR filter $\floor \varphi$.
+@tab:lowering shows how to lower a jq filter $\varphi$ to
+an equivalent IR filter $\floor \varphi$.
 In particular, this desugars path operations and
 makes it explicit which operations are Cartesian or complex.
 By convention, we write $\$x'$ to denote a fresh variable.
-Notice that for some complex operators $\star$, namely
-"$=$", "$\aritheq$", "$\alteq$", "$\andop$", and "$\orop$",
+Note that for some complex operators $\star$, namely
+"`=`", "$\arith$`=`", "`//=`", "`and`", and "`or`",
 @tab:lowering specifies individual lowerings, whereas
 for the remaining complex operators $\star$, namely
-"$|$", "$,$", "$\update$", and "$\alt$",
-@tab:lowering specifies a uniform lowering $\floor{f \star g} = \floor f \star \floor g$.
+"`|`", "`,`", "`|=`", and "`//`",
+@tab:lowering specifies a uniform lowering
+$\floor{f \star g} = \floor f \star \floor g$.
 
 <!--
 The filter $ "empty" := ({} | .[]) \as \$x | . $ returns an empty stream.
@@ -163,8 +192,8 @@ We define filters that yield the boolean values as
 The filter "$\bool \coloneq \ite{.}{\true}{\false}$"
 maps its input to its boolean value.
 
-In the lowering of the folding operators $\fold f_x \as P (f_y; f; g)$
-(where $\fold$ stands for either $\reduce$ or $\foreac$),
+In the lowering of the folding operators $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$
+(where $\fold$ stands for either $\jqkw{reduce}$ or $\jqkw{foreach}$),
 we replace the pattern $P$ by a variable by
 "serialising" and "deserialising" the variables bound by $P$ with $\beta P$.
 Here, $\beta P$ denotes the sequence of variables bound by $P$:
@@ -174,12 +203,12 @@ $$\beta P = \begin{cases}
 \end{cases}$$
 (We used $\sum_i x_i = x_1 + ... + x_n$ and $[x_1, ..., x_n] + [y_1, ..., y_m] = [x_1, ..., x_n, y_1, ..., y_m]$.)
 In particular, we exploit the property that
-$f \as P | g$ can be rewritten to
-$$ f \as P | \beta P \as \$x' | \$x' \as \beta P | g, $$
+$f \jqas P | g$ can be rewritten to
+$$ f \jqas P | \beta P \jqas \$x' | \$x' \jqas \beta P | g, $$
 because $\beta P$ can be interpreted both as pattern and as filter.
 
 ::: {.example}
-  Consider the filter $\varphi \equiv f \as [\$x, [\$y], \$z] | g$.
+  Consider the filter $\varphi \equiv f \jqas [\$x, [\$y], \$z] | g$.
   This filter destructures all outputs of $f$ that are of the shape
   $[x, [y, ...], z, ...]$ and binds the values
   $x$, $y$, and $z$ to the respective variables.
@@ -187,12 +216,12 @@ because $\beta P$ can be interpreted both as pattern and as filter.
   $P = [\$x, [\$y], \$z]$ for which
   $\beta P = [\$x, \$y, \$z]$.
   It holds that $\varphi$ is equivalent to
-  $$ f \as [\$x, [\$y], \$z]
-  | [\$x, \$y, \$z] \as \$x'
-  | \$x' \as [\$x, \$y, \$z] | g. $$
+  $$ f \jqas [\$x, [\$y], \$z]
+  | [\$x, \$y, \$z] \jqas \$x'
+  | \$x' \jqas [\$x, \$y, \$z] | g. $$
   Here, we first used $\beta P$ as filter
-  ($[\$x, \$y, \$z] \as \$x' | ...$) to "serialise" the pattern variables to an array, then as pattern
-  ($\$x' \as [\$x, \$y, \$z] | ...$) to "deserialise" the array to retrieve the pattern variables.
+  ($[\$x, \$y, \$z] \jqas \$x' | ...$) to "serialise" the pattern variables to an array, then as pattern
+  ($\$x' \jqas [\$x, \$y, \$z] | ...$) to "deserialise" the array to retrieve the pattern variables.
 :::
 
 | $[p]  ^?$ | $\floor{[p]^?}_{\$x}$ |
@@ -203,9 +232,9 @@ because $\beta P$ can be interpreted both as pattern and as filter.
 | $[ :f]^?$ | $(\$x | \floor f) \as \$y' | .[:\$y']^?$ |
 | $[f:g]^?$ | $(\$x | \floor f) \as \$y' | (\$x | \floor g) \as \$z' | .[\$y':\$z']^?$ |
 
-Table: Lowering of a path part $[p]^?$ with input $\$x$ to a MIR filter. {#tab:lower-path}
+Table: Lowering of a path part $[p]^?$ with input $\$x$ to an IR filter. {#tab:lower-path}
 
-@tab:lower-path shows how to lower a path part $p^?$ to MIR filters.
+@tab:lower-path shows how to lower a path part $p^?$ to IR filters.
 Like in @sec:hir, the meaning of superscript "$?$" is an optional presence of "$?$".
 In the lowering of $f [p_1]^? ... [p_n]^?$ in @tab:lowering,
 if $[p_i]$ in the first column is directly followed by "?", then
@@ -216,16 +245,17 @@ Similarly, in @tab:lower-path, if $[p]$ in the first column is followed by "$?$"
 all occurrences of superscript "?" in the second column stand for "?", otherwise for nothing.
 
 ::: {.example}
-  The HIR filter $(.[]?[])$ is lowered to
+  The jq filter `(.[]?[])` is lowered to
   $(. \as \$x' | . | .[]? | .[])$.
   Semantically, we will see that this is equivalent to $(.[]? | .[])$.
 :::
 
 ::: {.example}
-  The HIR filter $\mu \equiv .[0]$ is lowered to
+  The jq filter $\mu \equiv$ `.[0]` is lowered to
   $\floor \mu \equiv . \as \$x | . | (\$x | 0) \as \$y | .[\$y]$.
   Semantically, we will see that $\floor \mu$ is equivalent to $0 \as \$y | .[\$y]$.
-  The HIR filter $\varphi \equiv [3] | .[0] = (\length, 2)$ is lowered to the MIR filter
+  The jq filter $\varphi \equiv$ `[3] | .[0] = (length, 2)`
+  is lowered to the IR filter
   $\floor \varphi \equiv [3] | (\length, 2) \as \$z | \floor \mu \update \$z$.
   In @sec:semantics, we will see that its output is $\stream{[1], [2]}$.
 :::
@@ -253,9 +283,9 @@ $$\floor{\{f_1: g_1\}} \as \$x'_1 | ... | \floor{\{f_n: g_n\}} \as \$x'_n | \$x'
 
 Informally, we say that a filter is _wellformed_ if all references to
 named filters, variables, and labels were previously bound.
-For example, the filter $a + \$x$ is not wellformed because
+For example, the filter $a, \$x$ is not wellformed because
 neither $a$ nor $\$x$ was previously bound, but the filter
-$\deff a: 1; 2 \as \$x | a + \$x$ is wellformed.
+$\deff a: 1; 2 \as \$x | a, \$x$ is wellformed.
 @tab:wf specifies in detail if a filter is wellformed.
 For this, it uses a context $c = (d, v, l)$, consisting of
 a set $d$ of pairs $(x, n)$ storing the name $x$ and the arity $n$ of a filter,
@@ -279,7 +309,7 @@ $\wf(\varphi, c)$ is true.
 | $\deff x(x_1; \dots; x_n): f; g$ | $\wf(f, (d \cup \bigcup_i \{(x_i, 0)\}, v, l)) \andop \wf(g, (d \cup \{(x, n)\}, v, l))$ |
 | $x(f_1; ...; f_n)$ | $(x, n) \in d \andop \forall i. \wf(f_i, c)$ |
 
-Table: Wellformedness of a MIR filter $\varphi$ with respect to a context $c = (d, v, l)$. {#tab:wf}
+Table: Wellformedness of an IR filter $\varphi$ with respect to a context $c = (d, v, l)$. {#tab:wf}
 
 For hygienic reasons, we require that labels are disjoint from variables.
 This can be easily ensured by prefixing labels and variables differently.
@@ -299,57 +329,11 @@ This can be ensured by postfixing all identifiers with their arity.
   $\deff f^1(g^0): g^0; \deff f^0: .; f^1(f^0)$.
 :::
 
-## Concrete jq syntax {#sec:jq-syntax}
-
-Let us now go a level above HIR, namely a subset of actual jq syntax^[
-  Actual jq syntax has a few more constructions to offer, including
-  variable arguments, string interpolation, modules, etc.
-  However, these constructions can be transformed into
-  semantically equivalent syntax as treated in this text.
-] of which we have seen examples in @sec:tour, and
-show how to transform jq filters to HIR and to MIR.
-
-The syntax of filters in concrete jq syntax is nearly the same as in HIR.
-To translate between the operators in @tab:binops, see @tab:op-correspondence.
-The arithmetic update operators in jq, namely
-`+=`,
-`-=`,
-`*=`,
-`/=`, and
-`%=`,
-correspond to the operators $aritheq$ in HIR, namely
-$\mathrel{+\!\!=}$,
-$-\!\!=$,
-$\times\!\!=$,
-$\div\!\!=$, and
-$\%\!\!=$.
-Filters of the shape
-`if f then g else h end` correspond to the filter
-$\ite{f}{g}{h}$ in HIR;
-that is, in HIR, the final `end` is omitted.
-Filters of the shape
-`if f1 then g1 elif f2 then g2 ... elif fn then gn else h end` are equivalent to
-`if f1 then g1 else if f2 then g2 else ... if fn then gn else h end ... end end`.
-Furthermore, in jq, it is invalid syntax to
-call a nullary filter as `x()` instead of `x`, or to
-define a nullary filter as `def x(): f; g` instead of `def x: f; g`.
-
---- --- --- --- --------- -------- ------ ----------------- ------ --- ------ --- ------ --- --- -------- ------ ----
-jq  `|` `,` `=` `|=`      `//=`    `//`   `==`              `!=`   `<` `<=`   `>` `>=`   `+` `-` `*`      `/`    `%`
-HIR $|$ $,$ $=$ $\update$ $\alteq$ $\alt$ $\stackrel{?}{=}$ $\neq$ $<$ $\leq$ $>$ $\geq$ $+$ $-$ $\times$ $\div$ $\%$
---- --- --- --- --------- -------- ------ ----------------- ------ --- ------ --- ------ --- --- -------- ------ ----
-
-Table: Operators in concrete jq syntax and their corresponding HIR operators. {#tab:op-correspondence}
-
-To convert a jq filter `f` to MIR, we convert `f` to HIR, then to MIR, using @tab:lowering.
-
 ::: {.example}
   Consider the jq program `def recurse(f): ., (f | recurse(f)); recurse(. + 1)`,
   which returns the infinite stream of output values $n, n+1, \dots$
   when provided with an input number $n$.
-  This example can be converted to the HIR filter
-  $\deff \recurse(f): ., (f | \recurse(f)); \recurse(. + 1).$
-  Lowering this to MIR yields
+  Lowering this to IR yields
   $\deff \recurse(f): ., (f | \recurse(f)); \recurse(. \as \$x' | 1 \as \$y' | \$x' + \$y').$
 :::
 
@@ -365,14 +349,7 @@ To convert a jq filter `f` to MIR, we convert `f` to HIR, then to MIR, using @ta
 
   When given an array as an input, it yields
   those elements of the array that are smaller than $0$.
-  This example can be converted to the HIR filter
-  \begin{align*}
-  &\deff \emptyf: \{\}[] \as \$x | .; \\
-  &\deff \operatorname{select}(f): \ite{f}{.}{\emptyf}; \\
-  &\deff \operatorname{negative}: . < 0; \\
-  &.[] | \operatorname{select}(\operatorname{negative})
-  \end{align*}
-  Lowering this to MIR yields
+  Lowering this to IR yields
   \begin{align*}
   &\deff \emptyf: (\{\}[] | .[]) \as \$x | .; \\
   &\deff \operatorname{select}(f): f \as \$x' | \ite{\$x'}{.}{\emptyf}; \\
@@ -381,5 +358,5 @@ To convert a jq filter `f` to MIR, we convert `f` to HIR, then to MIR, using @ta
   \end{align*}
 :::
 
-@sec:semantics shows how to run the resulting MIR filter $f$.
+@sec:semantics shows how to run an IR filter $f$.
 For a given input value $v$, the output of $f$ will be given by $\eval\, \sem f\, v$.
