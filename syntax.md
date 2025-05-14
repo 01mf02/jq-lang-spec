@@ -21,10 +21,10 @@ We will now present a subset of jq syntax^[
 
 \newcommand{\jqkw}[1]{\mathrel{\operatorname{\mathtt{#1}}}}
 \newcommand{\jqas}{\jqkw{as}}
-\newcommand{\jqdef}[3]{{\jqkw{def} #1\!: #2;\; #3}}
-\newcommand{\jqite}[3]{{\jqkw{if} #1 \jqkw{then} #2 \jqkw{else} #3 \jqkw{end}}}
-\newcommand{\jqfold}[4]{{\jqkw{#1} #2 \jqas #3\; #4}}
-\newcommand{\jqlb}[2]{{\jqkw{#1}\, \$#2}}
+\newcommand{\jqdef }[3]{\relrel\jqkw{def} #1\!: #2;\; #3}
+\newcommand{\jqite }[3]{\relrel\jqkw{if} #1 \jqkw{then} #2 \jqkw{else} #3 \jqkw{end}}
+\newcommand{\jqfold}[4]{\relrel\jqkw{#1} #2 \jqas #3\; #4}
+\newcommand{\jqlb  }[2]{\relrel\jqkw{#1}\, \$#2}
 
 A _filter_ $f$ is defined by the grammar
 \begin{align*}

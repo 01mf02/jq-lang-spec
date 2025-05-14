@@ -1,5 +1,18 @@
+% When a \mathrel such as `=` or `:=` is followed by another \mathrel,
+% no space is inserted between the two.
+% This is very unfortunate.
+% To work around this, we can put \mathop{} before the \mathrel.
+% According to TeX by topic (§23.6.1),
+% when we have `\mathrel{a} \mathop{} \mathrel{b}`,
+% a \thickmuskip is inserted before and after \mathop{}, and
+% when we have `\mathop{} \mathrel{b}` (no \mathrel{...} before \mathop{}),
+% a \thickmuskip is inserted after \mathop{}.
+% We remove the superfluous \thickmuskip to get the desired spacing.
+\newcommand{\relrel}{\mathop{}\mskip-\thickmuskip}
+
 % https://tex.stackexchange.com/questions/742495/spacing-before-and-after-text-operators
-\newcommand{\relname}[1]{\mathrel{\operatorname{#1}}}
+\newcommand{\relname}[1]{\mathrel{\mathrm{#1}}}
+
 \newcommand{\reduce}{\relname{reduce}}
 \newcommand{\foreac}{\relname{foreach}}
 \newcommand{\labelf}{\relname{label}}
