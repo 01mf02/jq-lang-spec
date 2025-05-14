@@ -1,16 +1,25 @@
-% When a \mathrel such as `=` or `:=` is followed by another \mathrel,
-% no space is inserted between the two.
-% This is very unfortunate.
-% To work around this, we can put \mathop{} before the \mathrel.
-% According to TeX by topic (§23.6.1),
-% when we have `\mathrel{a} \mathop{} \mathrel{b}`,
-% a \thickmuskip is inserted before and after \mathop{}, and
-% when we have `\mathop{} \mathrel{b}` (no \mathrel{...} before \mathop{}),
-% a \thickmuskip is inserted after \mathop{}.
-% We remove the superfluous \thickmuskip to get the desired spacing.
-\newcommand{\relrel}{\mathop{}\mskip-\thickmuskip}
-
 % https://tex.stackexchange.com/questions/742495/spacing-before-and-after-text-operators
+\newcommand{\rsep}{\mathclose{}}
+
+% jq macros
+\newcommand{\jqf }[1]{\mathtt{#1}}
+\newcommand{\jqkw}[1]{\mathrel{\jqf{#1}}}
+\newcommand{\jqas}{\jqkw{as}}
+\newcommand{\jqdef }[3]{\jqkw{def} #1\!: #2;\; #3}
+\newcommand{\jqite }[3]{\jqkw{if} #1 \jqkw{then} #2 \jqkw{else} #3 \jqkw{end}}
+\newcommand{\jqfold}[4]{\jqkw{#1} #2 \jqas #3\; #4}
+\newcommand{\jqlb  }[2]{\jqkw{#1}\, \$#2}
+
+% IR macros
+\newcommand{\irf }[1]{\mathrm{#1}}
+\newcommand{\irkw}[1]{\mathrel{\irf{#1}}}
+\newcommand{\iras}{\irkw{as}}
+\newcommand{\irdef }[3]{\irkw{def} #1\!: #2;\; #3}
+\newcommand{\irite }[3]{\irkw{if} #1 \irkw{then} #2 \irkw{else} #3}
+\newcommand{\irfold}[4]{\irkw{#1} #2 \iras #3\; #4}
+\newcommand{\irlb  }[2]{\irkw{#1}\, \$#2}
+\newcommand{\irtc  }[2]{\irkw{try} #1 \irkw{catch} #2}
+
 \newcommand{\relname}[1]{\mathrel{\mathrm{#1}}}
 
 \newcommand{\reduce}{\relname{reduce}}
@@ -24,7 +33,7 @@
 \newcommand{\catch}{\relname{catch}}
 \newcommand{\deff}{\relname{def}}
 \newcommand{\ite}[3]{{\relname{if} #1 \relname{then} #2 \relname{else} #3}}
-\newcommand{\gror}{\quad\|\quad}
+\newcommand{\gror}{\mathbin{\quad\|\quad}}
 \newcommand{\cartesian}{\mathrel{\circ}}
 \newcommand{\labelx}[1]{{\labelf\,\$#1}}
 \newcommand{\breakx}[1]{{\breakf\,\$#1}}
@@ -38,10 +47,9 @@
 \newcommand{\floor}[1]{\lfloor#1\rfloor}
 \newcommand{\ceil}[1]{\lceil#1\rceil}
 \newcommand{\bool}{\operatorname{bool}}
-\newcommand{\true}{\operatorname{true}}
-\newcommand{\false}{\operatorname{false}}
+\newcommand{\true}{\irf{true}}
+\newcommand{\false}{\irf{false}}
 \newcommand{\length}{\operatorname{length}}
-\newcommand{\wf}{\operatorname{wf}}
 \newcommand{\recurse}{\operatorname{recurse}}
 \newcommand{\repeatf}{\operatorname{repeat}}
 \newcommand{\emptyf}{\operatorname{empty}}
