@@ -109,7 +109,7 @@ Let us discuss its different cases:
   $f \as \$x' | \$x' | g$, where $\$x'$ is a fresh variable.
   Therefore, we could be tempted to lower $f | g$ to
   $\floor f  \as \$x' | \$x' | \floor g$ in @tab:lowering,
-  in order to further simplify MIR and thus the semantics.
+  in order to further simplify IR and thus the semantics.
   However, we cannot do this because we will see in @sec:updates that
   this equivalence does _not_ hold for updates; that is,
   $(f | g) \update \sigma$ is _not_ equal to
@@ -118,8 +118,8 @@ Let us discuss its different cases:
   by the output of $g$ on the input $e$.
   At first sight, this seems to diverge from jq, which
   aborts the evaluation of $f$ after the first error.
-  However, because lowering to MIR replaces
-  $\try f \catch g$ with
+  However, because lowering to IR replaces
+  $\jqkw{try} f \jqkw{catch} g$ with
   $\labelx{x'} | \try f \catch (g, \breakx{x'})$ (see @tab:lowering),
   the overall behaviour described here corresponds to jq after all.
 - $\labelx x | f$: Returns all values yielded by $f$ until $f$ yields
@@ -175,7 +175,7 @@ in particular because there is no simple way to obtain the domain of an object $
 using only the filters for which we gave semantics in @tab:eval-semantics.
 
 ::: {.example #ex:recursion name="Recursion"}
-  Consider the following MIR filter $\varphi$: $$\deff \repeatf: ., \repeatf; \repeatf$$
+  Consider the following IR filter $\varphi$: $$\deff \repeatf: ., \repeatf; \repeatf$$
   This filter repeatedly outputs its input;
   for example, given the input $v = 1$, it returns $\stream{\ok 1, \ok 1, \ok 1, ...}$.
   First, let us compile a part of our filter, namely
@@ -519,15 +519,16 @@ Our update semantics support all kinds of filters $\varphi$ that are supported b
 $\labelx x | g$ and $\try f \catch g$.
 
 ::: {.example name="Update compilation"}
-  Let us consider the filter $\varphi' \equiv (.[] \update .+.)$.
+  Let us consider the jq filter `(.[] |= .+.)`.
   When given an array as input, this filter outputs a new array where
   each value in the input array is replaced by the output of $.+.$ on the value.
   The filter $.+.$ returns the sum of the input and the input,
   effectively doubling its input.
   For example, when given the input $[1, 2, 3]$, the output of $\varphi$ is $[2, 4, 6]$.
-  Before we can execute $\varphi'$, we have to convert it to MIR, e.g. to
-  $\varphi \equiv .[] \update (. \as \$x | \$x + \$x)$.^[
-    Note that $\floor{\varphi'} = (.[] \update (. \as \$x | . \as \$y | \$x + \$y))$ is a bit longer than the $\varphi$ given here, but
+  Before we can execute the jq filter, we have to lower it to IR, e.g. to
+  $\varphi \equiv (.[] \update (. \as \$x | \$x + \$x))$.^[
+    Note that the actual lowering $(.[] \update (. \as \$x | . \as \$y | \$x + \$y))$
+    is a bit longer than the $\varphi$ given here, but
     because the two are semantically equivalent, we continue with $\varphi$.
   ]
   Let us now trace the execution of the filter, namely
