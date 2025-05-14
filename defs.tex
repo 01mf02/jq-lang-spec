@@ -5,7 +5,7 @@
 \newcommand{\jqf }[1]{\mathtt{#1}}
 \newcommand{\jqkw}[1]{\mathrel{\jqf{#1}}}
 \newcommand{\jqas}{\jqkw{as}}
-\newcommand{\jqdef }[3]{\jqkw{def} #1\!: #2;\; #3}
+\newcommand{\jqdef }[2]{\jqkw{def} #1\!: #2;\;}
 \newcommand{\jqite }[3]{\jqkw{if} #1 \jqkw{then} #2 \jqkw{else} #3 \jqkw{end}}
 \newcommand{\jqfold}[4]{\jqkw{#1} #2 \jqas #3\; #4}
 \newcommand{\jqlb  }[2]{\jqkw{#1}\, \$#2}
@@ -14,42 +14,24 @@
 \newcommand{\irf }[1]{\mathrm{#1}}
 \newcommand{\irkw}[1]{\mathrel{\irf{#1}}}
 \newcommand{\iras}{\irkw{as}}
-\newcommand{\irdef }[3]{\irkw{def} #1\!: #2;\; #3}
+\newcommand{\irdef }[2]{\irkw{def} #1\!: #2;\;}
 \newcommand{\irite }[3]{\irkw{if} #1 \irkw{then} #2 \irkw{else} #3}
 \newcommand{\irfold}[4]{\irkw{#1} #2 \iras #3\; #4}
 \newcommand{\irlb  }[2]{\irkw{#1}\, \$#2}
 \newcommand{\irtc  }[2]{\irkw{try} #1 \irkw{catch} #2}
 
-\newcommand{\relname}[1]{\mathrel{\mathrm{#1}}}
-
-\newcommand{\reduce}{\relname{reduce}}
-\newcommand{\foreac}{\relname{foreach}}
-\newcommand{\labelf}{\relname{label}}
-\newcommand{\breakf}{\relname{break}}
-\newcommand{\as}{\relname{as}}
-\newcommand{\andop}{\relname{and}}
-\newcommand{\orop}{\relname{or}}
-\newcommand{\try}{\relname{try}}
-\newcommand{\catch}{\relname{catch}}
-\newcommand{\deff}{\relname{def}}
-\newcommand{\ite}[3]{{\relname{if} #1 \relname{then} #2 \relname{else} #3}}
 \newcommand{\gror}{\mathbin{\quad\|\quad}}
 \newcommand{\cartesian}{\mathrel{\circ}}
-\newcommand{\labelx}[1]{{\labelf\,\$#1}}
-\newcommand{\breakx}[1]{{\breakf\,\$#1}}
 \newcommand{\update}{\mathbin{|{=}}}
 \newcommand{\alt}{\mathbin{/\!/}}
 \newcommand{\arith}{\odot}
 \newcommand{\fold}{\phi}
-\newcommand{\foldf}{\operatorname{fold}}
 \newcommand{\floor}[1]{\lfloor#1\rfloor}
 \newcommand{\ceil}[1]{\lceil#1\rceil}
 \newcommand{\bool}{\operatorname{bool}}
 \newcommand{\true}{\irf{true}}
 \newcommand{\false}{\irf{false}}
 \newcommand{\length}{\operatorname{length}}
-\newcommand{\repeatf}{\operatorname{repeat}}
-\newcommand{\emptyf}{\operatorname{empty}}
 \newcommand{\stream}[1]{\langle#1\rangle}
 \newcommand{\obj}[1]{\left\{#1\right\}}
 \newcommand{\eval}{\operatorname{eval}}
@@ -59,7 +41,7 @@
 \newcommand{\upd}{\operatorname{upd}}
 \newcommand{\ok}{\operatorname{ok}}
 \newcommand{\err}{\operatorname{err}}
-\newcommand{\error}{\operatorname{error}}
+\newcommand{\breakf}{\operatorname{break}}
 \newcommand{\zero}{\operatorname{zero}}
 \newcommand{\succf}{\operatorname{succ}}
 \newcommand{\nateq}{\operatorname{nat\_eq}}
@@ -72,8 +54,6 @@
 \newcommand{\trues}{\operatorname{trues}}
 \newcommand{\dom}{\operatorname{dom}}
 \newcommand{\keys}{\operatorname{keys}}
-\newcommand{\first}{\operatorname{first}}
-\newcommand{\last}{\operatorname{last}}
 \newcommand{\bind}{\mathop{>\!\!\!>\!=}\nolimits}
 \newcommand{\bindr}{\bind_R}
 \newcommand{\bindl}{\bind_L}

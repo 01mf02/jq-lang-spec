@@ -27,7 +27,7 @@ f &\coloneq \quad n \gror s \gror . \gror .. \\
   &\gror f \jqas P | f \gror \jqfold{reduce}{f}{P}{(f; f)} \gror \jqfold{foreach}{f}{P}{(f; f; f)} \gror \$x \\
   &\gror {\jqlb{label}{x}} | f \gror {\jqlb{break}{x}} \\
   &\gror {\jqite{f}{f}{f}} \gror \jqkw{try} f \gror \jqkw{try} f \jqkw{catch} f \\
-  &\gror {\jqdef{x}{f}{f}} \gror \jqdef{x(x; \dots; x)}{f}{f} \\
+  &\gror {\jqdef{x}{f} f} \gror \jqdef{x(x; \dots; x)}{f} f \\
   &\gror x \gror x(f; \dots; f)
 \end{align*}
 where:
@@ -74,8 +74,8 @@ We consider equivalent the following notations^[
 - $x$ and $x()$,
 - $\jqfold{foreach}{f_x}{P}{(f_y; f)}$ and
   $\jqfold{foreach}{f_x}{P}{(f_y; f; .)}$,
-- $\jqdef{x}{f}{g}$ and
-  $\jqdef{x()}{f}{g}$,
+- $\jqdef{x}{f} g$ and
+  $\jqdef{x()}{f} g$,
 - $\jqkw{if} f_1 \jqkw{then} g_1 \jqkw{elif} f_2 \jqkw{then} g_2 \dots \jqkw{elif} f_n \jqkw{then} g_n \jqkw{else} h \jqkw{end}$ and \newline
   $\jqite{f_1}{g_1}{(\jqite{f_2}{g_2}{\dots (\jqite{f_n}{g_n}{h}) \dots})}$.
 
@@ -95,7 +95,7 @@ f &\coloneq \quad n \gror s \gror . \\
   &\gror f \iras \$x | f \gror \irfold{reduce}{f}{\$x}{(.; f)} \gror \irfold{foreach}{f}{\$x}{(.; f; f)} \gror \$x \\
   &\gror {\irite{\$x}{f}{f}} \gror \irtc{f}{f} \\
   &\gror {\irlb{label}{x}} | f \gror \irlb{break}{x} \\
-  &\gror {\irdef{x(x; \dots; x)}{f}{f}} \\
+  &\gror {\irdef{x(x; \dots; x)}{f} f} \\
   &\gror x(f; \dots; f)
 \end{align*}
 where $p$ is a path part containing variables instead of filters as indices.
@@ -121,7 +121,7 @@ replace certain occurrences of filters by variables
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |
 | $n$, $s$, $.$, $\$x$, or $\jqlb{break}{x}$ | $\varphi$ |
-| $..$ | $\irdef{\irf{recurse}}{., (.[]? | \irf{recurse})}{\irf{recurse}}$ |
+| $..$ | $\irdef{\irf{recurse}}{., (.[]? | \irf{recurse})} \irf{recurse}$ |
 | $(f)$ | $\floor f$ |
 | $f?$ | $\irlb{label}{x'} | \irtc{\floor f}{(\irlb{break}{x'})}$ |
 | $[]$ or $\{\}$ | $\varphi$ |
@@ -146,8 +146,8 @@ replace certain occurrences of filters by variables
 | $\jqite{f_x}{f}{g}$ | $\floor{f_x} \iras \$x' | \irite{\$x'}{\floor f}{\floor g}$ |
 | $\jqkw{try} f \jqkw{catch} g$ | $\irlb{label}{x'} | \irtc{\floor f}{(\floor g, \irlb{break}{x'})}$ |
 | $\jqlb{label}{x} | f$ | $\irlb{label}{x} | \floor f$ |
-| $\jqdef{x}{f}{g}$ | $\irdef{x}{\floor f}{\floor g}$ |
-| $\jqdef{x(x_1; \dots; x_n)}{f}{g}$ | $\irdef{x(x_1; \dots; x_n)}{\floor f}{\floor g}$ |
+| $\jqdef{x}{f} g$ | $\irdef{x}{\floor f} \floor g$ |
+| $\jqdef{x(x_1; \dots; x_n)}{f} g$ | $\irdef{x(x_1; \dots; x_n)}{\floor f} \floor g$ |
 | $x(f_1; \dots; f_n)$ | $x(\floor{f_1}; \dots; \floor{f_n})$ |
 
 Table: Lowering of a jq filter $\phi$ to an IR filter $\floor \phi$. {#tab:lowering}
@@ -164,18 +164,6 @@ for the remaining complex operators $\star$, namely
 "`|`", "`,`", "`|=`", and "`//`",
 @tab:lowering specifies a uniform lowering
 $\floor{f \star g} = \floor f \star \floor g$.
-
-<!--
-The filter $ "empty" := ({} | .[]) \as \$x | . $ returns an empty stream.
-We might be tempted to define it as ${} | .[]$,
-which constructs an empty object, then returns its contained values,
-which corresponds to an empty stream as well.
-However, such a definition relies on the temporary construction of new values
-(such as the empty object here),
-which is not admissible on the left-hand side of updates (see @updates).
-To ensure that $"empty"$ can be employed also as a path expression,
-we define it in this complicated manner.
--->
 
 We define filters that yield the boolean values as
 \begin{align*}
@@ -279,7 +267,7 @@ Informally, we say that a filter is _wellformed_ if all references to
 named filters, variables, and labels were previously bound.
 For example, the filter $a, \$x$ is not wellformed because
 neither $a$ nor $\$x$ was previously bound, but the filter
-$\deff a: 1; 2 \iras \$x | a, \$x$ is wellformed.
+$\irdef{a}{1} 2 \iras \$x | a, \$x$ is wellformed.
 @tab:wf specifies in detail if a filter is wellformed.
 For this, it uses a context $c = (d, v, l)$, consisting of
 a set $d$ of pairs $(x, n)$ storing the name $x$ and the arity $n$ of a filter,
@@ -300,7 +288,7 @@ $\wf(\varphi, c)$ is true.
 | $\irlb{label}{x} | f$ | $\wf(f, (d, v, l \cup \{\$x\}))$ |
 | $\irite{\$x}{f}{g}$ | $\$x \in v$ and $\wf(f, c)$ and $\wf(g, c)$ |
 | $\irfold{\fold}{f_x}{\$x}{(.; f; g)}$ | $\wf(f_x, c)$ and $\wf((f | g), (d, v \cup \{\$x\}, l))$ |
-| $\irdef{x(x_1; \dots; x_n)}{f}{g}$ | $\wf(f, (d \cup \bigcup_i \{(x_i, 0)\}, v, l))$ and $\wf(g, (d \cup \{(x, n)\}, v, l))$ |
+| $\irdef{x(x_1; \dots; x_n)}{f} g$ | $\wf(f, (d \cup \bigcup_i \{(x_i, 0)\}, v, l))$ and $\wf(g, (d \cup \{(x, n)\}, v, l))$ |
 | $x(f_1; \dots; f_n)$ | $(x, n) \in d$ and $\forall i. \wf(f_i, c)$ |
 
 Table: Wellformedness of an IR filter $\varphi$ with respect to a context $c = (d, v, l)$. {#tab:wf}
@@ -318,9 +306,9 @@ Furthermore, we require that identifiers with the same name represent filters wi
 This can be ensured by postfixing all identifiers with their arity.
 
 ::: {.example}
-Consider the filter $\irdef{f(g)}{g}{\irdef{f}{.}{f(f)}}$.
+Consider the filter $\irdef{f(g)}{g} \irdef{f}{.} f(f)$.
 Here, we have to rename identifiers to prevent shadowing issues in the semantics, yielding e.g.
-$\irdef{f^1(g^0)}{g^0}{\irdef{f^0}{.}{f^1(f^0)}}$.
+$\irdef{f^1(g^0)}{g^0} \irdef{f^0}{.} f^1(f^0)$.
 :::
 
 ::: {.example}
@@ -328,7 +316,7 @@ Consider the jq program `def recurse(f): ., (f | recurse(f)); recurse(. + 1)`,
 which returns the infinite stream of output values $n, n+1, \dots$
 when provided with an input number $n$.
 Lowering this to IR yields
-$\irdef{\irf{recurse}(f)}{., (f | \irf{recurse}(f))}{\irf{recurse}(. \iras \$x' | 1 \iras \$y' | \$x' + \$y')}$.
+$\irdef{\irf{recurse}(f)}{., (f | \irf{recurse}(f))} \irf{recurse}(. \iras \$x' | 1 \iras \$y' | \$x' + \$y')$.
 :::
 
 ::: {.example}
@@ -342,12 +330,22 @@ def negative: . < 0;
 ```
 
 When given an array as an input, it yields
-those elements of the array that are smaller than $0$.
+those elements of the array that are smaller than $0$.^[
+  The filter `empty` returns an empty stream.
+  We might be tempted to define it as `{}[]`,
+  which constructs an empty object, then returns its contained values,
+  which corresponds to an empty stream as well.
+  However, such a definition relies on the temporary construction of new values
+  (such as the empty object here),
+  which is not admissible on the left-hand side of updates (see @sec:updates).
+  To ensure that `empty` can be employed also as a path expression,
+  we define it in this complicated manner.
+]
 Lowering this to IR yields
 \begin{align*}
-&\deff \irf{empty}: (\{\}[] | .[]) \iras \$x | .; \\
-&\deff \irf{select}(f): f \iras \$x' | \irite{\$x'}{.}{\irf{empty}}; \\
-&\deff \irf{negative}: . \iras \$x' | 0 \iras \$y' | \$x' < \$y'; \\
+&\irdef{\irf{empty}}{(\{\}[] | .[]) \iras \$x | .} \\
+&\irdef{\irf{select}(f)}{f \iras \$x' | \irite{\$x'}{.}{\irf{empty}}} \\
+&\irdef{\irf{negative}}{. \iras \$x' | 0 \iras \$y' | \$x' < \$y'} \\
 &.[] | \irf{select}(\irf{negative})
 \end{align*}
 :::
