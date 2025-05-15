@@ -154,8 +154,8 @@ Let us discuss its different cases:
   starting with the current input as accumulator.
   The current accumulator value is provided to $f$ as input value and
   $f$ can access the current value of $f_x$ by $\$x$.
-  If $\fold =  \reducef$, this returns only the final        values of the accumulator, whereas
-  if $\fold = \foreachf$, this returns also the intermediate values of the accumulator.
+  If $\fold =  \jqf{reduce}$, this returns only the final        values of the accumulator, whereas
+  if $\fold = \jqf{foreach}$, this returns also the intermediate values of the accumulator.
   We will further explain this and define the functions
   $\reducef  f\,     l\, v$ and
   $\foreachf f\, g\, l\, v$ in @sec:folding.
@@ -172,9 +172,9 @@ Let us discuss its different cases:
 
 An implementation may also define semantics for builtin named filters.
 For example, an implementation may define
-$\run\, \sem{\operatorname{error}}\, v \coloneq \stream{\err\, v}$ and
-$\run\, \sem \keys \, v \coloneq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
-In the case of $\keys$, for example, there is no obvious way to implement it by definition,
+$\run\, \sem{\irf{error}}\, v \coloneq \stream{\err\, v}$ and
+$\run\, \sem{\irf{keys }}\, v \coloneq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
+In the case of $\irf{keys}$, for example, there is no obvious way to implement it by definition,
 in particular because there is no simple way to obtain the domain of an object $\{...\}$
 using only the filters for which we gave semantics in @tab:eval-semantics.
 
@@ -253,8 +253,8 @@ used as new accumulator value with the remaining list $t$.
 If $l$ is empty, then $v$ is called a _final_ accumulator value and $n\, v$ is returned.
 
 We use two different functions for $n$;
-the first returns just its input, corresponding to $\reducef$ which returns a final value, and
-the second returns nothing,  corresponding to $\foreachf$.
+the first returns just its input, corresponding to $\jqf{reduce}$ which returns a final value, and
+the second returns nothing,  corresponding to $\jqf{foreach}$.
 Instantiating $\foldf$ with these two functions, we obtain the following:
 \begin{alignat*}{4}
 \reducef &\coloneq \lambda f.     && \foldf\, f\, (\lambda h\, v. \stream{})\, && (\lambda v. \stream{\ok v &&}) \\
@@ -268,7 +268,7 @@ Their types are:
 \end{alignat*}
 We will now look at what the evaluation of the various folding filters expands to.
 Assuming that the filter $f_x$ evaluates to $\stream{x_0, ..., x_n}$,
-then $\reducef$ and $\foreachf$ expand to
+then $\jqf{reduce}$ and $\jqf{foreach}$ expand to
 \begin{alignat*}{2}
 \irfold{reduce }{f_x}{\$x}{(.; f   )} ={}& x_0 \iras \$x | f & \quad
 \irfold{foreach}{f_x}{\$x}{(.; f; g)} ={}& x_0 \iras \$x | f | g, ( \\
@@ -392,7 +392,7 @@ Table: Update semantics properties. {#tab:update-props}
 | $f | g$ | $f \update (g \update \sigma)$ |
 | $f, g$ | $(f \update \sigma) | (g \update \sigma)$ |
 | $\irite{\$x}{f}{g}$ | $\irite{\$x}{f \update \sigma}{g \update \sigma}$ |
-| $f \alt g$ | $\irite{\irf{first}(f \alt \nullf)}{f \update \sigma}{g \update \sigma}$ |
+| $f \alt g$ | $\irite{\irf{first}(f \alt \irf{null})}{f \update \sigma}{g \update \sigma}$ |
 
 @tab:update-props gives a few properties that we want to hold for updates $\varphi \update \sigma$.
 Let us discuss these for the different filters $\varphi$:
@@ -474,7 +474,7 @@ Table: Update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \lis
 | $.[p]^?$ | $\stream{v[p]^? \update \sigma}$ |
 | $f \iras \$x | g$ | $\reducef\, (\lambda \$x. \upd\, \sem g\, \sigma)\, (\run\, \sem f\, v)\, v$ |
 | $\irite{\$x}{f}{g}$ | $\upd\, ((\bool\, \$x)\, \sem f\, \sem g)\, \sigma\, v$ |
-| $\irlb{break}{x}$ | $\stream{\irlb{break}{x}}$ |
+| $\irlb{break}{x}$ | $\stream{\breakf\, \$x}$ |
 | $\irfold{reduce}{x}{\$x}{(.; f)}$ | $\reducef_{\update}\, (\lambda \$x. \upd\, \sem f)\, \sigma\, (\run\, \sem x\, v)\, v$ |
 | $\irfold{foreach}{x}{\$x}{(.; f; g)}$ | $\foreachf_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem x\, v)\, v$ |
 | $\irdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \upd\, \sem g\, \sigma\, v)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
@@ -517,7 +517,7 @@ Our update semantics support all kinds of filters $\varphi$ that are supported b
 $\irlb{label}{x} | g$ and $\irtc{f}{g}$.
 
 ::: {.example name="Update compilation"}
-  Let us consider the jq filter `(.[] |= .+.)`.
+  Let us consider the jq filter $(.[] \update .+.)$.
   When given an array as input, this filter outputs a new array where
   each value in the input array is replaced by the output of $.+.$ on the value.
   The filter $.+.$ returns the sum of the input and the input,
@@ -599,16 +599,16 @@ Let us start with an example to understand folding on the left-hand side of an u
   and $\varphi$ be the filter $\irfold{\fold}{(0, 0)}{\$x}{(.; .[\$x])}$.
   The regular evaluation of $\varphi$ with the input value as described in @sec:semantics yields
   $$\run\, \sem \varphi\, v = \begin{cases}
-    \stream{\phantom{[[2], 1],\,} [2]} & \text{if } \fold = \reducef \\
-    \stream{         [[2], 1],    [2]} & \text{if } \fold = \foreachf
+    \stream{\phantom{[[2], 1],\,} [2]} & \text{if } \fold = \jqf{reduce} \\
+    \stream{         [[2], 1],    [2]} & \text{if } \fold = \jqf{foreach}
   \end{cases}$$
-  When $\fold = {\foreachf}$, the paths corresponding to the output are $.[0]$ and $.[0][0]$, and
-  when $\fold = {\reducef}$, the paths are just $.[0][0]$.
+  When $\fold = \jqf{foreach}$, the paths corresponding to the output are $.[0]$ and $.[0][0]$, and
+  when $\fold = \jqf{reduce}$, the paths are just $.[0][0]$.
   Given that all outputs have corresponding paths, we can update over them.
   For example, taking $. + [3]$ as filter $\sigma$, we should obtain the output
   $$\upd\, \sem \varphi\, (\run\, \sem \sigma)\, v = \begin{cases}
-    \stream{[[[2, 3], 1\phantom{, 3}], 0]} & \text{if } \fold = \reducef \\
-    \stream{[[[2, 3], 1         , 3 ], 0]} & \text{if } \fold = \foreachf
+    \stream{[[[2, 3], 1\phantom{, 3}], 0]} & \text{if } \fold = \jqf{reduce} \\
+    \stream{[[[2, 3], 1         , 3 ], 0]} & \text{if } \fold = \jqf{foreach}
   \end{cases}$$
 :::
 
@@ -652,8 +652,8 @@ This yields
   the input value and the filters from @ex:folding-update.
   Using some liberty to write $.[0]$ instead of $0 \iras \$x | .[\$x]$, we have:
   $$\varphi \update \sigma = \begin{cases}
-    .[0] \update \phantom{\sigma | (}.[0] \update \sigma   & \text{if } \fold = \reducef \\
-    .[0] \update          \sigma | ( .[0] \update \sigma)  & \text{if } \fold = \foreachf
+    .[0] \update \phantom{\sigma | (}.[0] \update \sigma   & \text{if } \fold = \jqf{reduce} \\
+    .[0] \update          \sigma | ( .[0] \update \sigma)  & \text{if } \fold = \jqf{foreach}
   \end{cases}$$
 :::
 

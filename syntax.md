@@ -1,14 +1,10 @@
 # Syntax {#sec:syntax}
 
-We first describe the syntax for a subset of the jq language in @sec:hir.
-Next, we define a simplified, formal version of jq syntax called
+We first describe the syntax for a large subset of the jq language in @sec:hir.
+Next, we define a reduced subset of jq syntax called
 intermediate representation (IR) in @sec:mir.
 We provide a way to translate from jq syntax to IR.
 We will use IR later to define the semantics in @sec:semantics.
-
-We use
-typewriter font (e.g. "`f`", "`v`") for actual jq syntax and
-cursive    font (e.g. "$f$", "$v$") for IR.
 
 ## jq {#sec:hir}
 
@@ -104,6 +100,7 @@ The set of complex operators $\star$ in IR is reduced compared to full jq syntax
 for example, IR does not include "`=`" and "$\arith$`=`".
 @tab:op-correspondence gives an exhaustive list of IR operators and
 their corresponding operators in jq syntax.
+In the remainder, we will use IR operators also in jq syntax.
 
 -- --- --- --------- ------ ------- ------ --- ------ --- ------ --- --- -------- ------ ----
 jq `|` `,` `|=`      `//`   `==`    `!=`   `<` `<=`   `>` `>=`   `+` `-` `*`      `/`    `%`
@@ -132,8 +129,8 @@ replace certain occurrences of filters by variables
 | $f$ `=` $g$ | $\floor g \iras \$x' | \floor{f \update \$x'}$ |
 | $f$ $\arith$`=` $g$ | $\floor g \iras \$x' | \floor{f \update . \arith \$x'}$ |
 | $f$ `//=` $g$ | $\floor{f \update . \alt g}$ |
-| $f \jqkw{and} g$ | $\floor{\irite{f}{(g | \bool)}{\text{false}}}$ |
-| $f \jqkw{or}  g$ | $\floor{\irite{f}{\text{true}}{(g | \bool)}}$ |
+| $f \jqkw{and} g$ | $\floor{\irite{f}{(g | \irf{bool})}{\text{false}}}$ |
+| $f \jqkw{or}  g$ | $\floor{\irite{f}{\text{true}}{(g | \irf{bool})}}$ |
 | $f \star g$ | $\floor f \star \floor g$ |
 | $f \cartesian g$ | $\floor f \iras \$x' | \floor g \iras \$y' | \$x' \cartesian \$y'$ |
 | $f \jqas \$x | g$ | $\floor f \iras \$x | \floor g$ |
@@ -141,8 +138,8 @@ replace certain occurrences of filters by variables
 | $\$x \jqas [P_1, \dots, P_n] | g$ | $\floor{\$x \iras \obj{(0): P_1, \dots, (n-1): P_n} | g}$ |
 | $\$x \jqas \obj{f_1: P_1, \dots} | g$ | $\floor{\$x[f_1] \iras \$x' | \$x' \iras P_1 | \$x \iras \obj{f_2: P_2, \dots} | g}$ |
 | $\$x \jqas \obj{} | g$ | $\floor g$ |
-| $\jqfold{\fold}{f_x}{\$x}{(f_y; f; g)}$ | $. \iras \$x' | \floor{f_y} | \fold \floor{\$x'} | f_x) \iras \$x (.; \floor f; \floor g)$ |
-| $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$ | $\floor{\fold (f_x \iras P | \beta P) \iras \$x' (f_y; \$x' \iras \beta P | f; \$x' \iras \beta P | g)}$ |
+| $\jqfold{\fold}{f_x}{\$x}{(f_y; f; g)}$ | $. \iras \$x' | \floor{f_y} | \irfold{\fold}{(\floor{\$x'} | f_x)}{\$x}{(.; \floor f; \floor g)}$ |
+| $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$ | $\floor{\irfold{\fold}{(f_x \iras P | \beta P)}{\$x'}{(f_y; \$x' \iras \beta P | f; \$x' \iras \beta P | g)}}$ |
 | $\jqite{f_x}{f}{g}$ | $\floor{f_x} \iras \$x' | \irite{\$x'}{\floor f}{\floor g}$ |
 | $\jqkw{try} f \jqkw{catch} g$ | $\irlb{label}{x'} | \irtc{\floor f}{(\floor g, \irlb{break}{x'})}$ |
 | $\jqlb{label}{x} | f$ | $\irlb{label}{x} | \floor f$ |
@@ -170,7 +167,7 @@ We define filters that yield the boolean values as
 \irf{true}  &\coloneq (0 \iseq 0), \\
 \irf{false} &\coloneq (0  \neq 0).
 \end{align*}
-The filter "$\bool \coloneq \irite{.}{\true}{\false}$"
+The filter "$\irf{bool} \coloneq (\irite{.}{\true}{\false})$"
 maps its input to its boolean value.
 
 In the lowering of the folding operators $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$
@@ -224,18 +221,18 @@ Similarly, in @tab:lower-path, if $[p]$ in the first column is followed by "$?$"
 all occurrences of superscript "?" in the second column stand for "?", otherwise for nothing.
 
 ::: {.example}
-The jq filter `(.[]?[])` is lowered to
+The jq filter $(.[]?[])$ is lowered to
 $(. \iras \$x' | . | .[]? | .[])$.
 Semantically, we will see that this is equivalent to $(.[]? | .[])$.
 :::
 
 ::: {.example}
-The jq filter $\mu \equiv$ `.[0]` is lowered to
+The jq filter $\mu \equiv .[0]$ is lowered to
 $\floor \mu \equiv . \iras \$x | . | (\$x | 0) \iras \$y | .[\$y]$.
 Semantically, we will see that $\floor \mu$ is equivalent to $0 \iras \$y | .[\$y]$.
-The jq filter $\varphi \equiv$ `[3] | .[0] = (length, 2)`
+The jq filter $\varphi \equiv [3] | .[0] \irop{=} (\irf{length}, 2)$
 is lowered to the IR filter
-$\floor \varphi \equiv [3] | (\length, 2) \iras \$z | \floor \mu \update \$z$.
+$\floor \varphi \equiv [3] | (\irf{length}, 2) \iras \$z | \floor \mu \update \$z$.
 In @sec:semantics, we will see that its output is $\stream{[1], [2]}$.
 :::
 
@@ -310,7 +307,7 @@ $\irdef{f^1(g^0)}{g^0} \irdef{f^0}{.} f^1(f^0)$.
 :::
 
 ::: {.example}
-Consider the jq program `def recurse(f): ., (f | recurse(f)); recurse(. + 1)`,
+Consider the jq filter $\jqdef{\jqf{recurse}(f)}{., (f | \jqf{recurse}(f))} \jqf{recurse}(. + 1)$,
 which returns the infinite stream of output values $n, n+1, \dots$
 when provided with an input number $n$.
 Lowering this to IR yields
@@ -319,14 +316,12 @@ $\irdef{\irf{recurse}(f)}{., (f | \irf{recurse}(f))} \irf{recurse}(. \iras \$x' 
 
 ::: {.example}
 Consider the following jq program:
-
-```
-def empty: {}[] as $x | .
-def select(f): if f then . else empty end;
-def negative: . < 0;
-.[] | select(negative)
-```
-
+\begin{align*}
+&\irdef{\irf{empty}}{(\{\}[]) \iras \$x | .} \\
+&\irdef{\irf{select}(f)}{\rsep\irite{f}{.}{\irf{empty}}} \\
+&\irdef{\irf{negative}}{. < 0} \\
+&.[] | \irf{select}(\irf{negative})
+\end{align*}
 When given an array as an input, it yields
 those elements of the array that are smaller than $0$.^[
   The filter `empty` returns an empty stream.
@@ -341,10 +336,10 @@ those elements of the array that are smaller than $0$.^[
 ]
 Lowering this to IR yields
 \begin{align*}
-&\irdef{\irf{empty}}{(\{\}[] | .[]) \iras \$x | .} \\
+&\irdef{\irf{empty}}{(. \iras \$x' | \{\} | .[]) \iras \$x | .} \\
 &\irdef{\irf{select}(f)}{f \iras \$x' | \irite{\$x'}{.}{\irf{empty}}} \\
 &\irdef{\irf{negative}}{. \iras \$x' | 0 \iras \$y' | \$x' < \$y'} \\
-&.[] | \irf{select}(\irf{negative})
+&. \iras \$x' | . | .[] | \irf{select}(\irf{negative})
 \end{align*}
 :::
 
