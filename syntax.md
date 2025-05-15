@@ -197,9 +197,7 @@ Here, $\varphi$ uses the pattern
 $P = [\$x, [\$y], \$z]$ for which
 $\beta P = [\$x, \$y, \$z]$.
 It holds that $\varphi$ is equivalent to
-$$ f \jqas [\$x, [\$y], \$z]
-| [\$x, \$y, \$z] \jqas \$x'
-| \$x' \jqas [\$x, \$y, \$z] | g. $$
+$$ f \jqas [\$x, [\$y], \$z] | [\$x, \$y, \$z] \jqas \$x' | \$x' \jqas [\$x, \$y, \$z] | g. $$
 Here, we first used $\beta P$ as filter
 ($[\$x, \$y, \$z] \jqas \$x' | \dots$) to "serialise" the pattern variables to an array, then as pattern
 ($\$x' \jqas [\$x, \$y, \$z] | \dots$) to "deserialise" the array to retrieve the pattern variables.

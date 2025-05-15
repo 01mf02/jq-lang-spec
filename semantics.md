@@ -183,7 +183,7 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
   This filter repeatedly outputs its input;
   for example, given the input $v = 1$, it returns $\stream{\ok 1, \ok 1, \ok 1, ...}$.
   First, let us compile a part of our filter, namely
-  $$\rho = \sem{., \irf{repeat}} =^{\sem \cdot} \pair\, (\lambda v. \stream{\ok v} + \run \irf{repeat} v)\, (...).$$
+  $$\rho = \sem{., \irf{repeat}} =^{\sem \cdot} \pair\, (\lambda v. \stream{\ok v} + \run\, \irf{repeat}\, v)\, (...).$$
   Here, the second part of the pair $(...)$ does not matter, because
   it is never evaluated due to our not performing any updates in this example.
 
@@ -208,7 +208,7 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
 :::
 
 ::: {.example #ex:labels name="Labels"}
-  Let us consider the filter $\varphi \equiv \irlb{label}{x} | \irlb{break}{x}$.
+  Let us consider the filter $\varphi \equiv \rsep \irlb{label}{x} | \irlb{break}{x}$.
   We have:
   \begin{align*}
   \eval\, \sem \varphi\, v
