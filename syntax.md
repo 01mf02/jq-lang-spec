@@ -105,10 +105,10 @@ for example, IR does not include "`=`" and "$\arith$`=`".
 @tab:op-correspondence gives an exhaustive list of IR operators and
 their corresponding operators in jq syntax.
 
--- --- --- --------- ------ ----------------- ------ --- ------ --- ------ --- --- -------- ------ ----
-jq `|` `,` `|=`      `//`   `==`              `!=`   `<` `<=`   `>` `>=`   `+` `-` `*`      `/`    `%`
-IR $|$ $,$ $\update$ $\alt$ $\stackrel{?}{=}$ $\neq$ $<$ $\leq$ $>$ $\geq$ $+$ $-$ $\times$ $\div$ $\%$
--- --- --- --------- ------ ----------------- ------ --- ------ --- ------ --- --- -------- ------ ----
+-- --- --- --------- ------ ------- ------ --- ------ --- ------ --- --- -------- ------ ----
+jq `|` `,` `|=`      `//`   `==`    `!=`   `<` `<=`   `>` `>=`   `+` `-` `*`      `/`    `%`
+IR $|$ $,$ $\update$ $\alt$ $\iseq$ $\neq$ $<$ $\leq$ $>$ $\geq$ $+$ $-$ $\times$ $\div$ $\%$
+-- --- --- --------- ------ ------- ------ --- ------ --- ------ --- --- -------- ------ ----
 
 Table: Operators in concrete jq syntax and their corresponding IR operators. {#tab:op-correspondence}
 
@@ -167,8 +167,8 @@ $\floor{f \star g} = \floor f \star \floor g$.
 
 We define filters that yield the boolean values as
 \begin{align*}
-\true  &\coloneq 0    = 0, \\
-\false &\coloneq 0 \neq 0.
+\irf{true}  &\coloneq (0 \iseq 0), \\
+\irf{false} &\coloneq (0  \neq 0).
 \end{align*}
 The filter "$\bool \coloneq \irite{.}{\true}{\false}$"
 maps its input to its boolean value.

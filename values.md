@@ -95,8 +95,8 @@ That means that every arithmetic operation can fail.
 Definitions of the arithmetic operators for JSON values are given in @sec:arithmetic.
 
 The value type must also provide Boolean operations
-$\{<, \leq, >, \geq, \stackrel{?}{=}, \neq\}$, where
-$l \stackrel{?}{=} r$ returns whether $l$ equals $r$, and
+$\{<, \leq, >, \geq, \iseq, \neq\}$, where
+$l \iseq r$ returns whether $l$ equals $r$, and
 $l \neq r$ returns its negation.
 Each of these Boolean operations is of type $\valt \to \valt \to \valt$.
 The order on JSON values is defined in @sec:json-order.
