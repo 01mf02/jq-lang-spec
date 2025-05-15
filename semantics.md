@@ -68,7 +68,7 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $f \jqas \$x | g$ | $\run\, \sem f\, v \bind (\lambda \$x. \run, \sem g\, v)$ |
 | $\jqtc{f}{g}$ | $\run\, \sem f\, v \bind_L \lambda r. r\, (\lambda o. \stream r)\, (\run\, \sem g)\, (\lambda b. \stream r)$ |
 | $\jqlb{label}{x} | f$ | $\labelf \fresh\, ((\lambda \$x\, \fresh. \run\, \sem f\, v)\, \fresh\, (\operatorname{succ}\, \fresh))$ |
-| $\jqlb{break}{x}$ | $\stream{\jqlb{break}{x}}$ |
+| $\jqlb{break}{x}$ | $\stream{\breakf\, \$x}$ |
 | $\jqite{\$x}{f}{g}$ | $\run\, ((\bool\, \$x)\, \sem f\, \sem g)\, v$ |
 | $.[p]^?$ | $v[p]^?$ |
 | $\jqfold{reduce }{f_x}{\$x}{(.; f   )}$ | $\reducef \, (\lambda \$x. \run\, \sem f)\, (\run\, \sem{f_x}\, v)\, v$ |
@@ -127,7 +127,7 @@ Let us discuss its different cases:
   $\jqlb{label}{x'} | \jqtc{f}{(g, \jqlb{break}{x'})}$ (see @tab:lowering),
   the overall behaviour described here corresponds to jq after all.
 - $\jqlb{label}{x} | f$: Returns all values yielded by $f$ until $f$ yields
-  an exception $\jqlb{break}{x}$.
+  an exception $\breakf\, \$x$.
   This uses a function $\labelf$ that
   takes a label $\fresh$ and a list $l$ of value results,
   returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
@@ -137,10 +137,10 @@ Let us discuss its different cases:
   \end{align*}
   In this function, $c$ gets bound to $\stream h  + \labelf\, \fresh\, t$,
   which is the function output when the head $h$ is not equal to $\labelf\, \fresh$.
-- $\jqlb{break}{x}$: Returns a value result $\jqlb{break}{x}$.
+- $\jqlb{break}{x}$: Returns a value result $\breakf\, \$x$.
   Similarly to the evaluation of variables $\$x$ described above,
   wellformedness of the filter (as defined in @sec:hir) ensures that
-  the returned value $\jqlb{break}{x}$ will be
+  the returned value $\breakf\, \$x$ will be
   eventually handled by a corresponding filter
   $\jqlb{label}{x} | f$.
   That means that $\eval \sem \varphi$ for a wellformed filter $\varphi$ can only yield
@@ -215,7 +215,7 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
   &= (\lambda \fresh. \run \sem{\jqlb{label}{x} | \jqlb{break}{x}})\, \zero\, v \\
   &= (\lambda \fresh\, v. \labelf\, \fresh\, ((\lambda \$x\, \fresh. \run\, \sem{\jqlb{break}{x}}\, v)\, \fresh\, (\succf\, \fresh)))\, \zero\, v \\
   &= \labelf\, \zero\, ((\lambda \$x\, \fresh. \stream{\jqlb{break}{x}})\, \zero\, (\succf\, \zero)) \\
-  &= \labelf\, \zero\, \stream{\breakf \zero} \\
+  &= \labelf\, \zero\, \stream{\breakf\, \zero} \\
   &= \stream{}
   \end{align*}
   It is interesting to note that if instead of $\jqlb{break}{x}$,
