@@ -230,9 +230,9 @@ Semantically, we will see that this is equivalent to $(.[]? | .[])$.
 The jq filter $\mu \equiv .[0]$ is lowered to
 $\floor \mu \equiv . \jqas \$x | . | (\$x | 0) \jqas \$y | .[\$y]$.
 Semantically, we will see that $\floor \mu$ is equivalent to $0 \jqas \$y | .[\$y]$.
-The jq filter $\varphi \equiv [3] | .[0] \jqop{=} (\jqf{length}, 2)$
+The jq filter $\varphi \equiv ([3] | .[0] = (\jqf{length}, 2))$
 is lowered to the IR filter
-$\floor \varphi \equiv [3] | (\jqf{length}, 2) \jqas \$z | \floor \mu \update \$z$.
+$\floor \varphi \equiv ([3] | (\jqf{length}, 2) \jqas \$z | \floor \mu \update \$z)$.
 In @sec:semantics, we will see that its output is $\stream{[1], [2]}$.
 :::
 

@@ -1,44 +1,37 @@
-COMMON=tour.md syntax.md values.md semantics.md
+COMMON=defs.tex tour.md syntax.md values.md semantics.md
 ICFP=icfp-intro.md $(COMMON) impl.md icfp-concl.md json.md
 SPEC=spec-intro.md $(COMMON) json.md
-DEPS=filter.lua literature.bib template.tex header.tex defs.tex Makefile
+DEPS=filter.lua literature.bib template.tex header.tex Makefile
 
 PANOPTS= \
   --from=markdown+tex_math_single_backslash+tex_math_dollars+raw_tex \
-  --to=latex \
   --lua-filter filter.lua \
-  --bibliography=literature.bib --natbib \
-  --template template.tex \
-  --include-in-header header.tex \
-  --include-in-header defs.tex \
+  --bibliography=literature.bib \
   --standalone \
   --columns 10000 # TODO!
 
-all: icfp.pdf spec.pdf
+LATEXOPTS=$(PANOPTS) --natbib --template template.tex --include-in-header header.tex
+HTMLOPTS=$(PANOPTS) --citeproc --mathjax
+
+
+all: icfp.pdf spec.pdf spec.html
 clean:
 	rm *.aux *.bbl *.blg *.log *.pdf structure.tex icfp.tex spec.tex
 
 icfp.tex: icfp.yaml $(ICFP) $(DEPS) structure.tex ccs.tex
-	pandoc --metadata-file $< $(ICFP) $(PANOPTS) -o $@ -H ccs.tex
+	pandoc --metadata-file $< $(ICFP) $(LATEXOPTS) -o $@ -H ccs.tex
 
 spec.tex: spec.yaml $(SPEC) $(DEPS)
-	pandoc --metadata-file $< $(SPEC) $(PANOPTS) -o $@
+	pandoc --metadata-file $< $(SPEC) $(LATEXOPTS) -o $@
+
+spec.html: spec.yaml $(SPEC) $(DEPS)
+	pandoc --metadata-file $< $(SPEC) $(HTMLOPTS) -o $@
 
 %.pdf: %.tex
 	xelatex $<
 	bibtex $*
 	xelatex $<
 	xelatex $<
-
-html:
-	pandoc $(FILENAME).md \
-	--lua-filter filter.lua \
-	--citeproc \
-	--from=markdown+tex_math_single_backslash+tex_math_dollars+markdown_in_html_blocks \
-	--to=html5 \
-	--output=$(FILENAME).html \
-	--mathjax \
-	#--standalone
 
 # remove trailing semicolons to suppress error messages
 structure.tex: structure.dot

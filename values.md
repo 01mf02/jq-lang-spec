@@ -27,7 +27,7 @@ either OK or an exception (an error or a break).
 \begin{align*}
 \ok    &: \valt \to \resultt \coloneq \lambda x\, o\, e\, b. o\, x \\
 \err   &: \valt \to \resultt \coloneq \lambda x\, o\, e\, b. e\, x \\
-\breakf&:  \mathbb N \to \resultt \coloneq \lambda x\, o\, e\, b. b\, x
+\breakf&: \mathbb N \to \resultt \coloneq \lambda x\, o\, e\, b. b\, x
 \end{align*}
 
 We will use _lists_ $\listt$ of value results as return type of filters.
