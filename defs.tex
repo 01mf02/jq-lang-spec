@@ -1,25 +1,25 @@
 % https://tex.stackexchange.com/questions/742495/spacing-before-and-after-text-operators
 \newcommand{\rsep}{\mathclose{}}
 
-% jq macros
+% jq syntax
 \newcommand{\jqf }[1]{\mathtt{#1}}
 \newcommand{\jqkw}[1]{\mathrel{\jqf{#1}}}
+\newcommand{\jqop}[1]{\mathrel{\normalfont{\texttt{#1}}}}
 \newcommand{\jqas}{\jqkw{as}}
 \newcommand{\jqdef }[2]{\jqkw{def} #1\!: #2;\;}
 \newcommand{\jqite }[3]{\jqkw{if} #1 \jqkw{then} #2 \jqkw{else} #3 \jqkw{end}}
 \newcommand{\jqfold}[4]{\jqkw{#1} #2 \jqas #3\; #4}
 \newcommand{\jqlb  }[2]{\jqkw{#1}\, \$#2}
+\newcommand{\irtc  }[2]{\irkw{try} #1 \irkw{catch} #2}
 
 % IR macros
 \newcommand{\irf }[1]{\mathtt{#1}}
 \newcommand{\irkw}[1]{\mathrel{\irf{#1}}}
-\newcommand{\irop}[1]{\mathrel{\normalfont{\texttt{#1}}}}
 \newcommand{\iras}{\irkw{as}}
 \newcommand{\irdef }[2]{\irkw{def} #1\!: #2;\;}
 \newcommand{\irite }[3]{\irkw{if} #1 \irkw{then} #2 \irkw{else} #3 \irkw{end}}
 \newcommand{\irfold}[4]{\irkw{#1} #2 \iras #3\; #4}
 \newcommand{\irlb  }[2]{\irkw{#1}\, \$#2}
-\newcommand{\irtc  }[2]{\irkw{try} #1 \irkw{catch} #2}
 
 \newcommand{\gror}{\mathbin{\quad\|\quad}}
 \newcommand{\cartesian}{\mathrel{\circ}}
