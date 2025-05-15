@@ -9,4 +9,6 @@ Run `make spec.pdf` to generate a PDF version of the specification.
 For this, `pandoc`, `dot2tex`, and a TeX distribution should be installed.
 (I currently use `pandoc` 3.4 and `dot2tex` 2.11.3.)
 
+For interactive regeneration: `ls | entr make spec.pdf`
+
 [`jq`]: https://jqlang.github.io/jq/
