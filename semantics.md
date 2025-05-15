@@ -40,7 +40,7 @@ $t_u = \sigma\, v$ was obtained from @tab:update-semantics.
 The lambda term $\sem \varphi$ obtained from a well-formed filter $\varphi$
 may contain at most one free variable, namely $\fresh$.
 This variable is used to generate fresh labels for the execution of
-$\irlb{label}{x} | f$, see @ex:labels.
+$\jqlb{label}{x} | f$, see @ex:labels.
 In order to create a closed term, we initially bind $\fresh$ to zero.
 We can then run a filter using the following function:
 $$\eval: \filtert \to \valt \to \listt \coloneq \lambda \varphi. (\lambda \fresh. \run\, \varphi)\, \zero$$
@@ -65,15 +65,15 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $f, g$ | $\run\, \sem f\, v + \run\, \sem g\, v$ |
 | $f | g$ | $\run\, \sem f\, v \bind \run\, \sem g$ |
 | $f \alt g$ | $(\lambda t. t\, (\lambda \_\, \_. t)\, (\run\, \sem g\, v))\, (\run\, \sem f\, v \bind \trues)$ |
-| $f \iras \$x | g$ | $\run\, \sem f\, v \bind (\lambda \$x. \run, \sem g\, v)$ |
-| $\irtc{f}{g}$ | $\run\, \sem f\, v \bind_L \lambda r. r\, (\lambda o. \stream r)\, (\run\, \sem g)\, (\lambda b. \stream r)$ |
-| $\irlb{label}{x} | f$ | $\labelf \fresh\, ((\lambda \$x\, \fresh. \run\, \sem f\, v)\, \fresh\, (\operatorname{succ}\, \fresh))$ |
-| $\irlb{break}{x}$ | $\stream{\irlb{break}{x}}$ |
-| $\irite{\$x}{f}{g}$ | $\run\, ((\bool\, \$x)\, \sem f\, \sem g)\, v$ |
+| $f \jqas \$x | g$ | $\run\, \sem f\, v \bind (\lambda \$x. \run, \sem g\, v)$ |
+| $\jqtc{f}{g}$ | $\run\, \sem f\, v \bind_L \lambda r. r\, (\lambda o. \stream r)\, (\run\, \sem g)\, (\lambda b. \stream r)$ |
+| $\jqlb{label}{x} | f$ | $\labelf \fresh\, ((\lambda \$x\, \fresh. \run\, \sem f\, v)\, \fresh\, (\operatorname{succ}\, \fresh))$ |
+| $\jqlb{break}{x}$ | $\stream{\jqlb{break}{x}}$ |
+| $\jqite{\$x}{f}{g}$ | $\run\, ((\bool\, \$x)\, \sem f\, \sem g)\, v$ |
 | $.[p]^?$ | $v[p]^?$ |
-| $\irfold{reduce }{f_x}{\$x}{(.; f   )}$ | $\reducef \, (\lambda \$x. \run\, \sem f)\, (\run\, \sem{f_x}\, v)\, v$ |
-| $\irfold{foreach}{f_x}{\$x}{(.; f; g)}$ | $\foreachf\, (\lambda \$x. \run\, \sem f)\, (\lambda \$x. \run\, \sem g)\, (\run\, \sem{f_x}\, v)\, v$ |
-| $\irdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \run\, \sem g\, v) (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
+| $\jqfold{reduce }{f_x}{\$x}{(.; f   )}$ | $\reducef \, (\lambda \$x. \run\, \sem f)\, (\run\, \sem{f_x}\, v)\, v$ |
+| $\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$ | $\foreachf\, (\lambda \$x. \run\, \sem f)\, (\lambda \$x. \run\, \sem g)\, (\run\, \sem{f_x}\, v)\, v$ |
+| $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \run\, \sem g\, v) (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
 | $x(f_1; ...; f_n)$ | $\run\, (x\, \sem{f_1}\, ...\, \sem{f_n})\, v$ |
 | $f \update g$ | $\upd\, \sem f\, (\run\, \sem g)\, v$ |
 
@@ -85,7 +85,7 @@ Let us discuss its different cases:
 - $\$x$: Returns the value currently bound to the variable $\$x$.
   Wellformedness of the filter (as defined in @sec:mir) ensures that
   whenever we evaluate $\$x$, it must have been substituted,
-  for example by a surrounding call to $f \iras \$x | g$.
+  for example by a surrounding call to $f \jqas \$x | g$.
 - $[]$ or $\{\}$: Creates an empty array or object.
 - $[f]$: Creates an array from the output of $f$, using the function $\arr$ defined in @sec:values.
 - $\{\$x: \$y\}$: Creates an object from the values bound to $\$x$ and $\$y$,
@@ -106,28 +106,28 @@ Let us discuss its different cases:
   Here, we use a function $\trues\, x$ that
   returns its input $x$ if its boolean value is true.
   $$\trues: \valt \to \listt \coloneq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
-- $f \iras \$x | g$: For every output of $f$, binds it to the variable $\$x$ and
+- $f \jqas \$x | g$: For every output of $f$, binds it to the variable $\$x$ and
   returns the output of $g$, where $g$ may reference $\$x$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
   We can show that the evaluation of $f | g$ is equivalent to that of
-  $f \iras \$x' | \$x' | g$, where $\$x'$ is a fresh variable.
+  $f \jqas \$x' | \$x' | g$, where $\$x'$ is a fresh variable.
   Therefore, we could be tempted to lower $f | g$ to
-  $\floor f \iras \$x' | \$x' | \floor g$ in @tab:lowering,
+  $\floor f \jqas \$x' | \$x' | \floor g$ in @tab:lowering,
   in order to further simplify IR and thus the semantics.
   However, we cannot do this because we will see in @sec:updates that
   this equivalence does _not_ hold for updates; that is,
   $(f | g) \update \sigma$ is _not_ equal to
-  $(f \iras \$x' | \$x' | g) \update \sigma$.
-- $\irtc{f}{g}$: Replaces all outputs of $f$ that equal $\err\, e$ for some $e$
+  $(f \jqas \$x' | \$x' | g) \update \sigma$.
+- $\jqtc{f}{g}$: Replaces all outputs of $f$ that equal $\err\, e$ for some $e$
   by the output of $g$ on the input $e$.
   At first sight, this seems to diverge from jq, which
   aborts the evaluation of $f$ after the first error.
   However, because lowering to IR replaces
   $\jqkw{try} f \jqkw{catch} g$ with
-  $\irlb{label}{x'} | \irtc{f}{(g, \irlb{break}{x'})}$ (see @tab:lowering),
+  $\jqlb{label}{x'} | \jqtc{f}{(g, \jqlb{break}{x'})}$ (see @tab:lowering),
   the overall behaviour described here corresponds to jq after all.
-- $\irlb{label}{x} | f$: Returns all values yielded by $f$ until $f$ yields
-  an exception $\irlb{break}{x}$.
+- $\jqlb{label}{x} | f$: Returns all values yielded by $f$ until $f$ yields
+  an exception $\jqlb{break}{x}$.
   This uses a function $\labelf$ that
   takes a label $\fresh$ and a list $l$ of value results,
   returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
@@ -137,20 +137,20 @@ Let us discuss its different cases:
   \end{align*}
   In this function, $c$ gets bound to $\stream h  + \labelf\, \fresh\, t$,
   which is the function output when the head $h$ is not equal to $\labelf\, \fresh$.
-- $\irlb{break}{x}$: Returns a value result $\irlb{break}{x}$.
+- $\jqlb{break}{x}$: Returns a value result $\jqlb{break}{x}$.
   Similarly to the evaluation of variables $\$x$ described above,
   wellformedness of the filter (as defined in @sec:hir) ensures that
-  the returned value $\irlb{break}{x}$ will be
+  the returned value $\jqlb{break}{x}$ will be
   eventually handled by a corresponding filter
-  $\irlb{label}{x} | f$.
+  $\jqlb{label}{x} | f$.
   That means that $\eval \sem \varphi$ for a wellformed filter $\varphi$ can only yield
   values and errors, but never a break result.
-- $\irite{\$x}{f}{g}$: Returns the output of $f$ if $\$x$ is bound to
+- $\jqite{\$x}{f}{g}$: Returns the output of $f$ if $\$x$ is bound to
   a "true" value (neither null nor false for JSON, see @sec:simple-fns), else returns the output of $g$.
 - $.[p]^?$: Accesses parts of the input value;
   see @sec:value-ops for the definitions of the operators.
   When evaluating this, the indices contained in $p$ have been substituted by values.
-- $\irfold{\fold}{f_x}{\$x}{(.; f)}$: Folds $f$ over the values returned by $f_x$,
+- $\jqfold{\fold}{f_x}{\$x}{(.; f)}$: Folds $f$ over the values returned by $f_x$,
   starting with the current input as accumulator.
   The current accumulator value is provided to $f$ as input value and
   $f$ can access the current value of $f_x$ by $\$x$.
@@ -159,31 +159,31 @@ Let us discuss its different cases:
   We will further explain this and define the functions
   $\reducef  f\,     l\, v$ and
   $\foreachf f\, g\, l\, v$ in @sec:folding.
-- $\irdef{x(x_1; ...; x_n)}{f} g$: Binds the $n$-ary filter $x$ in $g$.
+- $\jqdef{x(x_1; ...; x_n)}{f} g$: Binds the $n$-ary filter $x$ in $g$.
   The definition of $x$, namely $f$, may refer to
   any of the arguments $x_i$ as well as to $x$ itself.
   In other words, filters can be defined recursively,
   which is why we use the Y combinator $Y_{n+1}$ here.
   @ex:recursion shows how a recursive call is evaluated.
 - $x(f_1; ...; f_n)$: Calls an $n$-ary filter $x$.
-  This also handles the case of calling nullary filters such as $\irf{empty}$.
+  This also handles the case of calling nullary filters such as $\jqf{empty}$.
 - $f \update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @sec:updates.
 
 An implementation may also define semantics for builtin named filters.
 For example, an implementation may define
-$\run\, \sem{\irf{error}}\, v \coloneq \stream{\err\, v}$ and
-$\run\, \sem{\irf{keys }}\, v \coloneq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
-In the case of $\irf{keys}$, for example, there is no obvious way to implement it by definition,
+$\run\, \sem{\jqf{error}}\, v \coloneq \stream{\err\, v}$ and
+$\run\, \sem{\jqf{keys }}\, v \coloneq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
+In the case of $\jqf{keys}$, for example, there is no obvious way to implement it by definition,
 in particular because there is no simple way to obtain the domain of an object $\{...\}$
 using only the filters for which we gave semantics in @tab:eval-semantics.
 
 ::: {.example #ex:recursion name="Recursion"}
-  Consider the following IR filter $\varphi$: $$\irdef{\irf{repeat}}{., \irf{repeat}} \irf{repeat}$$
+  Consider the following IR filter $\varphi$: $$\jqdef{\jqf{repeat}}{., \jqf{repeat}} \jqf{repeat}$$
   This filter repeatedly outputs its input;
   for example, given the input $v = 1$, it returns $\stream{\ok 1, \ok 1, \ok 1, ...}$.
   First, let us compile a part of our filter, namely
-  $$\rho = \sem{., \irf{repeat}} =^{\sem \cdot} \pair\, (\lambda v. \stream{\ok v} + \run\, \irf{repeat}\, v)\, (...).$$
+  $$\rho = \sem{., \jqf{repeat}} =^{\sem \cdot} \pair\, (\lambda v. \stream{\ok v} + \run\, \jqf{repeat}\, v)\, (...).$$
   Here, the second part of the pair $(...)$ does not matter, because
   it is never evaluated due to our not performing any updates in this example.
 
@@ -194,13 +194,13 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
   $\eval\, \sem \varphi\, v$ is equivalent to:
   \begin{align*}
   \run\, \sem \varphi\, v
-  &= (\lambda \irf{repeat}. \run\, \sem{\irf{repeat}}\, v)\, (Y_1\, (\lambda \irf{repeat}. \rho)) \\
-  &=^{\sem \cdot} (\lambda \irf{repeat}. \run\, \irf{repeat}\, v)\, (Y_1\, (\lambda \irf{repeat}. \rho)) \\
-  &=^\beta \run\, (Y_1\, (\lambda \irf{repeat}. \rho))\, v \\
-  &=^{Y_1} \run\, ((\lambda \irf{repeat}. \rho)\, (Y_1\, (\lambda \irf{repeat}. \rho)))\, v \\
-  &=^\rho \run\, ((\lambda \irf{repeat}. \pair\, (\lambda v. \stream{\ok v} + \run\, \irf{repeat}\, v)\, (...))\, (Y_1\, (\lambda \irf{repeat}. \rho)))\, v \\
-  &=^\beta \run\, (\pair\, (\lambda v. \stream{\ok v} + \run\, (Y_1\, (\lambda \irf{repeat}. \rho))\, v)\, (...))\, v \\
-  &=^\beta \stream{\ok v} + \run\, (Y_1\, (\lambda \irf{repeat}. \rho))\, v \\
+  &= (\lambda \jqf{repeat}. \run\, \sem{\jqf{repeat}}\, v)\, (Y_1\, (\lambda \jqf{repeat}. \rho)) \\
+  &=^{\sem \cdot} (\lambda \jqf{repeat}. \run\, \jqf{repeat}\, v)\, (Y_1\, (\lambda \jqf{repeat}. \rho)) \\
+  &=^\beta \run\, (Y_1\, (\lambda \jqf{repeat}. \rho))\, v \\
+  &=^{Y_1} \run\, ((\lambda \jqf{repeat}. \rho)\, (Y_1\, (\lambda \jqf{repeat}. \rho)))\, v \\
+  &=^\rho \run\, ((\lambda \jqf{repeat}. \pair\, (\lambda v. \stream{\ok v} + \run\, \jqf{repeat}\, v)\, (...))\, (Y_1\, (\lambda \jqf{repeat}. \rho)))\, v \\
+  &=^\beta \run\, (\pair\, (\lambda v. \stream{\ok v} + \run\, (Y_1\, (\lambda \jqf{repeat}. \rho))\, v)\, (...))\, v \\
+  &=^\beta \stream{\ok v} + \run\, (Y_1\, (\lambda \jqf{repeat}. \rho))\, v \\
   &= \stream{\ok v} + \run\, \sem \varphi\, v.
   \end{align*}
   This shows that the evaluation of $\varphi$ on any input $v$ yields
@@ -208,18 +208,18 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
 :::
 
 ::: {.example #ex:labels name="Labels"}
-  Let us consider the filter $\varphi \equiv \rsep \irlb{label}{x} | \irlb{break}{x}$.
+  Let us consider the filter $\varphi \equiv \rsep \jqlb{label}{x} | \jqlb{break}{x}$.
   We have:
   \begin{align*}
   \eval\, \sem \varphi\, v
-  &= (\lambda \fresh. \run \sem{\irlb{label}{x} | \irlb{break}{x}})\, \zero\, v \\
-  &= (\lambda \fresh\, v. \labelf\, \fresh\, ((\lambda \$x\, \fresh. \run\, \sem{\irlb{break}{x}}\, v)\, \fresh\, (\succf\, \fresh)))\, \zero\, v \\
-  &= \labelf\, \zero\, ((\lambda \$x\, \fresh. \stream{\irlb{break}{x}})\, \zero\, (\succf\, \zero)) \\
+  &= (\lambda \fresh. \run \sem{\jqlb{label}{x} | \jqlb{break}{x}})\, \zero\, v \\
+  &= (\lambda \fresh\, v. \labelf\, \fresh\, ((\lambda \$x\, \fresh. \run\, \sem{\jqlb{break}{x}}\, v)\, \fresh\, (\succf\, \fresh)))\, \zero\, v \\
+  &= \labelf\, \zero\, ((\lambda \$x\, \fresh. \stream{\jqlb{break}{x}})\, \zero\, (\succf\, \zero)) \\
   &= \labelf\, \zero\, \stream{\breakf \zero} \\
   &= \stream{}
   \end{align*}
-  It is interesting to note that if instead of $\irlb{break}{x}$,
-  we would have used a more complex filter, e.g. $\irlb{label}{y} | ...$,
+  It is interesting to note that if instead of $\jqlb{break}{x}$,
+  we would have used a more complex filter, e.g. $\jqlb{label}{y} | ...$,
   then $\$y$ would have been substituted by $\succf\, \zero$
   (which we can already see in our large equation above).
   This mechanism reliably allows us to generate fresh labels and to
@@ -230,8 +230,8 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
 
 In this subsection, we will define the functions
 $\reducef$ and $\foreachf$ which underlie the semantics for the folding operators
-$\irfold{reduce }{f_x}{\$x}{(.; f)}$ and
-$\irfold{foreach}{f_x}{\$x}{(.; f; g)}$.
+$\jqfold{reduce }{f_x}{\$x}{(.; f)}$ and
+$\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$.
 
 \newcommand{\foldf}{\operatorname{fold}}
 Let us start by defining a general folding function $\foldf$:
@@ -270,21 +270,21 @@ We will now look at what the evaluation of the various folding filters expands t
 Assuming that the filter $f_x$ evaluates to $\stream{x_0, ..., x_n}$,
 then $\jqf{reduce}$ and $\jqf{foreach}$ expand to
 \begin{alignat*}{2}
-\irfold{reduce }{f_x}{\$x}{(.; f   )} ={}& x_0 \iras \$x | f & \quad
-\irfold{foreach}{f_x}{\$x}{(.; f; g)} ={}& x_0 \iras \$x | f | g, ( \\
+\jqfold{reduce }{f_x}{\$x}{(.; f   )} ={}& x_0 \jqas \$x | f & \quad
+\jqfold{foreach}{f_x}{\$x}{(.; f; g)} ={}& x_0 \jqas \$x | f | g, ( \\
 |\; & ... &
     & ... \\
-|\; & x_n \iras \$x | f &
-    & x_n \iras \$x | f | g, ( \\
+|\; & x_n \jqas \$x | f &
+    & x_n \jqas \$x | f | g, ( \\
     &     &
-    & \irf{empty})...)
+    & \jqf{empty})...)
 \end{alignat*}
 Note that jq implements only restricted versions of these folding operators
 that consider only the last output of $f$ for the next iteration.
 That means that in jq,
-$\irfold{reduce}{f_x}{\$x}{(.;            f )}$ is equivalent to
-$\irfold{reduce}{f_x}{\$x}{(.; \irf{last}(f))}$.
-Here, we assume that the filter $\irf{last}(f)$
+$\jqfold{reduce}{f_x}{\$x}{(.;            f )}$ is equivalent to
+$\jqfold{reduce}{f_x}{\$x}{(.; \jqf{last}(f))}$.
+Here, we assume that the filter $\jqf{last}(f)$
 returns the last output of $f$ if $f$ yields any output, else nothing.
 
 
@@ -387,17 +387,17 @@ Table: Update semantics properties. {#tab:update-props}
 
 | $\varphi$ | $\varphi \update \sigma$ |
 | --------- | ------------------------ |
-| $\irf{empty}$ | $.$ |
+| $\jqf{empty}$ | $.$ |
 | $.$ | $\sigma$ |
 | $f | g$ | $f \update (g \update \sigma)$ |
 | $f, g$ | $(f \update \sigma) | (g \update \sigma)$ |
-| $\irite{\$x}{f}{g}$ | $\irite{\$x}{f \update \sigma}{g \update \sigma}$ |
-| $f \alt g$ | $\irite{\irf{first}(f \alt \irf{null})}{f \update \sigma}{g \update \sigma}$ |
+| $\jqite{\$x}{f}{g}$ | $\jqite{\$x}{f \update \sigma}{g \update \sigma}$ |
+| $f \alt g$ | $\jqite{\jqf{first}(f \alt \jqf{null})}{f \update \sigma}{g \update \sigma}$ |
 
 @tab:update-props gives a few properties that we want to hold for updates $\varphi \update \sigma$.
 Let us discuss these for the different filters $\varphi$:
 
-- $\irf{empty}$: Returns the input unchanged.
+- $\jqf{empty}$: Returns the input unchanged.
 - "$.$": Returns the output of the update filter $\sigma$ applied to the current input.
   Note that while jq only returns at most one output of $\sigma$,
   these semantics return an arbitrary number of outputs.
@@ -407,9 +407,9 @@ Let us discuss these for the different filters $\varphi$:
   $.[] \update (.[] \update \sigma)$, yielding the same output as in the example.
 - $f, g$: Applies the update of $\sigma$ at $g$ to the output of the update of $\sigma$ at $f$.
   We have already seen this at the end of @sec:jq-updates.
-- $\irite{\$x}{f}{g}$: Applies $\sigma$ at $f$ if $\$x$ holds, else at $g$.
+- $\jqite{\$x}{f}{g}$: Applies $\sigma$ at $f$ if $\$x$ holds, else at $g$.
 - $f \alt g$: Applies $\sigma$ at $f$ if $f$ yields some output whose boolean value (see @sec:simple-fns) is not false, else applies $\sigma$ at $g$.
-  Here, $\irf{first}(f)$ is a filter that returns
+  Here, $\jqf{first}(f)$ is a filter that returns
   the first output of its argument $f$ if there is one, else the empty list.
 
 While @tab:update-props allows us to define the behaviour of several filters
@@ -425,19 +425,19 @@ To define $\upd\, \sem \varphi\, \sigma\, v$, we first have to understand
 how to prevent unwanted interactions between $\varphi$ and $\sigma$.
 In particular, we have to look at variable bindings.
 
-We can bind variables in $\varphi$; that is, $\varphi$ can have the shape $f \iras \$x | g$.
+We can bind variables in $\varphi$; that is, $\varphi$ can have the shape $f \jqas \$x | g$.
 Here, the intent is that $g$ has access to $\$x$, whereas $\sigma$ does not!
 This is to ensure compatibility with jq's original semantics,
 which execute $\varphi$ and $\sigma$ independently,
 so $\sigma$ should not be able to access variables bound in $\varphi$.
 
 ::: {.example}
-  Consider the filter $0 \iras \$x | \varphi \update \sigma$, where
-  $\varphi$ is $(1 \iras \$x | .[\$x])$ and $\sigma$ is $\$x$.
+  Consider the filter $0 \jqas \$x | \varphi \update \sigma$, where
+  $\varphi$ is $(1 \jqas \$x | .[\$x])$ and $\sigma$ is $\$x$.
   This updates the input array at index $1$.
   If $\sigma$ had access to variables bound in $\varphi$,
   then the array element would be replaced by $1$,
-  because the variable binding $0 \iras \$x$ would be shadowed by $1 \iras \$x$.
+  because the variable binding $0 \jqas \$x$ would be shadowed by $1 \jqas \$x$.
   However, in jq, $\sigma$ does not have access to variables bound in $\varphi$, so
   the array element is replaced by $0$, which is the value originally bound to $\$x$.
   Given the input array $[1, 2, 3]$, the filter yields the final result $[1, 0, 3]$.
@@ -472,17 +472,17 @@ Table: Update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \lis
 | $f, g$ | $\upd\, \sem f\, \sigma\, v \bind \upd\, \sem g\, \sigma$ |
 | $f \alt g$ | $\upd\, ((\run\, \sem f\, v \bind \trues)\, (\lambda \_\, \_. \sem f)\, \sem g)\, \sigma\, v$ |
 | $.[p]^?$ | $\stream{v[p]^? \update \sigma}$ |
-| $f \iras \$x | g$ | $\reducef\, (\lambda \$x. \upd\, \sem g\, \sigma)\, (\run\, \sem f\, v)\, v$ |
-| $\irite{\$x}{f}{g}$ | $\upd\, ((\bool\, \$x)\, \sem f\, \sem g)\, \sigma\, v$ |
-| $\irlb{break}{x}$ | $\stream{\breakf\, \$x}$ |
-| $\irfold{reduce}{x}{\$x}{(.; f)}$ | $\reducef_{\update}\, (\lambda \$x. \upd\, \sem f)\, \sigma\, (\run\, \sem x\, v)\, v$ |
-| $\irfold{foreach}{x}{\$x}{(.; f; g)}$ | $\foreachf_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem x\, v)\, v$ |
-| $\irdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \upd\, \sem g\, \sigma\, v)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
+| $f \jqas \$x | g$ | $\reducef\, (\lambda \$x. \upd\, \sem g\, \sigma)\, (\run\, \sem f\, v)\, v$ |
+| $\jqite{\$x}{f}{g}$ | $\upd\, ((\bool\, \$x)\, \sem f\, \sem g)\, \sigma\, v$ |
+| $\jqlb{break}{x}$ | $\stream{\breakf\, \$x}$ |
+| $\jqfold{reduce}{x}{\$x}{(.; f)}$ | $\reducef_{\update}\, (\lambda \$x. \upd\, \sem f)\, \sigma\, (\run\, \sem x\, v)\, v$ |
+| $\jqfold{foreach}{x}{\$x}{(.; f; g)}$ | $\foreachf_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem x\, v)\, v$ |
+| $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \upd\, \sem g\, \sigma\, v)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
 | $x(f_1; ...; f_n)$ | $\upd\, (x\, \sem{f_1}\, ...\, \sem{f_n})\, \sigma\, v$ |
 
 @tab:update-semantics shows the definition of $\upd\, \sem \varphi\, \sigma\, v$.
 Several of the cases for $\varphi$, like
-"$.$", "$f | g$", "$f, g$", and "$\irite{\$x}{f}{g}$"
+"$.$", "$f | g$", "$f, g$", and "$\jqite{\$x}{f}{g}$"
 are simply relatively straightforward consequences of the properties in @tab:update-props.
 We discuss the remaining cases for $\varphi$:
 
@@ -496,14 +496,14 @@ We discuss the remaining cases for $\varphi$:
   updated with ($\upd\, \sem f\, \sigma\, v$).
 - $.[p]^?$: Applies $\sigma$ to the current value at the path part $p$
   using the update operators in @sec:value-ops.
-- $f \iras \$x | g$:
+- $f \jqas \$x | g$:
   Folds over all outputs of $f$, using the input value $v$ as initial accumulator and
   updating the accumulator by $g \update \sigma$, where
   $\$x$ is bound to the current output of $f$.
   The definition of $\reducef$ is given in @sec:folding.
-- $\irfold{\fold}{x}{\$x}{(.; f)}$: Folds $f$ over the values returned by $\$x$.
+- $\jqfold{\fold}{x}{\$x}{(.; f)}$: Folds $f$ over the values returned by $\$x$.
   We will discuss this in @sec:folding-update.
-- $\irdef{x(x_1; ...; x_n)}{f} g$: Defines a filter.
+- $\jqdef{x(x_1; ...; x_n)}{f} g$: Defines a filter.
   This is defined analogously to @tab:eval-semantics.
 - $x(f_1; ...; f_n)$, $x$: Calls a filter.
   This is defined analogously to @tab:eval-semantics.
@@ -514,7 +514,7 @@ for example $\$x$, $[f]$, and $\{\}$.
 In such cases, we assume that $\upd\, \sem \varphi\, \sigma\, v$ returns an error just like jq,
 because these filters do not return paths to their input data.
 Our update semantics support all kinds of filters $\varphi$ that are supported by jq, except for
-$\irlb{label}{x} | g$ and $\irtc{f}{g}$.
+$\jqlb{label}{x} | g$ and $\jqtc{f}{g}$.
 
 ::: {.example name="Update compilation"}
   Let us consider the jq filter $(.[] \update .+.)$.
@@ -524,8 +524,8 @@ $\irlb{label}{x} | g$ and $\irtc{f}{g}$.
   effectively doubling its input.
   For example, when given the input $[1, 2, 3]$, the output of $\varphi$ is $[2, 4, 6]$.
   Before we can execute the jq filter, we have to lower it to IR, e.g. to
-  $\varphi \equiv (.[] \update (. \iras \$x | \$x + \$x))$.^[
-    Note that the actual lowering $(.[] \update (. \iras \$x | . \iras \$y | \$x + \$y))$
+  $\varphi \equiv (.[] \update (. \jqas \$x | \$x + \$x))$.^[
+    Note that the actual lowering $(.[] \update (. \jqas \$x | . \jqas \$y | \$x + \$y))$
     is a bit longer than the $\varphi$ given here, but
     because the two are semantically equivalent, we continue with $\varphi$.
   ]
@@ -533,10 +533,10 @@ $\irlb{label}{x} | g$ and $\irtc{f}{g}$.
   $\eval\, \sem \varphi\, v = (\lambda \fresh. \run\, \sem \varphi)\, \zero\, v$.
   Because $\varphi$ does not use any labels,
   this is equivalent to just $\run\, \sem \varphi\, v = \upd\, \sem{(.[])}\, \sigma\, v = (v[] \update \sigma)$.
-  Here, we introduced $\sigma \equiv \run\, \sem{. \iras \$x | \$x + \$x}$.
+  Here, we introduced $\sigma \equiv \run\, \sem{. \jqas \$x | \$x + \$x}$.
   We can further expand $\sigma$:
   \begin{align*} \sigma
-  &= \lambda v. \run\, \sem{. \iras \$x | \$x + \$x}\, v \\
+  &= \lambda v. \run\, \sem{. \jqas \$x | \$x + \$x}\, v \\
   &= \lambda v. \run\, \sem{.} \bind (\lambda \$x. \run\, \sem{\$x + \$x}\, v) \\
   &= \lambda v. \stream{\ok v} \bind (\lambda \$x. \stream{\$x + \$x}) \\
   &= \lambda v. \stream(v + v)
@@ -577,17 +577,17 @@ $\irlb{label}{x} | g$ and $\irtc{f}{g}$.
 
   Finally, on the input
   $[]$, the filter
-  $(.[] \alt \irf{error}) \update 1$ yields
+  $(.[] \alt \jqf{error}) \update 1$ yields
   $\stream{\err\, []}$.
   That is because $.[]$ does not yield any value for the input,
-  so $\irf{error} \update 1$ is executed, which yields an error.
+  so $\jqf{error} \update 1$ is executed, which yields an error.
 :::
 
 ## Folding {#sec:folding-update}
 
 In @sec:folding, we have seen how to evaluate folding filters of the shape
-$\irfold{reduce }{x}{\$x}{(.; f)}$ and
-$\irfold{foreach}{x}{\$x}{(.; f; g)}$.
+$\jqfold{reduce }{x}{\$x}{(.; f)}$ and
+$\jqfold{foreach}{x}{\$x}{(.; f; g)}$.
 Here, we will define update semantics for these filters.
 These update operations are _not_ supported in jq 1.7; however,
 we will show that they arise quite naturally from previous definitions.
@@ -596,7 +596,7 @@ Let us start with an example to understand folding on the left-hand side of an u
 
 ::: {.example #ex:folding-update}
   Let $v = [[[2], 1], 0]$ be our input value
-  and $\varphi$ be the filter $\irfold{\fold}{(0, 0)}{\$x}{(.; .[\$x])}$.
+  and $\varphi$ be the filter $\jqfold{\fold}{(0, 0)}{\$x}{(.; .[\$x])}$.
   The regular evaluation of $\varphi$ with the input value as described in @sec:semantics yields
   $$\run\, \sem \varphi\, v = \begin{cases}
     \stream{\phantom{[[2], 1],\,} [2]} & \text{if } \fold = \jqf{reduce} \\
@@ -617,40 +617,40 @@ the lowering in @tab:lowering and
 the defining equations in @sec:folding
 only make use of filters for which we have already introduced update semantics in @tab:update-semantics.
 This should not be taken for granted; for example, we originally lowered
-$\irfold{\fold}{f_x}{\$x}{(f_y; f)}$ to
-$$\floor{f_y} \iras \$y | \irfold{\fold}{\floor{f_x}}{\$x}{(\$y; \floor{f})}$$
+$\jqfold{\fold}{f_x}{\$x}{(f_y; f)}$ to
+$$\floor{f_y} \jqas \$y | \jqfold{\fold}{\floor{f_x}}{\$x}{(\$y; \floor{f})}$$
 instead of the more complicated lowering found in @tab:lowering, namely
-$$. \iras \$x' | \floor{f_y} | \irfold{\fold}{\floor{\$x' | f_x}}{\$x}{(.; \floor{f})}.$$
+$$. \jqas \$x' | \floor{f_y} | \jqfold{\fold}{\floor{\$x' | f_x}}{\$x}{(.; \floor{f})}.$$
 While both lowerings produce the same output for regular evaluation,
 we cannot use the original lowering for updates, because the defining equations for
-$\irfold{\fold}{x}{\$x}{(\$y; f)}$ would have the shape $\$y | ...$,
+$\jqfold{\fold}{x}{\$x}{(\$y; f)}$ would have the shape $\$y | ...$,
 which is undefined on the left-hand side of an update.
 However, the lowering in @tab:lowering avoids this issue
 by not binding the output of $f_y$ to a variable,
 so it can be used on the left-hand side of updates.
 
 To obtain an intuition about how the update evaluation of a fold looks like, we can take
-$\irfold{\fold}{x}{\$x}{(.; f; g)} \update \sigma$,
+$\jqfold{\fold}{x}{\$x}{(.; f; g)} \update \sigma$,
 substitute the left-hand side by the defining equations in @sec:folding and
 expand everything using the properties in @sec:update-props.
 This yields
 \begin{alignat*}{2}
-\irfold{reduce}{x}{\$x}{(.; f   )} \update \sigma
-={}& x_0 \iras \$x | (f \update ( \\
+\jqfold{reduce}{x}{\$x}{(.; f   )} \update \sigma
+={}& x_0 \jqas \$x | (f \update ( \\
  & ... \\
- & x_n \iras \$x | (f \update (  \\
+ & x_n \jqas \$x | (f \update (  \\
  & \sigma))...)) \\
-\irfold{foreach}{x}{\$x}{(.; f; g)} \update \sigma
-={}& x_0 \iras \$x | (f \update ((g \update \sigma) | \\
+\jqfold{foreach}{x}{\$x}{(.; f; g)} \update \sigma
+={}& x_0 \jqas \$x | (f \update ((g \update \sigma) | \\
  & ... \\
- & x_n \iras \$x | (f \update ((g \update \sigma) | \\
+ & x_n \jqas \$x | (f \update ((g \update \sigma) | \\
  & .))...)).
 \end{alignat*}
 
 ::: {.example}
   To see the effect of above equations, let us reconsider
   the input value and the filters from @ex:folding-update.
-  Using some liberty to write $.[0]$ instead of $0 \iras \$x | .[\$x]$, we have:
+  Using some liberty to write $.[0]$ instead of $0 \jqas \$x | .[\$x]$, we have:
   $$\varphi \update \sigma = \begin{cases}
     .[0] \update \phantom{\sigma | (}.[0] \update \sigma   & \text{if } \fold = \jqf{reduce} \\
     .[0] \update          \sigma | ( .[0] \update \sigma)  & \text{if } \fold = \jqf{foreach}

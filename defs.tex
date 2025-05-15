@@ -10,22 +10,14 @@
 \newcommand{\jqite }[3]{\jqkw{if} #1 \jqkw{then} #2 \jqkw{else} #3 \jqkw{end}}
 \newcommand{\jqfold}[4]{\jqkw{#1} #2 \jqas #3\; #4}
 \newcommand{\jqlb  }[2]{\jqkw{#1}\, \$#2}
-\newcommand{\irtc  }[2]{\irkw{try} #1 \irkw{catch} #2}
-
-% IR macros
-\newcommand{\irf }[1]{\mathtt{#1}}
-\newcommand{\irkw}[1]{\mathrel{\irf{#1}}}
-\newcommand{\iras}{\irkw{as}}
-\newcommand{\irdef }[2]{\irkw{def} #1\!: #2;\;}
-\newcommand{\irite }[3]{\irkw{if} #1 \irkw{then} #2 \irkw{else} #3 \irkw{end}}
-\newcommand{\irfold}[4]{\irkw{#1} #2 \iras #3\; #4}
-\newcommand{\irlb  }[2]{\irkw{#1}\, \$#2}
+\newcommand{\jqtc  }[2]{\jqkw{try} #1 \jqkw{catch} #2}
 
 \newcommand{\gror}{\mathbin{\quad\|\quad}}
 \newcommand{\cartesian}{\mathrel{\circ}}
 \newcommand{\update}{\mathbin{|{=}}}
 \newcommand{\alt}{\mathbin{/\!/}}
 \newcommand{\iseq}{\stackrel{?}{=}}
+\newcommand{\modulo}{\mathbin{\%}}
 \newcommand{\arith}{\odot}
 \newcommand{\fold}{\phi}
 \newcommand{\floor}[1]{\lfloor#1\rfloor}
@@ -60,8 +52,7 @@
 \newcommand{\bindr}{\bind_R}
 \newcommand{\bindl}{\bind_L}
 
-\newcommand{\modulo}{\mathbin{\%}}
-
+% types
 \newcommand{\boolt}{\mathbb{B}}
 \newcommand{\valt}{\mathcal{V}}
 \newcommand{\listt}{\mathcal{L}}

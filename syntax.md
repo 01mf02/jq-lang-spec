@@ -22,7 +22,7 @@ f &\coloneq \quad n \gror s \gror . \gror .. \\
   &\gror f \star f \gror f \cartesian f \\
   &\gror f \jqas P | f \gror \jqfold{reduce}{f}{P}{(f; f)} \gror \jqfold{foreach}{f}{P}{(f; f; f)} \gror \$x \\
   &\gror {\jqlb{label}{x}} | f \gror {\jqlb{break}{x}} \\
-  &\gror {\jqite{f}{f}{f}} \gror \jqkw{try} f \gror \jqkw{try} f \jqkw{catch} f \\
+  &\gror {\jqite{f}{f}{f}} \gror \jqkw{try} f \gror \jqtc{f}{f} \\
   &\gror {\jqdef{x}{f} f} \gror \jqdef{x(x; \dots; x)}{f} f \\
   &\gror x \gror x(f; \dots; f)
 \end{align*}
@@ -88,10 +88,10 @@ An IR filter $f$ is defined by the grammar
 f &\coloneq \quad n \gror s \gror . \\
   &\gror [] \gror [f] \gror {} \gror \{\$x: \$x\} \gror .[p] \\
   &\gror f \star f \gror \$x \cartesian \$x \\
-  &\gror f \iras \$x | f \gror \irfold{reduce}{f}{\$x}{(.; f)} \gror \irfold{foreach}{f}{\$x}{(.; f; f)} \gror \$x \\
-  &\gror {\irite{\$x}{f}{f}} \gror \irtc{f}{f} \\
-  &\gror {\irlb{label}{x}} | f \gror \irlb{break}{x} \\
-  &\gror {\irdef{x(x; \dots; x)}{f} f} \\
+  &\gror f \jqas \$x | f \gror \jqfold{reduce}{f}{\$x}{(.; f)} \gror \jqfold{foreach}{f}{\$x}{(.; f; f)} \gror \$x \\
+  &\gror {\jqite{\$x}{f}{f}} \gror \jqtc{f}{f} \\
+  &\gror {\jqlb{label}{x}} | f \gror \jqlb{break}{x} \\
+  &\gror {\jqdef{x(x; \dots; x)}{f} f} \\
   &\gror x(f; \dots; f)
 \end{align*}
 where $p$ is a path part containing variables instead of filters as indices.
@@ -118,33 +118,33 @@ replace certain occurrences of filters by variables
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |
 | $n$, $s$, $.$, $\$x$, or $\jqlb{break}{x}$ | $\varphi$ |
-| $..$ | $\irdef{\irf{recurse}}{., (.[]? | \irf{recurse})} \irf{recurse}$ |
+| $..$ | $\jqdef{\jqf{recurse}}{., (.[]? | \jqf{recurse})} \jqf{recurse}$ |
 | $(f)$ | $\floor f$ |
-| $f?$ | $\irlb{label}{x'} | \irtc{\floor f}{(\irlb{break}{x'})}$ |
+| $f?$ | $\jqlb{label}{x'} | \jqtc{\floor f}{(\jqlb{break}{x'})}$ |
 | $[]$ or $\{\}$ | $\varphi$ |
 | $[f]$ | $[\floor f]$ |
-| $\{f: g\}$ | $\floor f \iras \$x' | \floor g \iras \$y' | \{\$x': \$y'\}$ |
+| $\{f: g\}$ | $\floor f \jqas \$x' | \floor g \jqas \$y' | \{\$x': \$y'\}$ |
 | $\{f_1: g_1, \dots, f_n: g_n\}$ | $\floor{\{f_1: g_1\} + \dots + \{f_n: g_n\}}$ |
-| $f [p_1]^? \dots [p_n]^?$ | $. \iras \$x' | \floor f | \floor{[p_1]^?}_{\$x'} | \dots | \floor{[p_n]^?}_{\$x'}$ |
-| $f$ `=` $g$ | $\floor g \iras \$x' | \floor{f \update \$x'}$ |
-| $f$ $\arith$`=` $g$ | $\floor g \iras \$x' | \floor{f \update . \arith \$x'}$ |
+| $f [p_1]^? \dots [p_n]^?$ | $. \jqas \$x' | \floor f | \floor{[p_1]^?}_{\$x'} | \dots | \floor{[p_n]^?}_{\$x'}$ |
+| $f$ `=` $g$ | $\floor g \jqas \$x' | \floor{f \update \$x'}$ |
+| $f$ $\arith$`=` $g$ | $\floor g \jqas \$x' | \floor{f \update . \arith \$x'}$ |
 | $f$ `//=` $g$ | $\floor{f \update . \alt g}$ |
-| $f \jqkw{and} g$ | $\floor{\irite{f}{(g | \irf{bool})}{\text{false}}}$ |
-| $f \jqkw{or}  g$ | $\floor{\irite{f}{\text{true}}{(g | \irf{bool})}}$ |
+| $f \jqkw{and} g$ | $\floor{\jqite{f}{(g | \jqf{bool})}{\text{false}}}$ |
+| $f \jqkw{or}  g$ | $\floor{\jqite{f}{\text{true}}{(g | \jqf{bool})}}$ |
 | $f \star g$ | $\floor f \star \floor g$ |
-| $f \cartesian g$ | $\floor f \iras \$x' | \floor g \iras \$y' | \$x' \cartesian \$y'$ |
-| $f \jqas \$x | g$ | $\floor f \iras \$x | \floor g$ |
-| $f \jqas P | g$ | $\floor f \iras \$x' | \floor{\$x' \iras P | g}$,
-| $\$x \jqas [P_1, \dots, P_n] | g$ | $\floor{\$x \iras \obj{(0): P_1, \dots, (n-1): P_n} | g}$ |
-| $\$x \jqas \obj{f_1: P_1, \dots} | g$ | $\floor{\$x[f_1] \iras \$x' | \$x' \iras P_1 | \$x \iras \obj{f_2: P_2, \dots} | g}$ |
+| $f \cartesian g$ | $\floor f \jqas \$x' | \floor g \jqas \$y' | \$x' \cartesian \$y'$ |
+| $f \jqas \$x | g$ | $\floor f \jqas \$x | \floor g$ |
+| $f \jqas P | g$ | $\floor f \jqas \$x' | \floor{\$x' \jqas P | g}$,
+| $\$x \jqas [P_1, \dots, P_n] | g$ | $\floor{\$x \jqas \obj{(0): P_1, \dots, (n-1): P_n} | g}$ |
+| $\$x \jqas \obj{f_1: P_1, \dots} | g$ | $\floor{\$x[f_1] \jqas \$x' | \$x' \jqas P_1 | \$x \jqas \obj{f_2: P_2, \dots} | g}$ |
 | $\$x \jqas \obj{} | g$ | $\floor g$ |
-| $\jqfold{\fold}{f_x}{\$x}{(f_y; f; g)}$ | $. \iras \$x' | \floor{f_y} | \irfold{\fold}{(\floor{\$x'} | f_x)}{\$x}{(.; \floor f; \floor g)}$ |
-| $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$ | $\floor{\irfold{\fold}{(f_x \iras P | \beta P)}{\$x'}{(f_y; \$x' \iras \beta P | f; \$x' \iras \beta P | g)}}$ |
-| $\jqite{f_x}{f}{g}$ | $\floor{f_x} \iras \$x' | \irite{\$x'}{\floor f}{\floor g}$ |
-| $\jqkw{try} f \jqkw{catch} g$ | $\irlb{label}{x'} | \irtc{\floor f}{(\floor g, \irlb{break}{x'})}$ |
-| $\jqlb{label}{x} | f$ | $\irlb{label}{x} | \floor f$ |
-| $\jqdef{x}{f} g$ | $\irdef{x}{\floor f} \floor g$ |
-| $\jqdef{x(x_1; \dots; x_n)}{f} g$ | $\irdef{x(x_1; \dots; x_n)}{\floor f} \floor g$ |
+| $\jqfold{\fold}{f_x}{\$x}{(f_y; f; g)}$ | $. \jqas \$x' | \floor{f_y} | \jqfold{\fold}{(\floor{\$x'} | f_x)}{\$x}{(.; \floor f; \floor g)}$ |
+| $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$ | $\floor{\jqfold{\fold}{(f_x \jqas P | \beta P)}{\$x'}{(f_y; \$x' \jqas \beta P | f; \$x' \jqas \beta P | g)}}$ |
+| $\jqite{f_x}{f}{g}$ | $\floor{f_x} \jqas \$x' | \jqite{\$x'}{\floor f}{\floor g}$ |
+| $\jqtc{f}{g}$ | $\jqlb{label}{x'} | \jqtc{\floor f}{(\floor g, \jqlb{break}{x'})}$ |
+| $\jqlb{label}{x} | f$ | $\jqlb{label}{x} | \floor f$ |
+| $\jqdef{x}{f} g$ | $\jqdef{x}{\floor f} \floor g$ |
+| $\jqdef{x(x_1; \dots; x_n)}{f} g$ | $\jqdef{x(x_1; \dots; x_n)}{\floor f} \floor g$ |
 | $x(f_1; \dots; f_n)$ | $x(\floor{f_1}; \dots; \floor{f_n})$ |
 
 Table: Lowering of a jq filter $\phi$ to an IR filter $\floor \phi$. {#tab:lowering}
@@ -164,10 +164,10 @@ $\floor{f \star g} = \floor f \star \floor g$.
 
 We define filters that yield the boolean values as
 \begin{align*}
-\irf{true}  &\coloneq (0 \iseq 0), \\
-\irf{false} &\coloneq (0  \neq 0).
+\jqf{true}  &\coloneq (0 \iseq 0), \\
+\jqf{false} &\coloneq (0  \neq 0).
 \end{align*}
-The filter "$\irf{bool} \coloneq (\irite{.}{\true}{\false})$"
+The filter "$\jqf{bool} \coloneq (\jqite{.}{\true}{\false})$"
 maps its input to its boolean value.
 
 In the lowering of the folding operators $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$
@@ -203,10 +203,10 @@ Here, we first used $\beta P$ as filter
 | $[p]  ^?$ | $\floor{[p]^?}_{\$x}$ |
 | --------- | ---------------------- |
 | $[   ]^?$ | $.[]^?$,
-| $[f  ]^?$ | $(\$x | \floor f) \iras \$y' | .[\$y']^?$ |
-| $[f: ]^?$ | $(\$x | \floor f) \iras \$y' | .[\$y':]^?$ |
-| $[ :f]^?$ | $(\$x | \floor f) \iras \$y' | .[:\$y']^?$ |
-| $[f:g]^?$ | $(\$x | \floor f) \iras \$y' | (\$x | \floor g) \iras \$z' | .[\$y':\$z']^?$ |
+| $[f  ]^?$ | $(\$x | \floor f) \jqas \$y' | .[\$y']^?$ |
+| $[f: ]^?$ | $(\$x | \floor f) \jqas \$y' | .[\$y':]^?$ |
+| $[ :f]^?$ | $(\$x | \floor f) \jqas \$y' | .[:\$y']^?$ |
+| $[f:g]^?$ | $(\$x | \floor f) \jqas \$y' | (\$x | \floor g) \jqas \$z' | .[\$y':\$z']^?$ |
 
 Table: Lowering of a path part $[p]^?$ with input $\$x$ to an IR filter. {#tab:lower-path}
 
@@ -222,25 +222,25 @@ all occurrences of superscript "?" in the second column stand for "?", otherwise
 
 ::: {.example}
 The jq filter $(.[]?[])$ is lowered to
-$(. \iras \$x' | . | .[]? | .[])$.
+$(. \jqas \$x' | . | .[]? | .[])$.
 Semantically, we will see that this is equivalent to $(.[]? | .[])$.
 :::
 
 ::: {.example}
 The jq filter $\mu \equiv .[0]$ is lowered to
-$\floor \mu \equiv . \iras \$x | . | (\$x | 0) \iras \$y | .[\$y]$.
-Semantically, we will see that $\floor \mu$ is equivalent to $0 \iras \$y | .[\$y]$.
-The jq filter $\varphi \equiv [3] | .[0] \jqop{=} (\irf{length}, 2)$
+$\floor \mu \equiv . \jqas \$x | . | (\$x | 0) \jqas \$y | .[\$y]$.
+Semantically, we will see that $\floor \mu$ is equivalent to $0 \jqas \$y | .[\$y]$.
+The jq filter $\varphi \equiv [3] | .[0] \jqop{=} (\jqf{length}, 2)$
 is lowered to the IR filter
-$\floor \varphi \equiv [3] | (\irf{length}, 2) \iras \$z | \floor \mu \update \$z$.
+$\floor \varphi \equiv [3] | (\jqf{length}, 2) \jqas \$z | \floor \mu \update \$z$.
 In @sec:semantics, we will see that its output is $\stream{[1], [2]}$.
 :::
 
 The lowering in @tab:lowering is compatible with the semantics of the jq implementation,
 with one notable exception:
 In jq, Cartesian operations $f \cartesian g$ would be lowered to
-$\floor g \iras \$y' | \floor f \iras \$x' | \$x \cartesian \$y$, whereas we lower it to
-$\floor f \iras \$x' | \floor g \iras \$y' | \$x \cartesian \$y$,
+$\floor g \jqas \$y' | \floor f \jqas \$x' | \$x \cartesian \$y$, whereas we lower it to
+$\floor f \jqas \$x' | \floor g \jqas \$y' | \$x \cartesian \$y$,
 thus inverting the binding order.
 Note that the difference only shows when both $f$ and $g$ return multiple values.
 We diverge here from jq to make the lowering of Cartesian operations
@@ -249,7 +249,7 @@ the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound
 That also makes it easier to describe other filters, such as
 $\{f_1: g_1, \dots, f_n: g_n\}$, which we can lower to
 $\floor{\{f_1: g_1\} + \dots + \{f_n: g_n\}}$, whereas its lowering assuming the jq lowering of Cartesian operations would be
-$$\floor{\{f_1: g_1\}} \iras \$x'_1 | \dots | \floor{\{f_n: g_n\}} \iras \$x'_n | \$x'_1 + \dots + \$x'_n.$$
+$$\floor{\{f_1: g_1\}} \jqas \$x'_1 | \dots | \floor{\{f_n: g_n\}} \jqas \$x'_n | \$x'_1 + \dots + \$x'_n.$$
 
 ::: {.example}
 The filter $(0, 2) + (0, 1)$ yields
@@ -262,7 +262,7 @@ Informally, we say that a filter is _wellformed_ if all references to
 named filters, variables, and labels were previously bound.
 For example, the filter $a, \$x$ is not wellformed because
 neither $a$ nor $\$x$ was previously bound, but the filter
-$\irdef{a}{1} 2 \iras \$x | a, \$x$ is wellformed.
+$\jqdef{a}{1} 2 \jqas \$x | a, \$x$ is wellformed.
 @tab:wf specifies in detail if a filter is wellformed.
 For this, it uses a context $c = (d, v, l)$, consisting of
 a set $d$ of pairs $(x, n)$ storing the name $x$ and the arity $n$ of a filter,
@@ -275,15 +275,15 @@ $\wf(\varphi, c)$ is true.
 | --------- | ----------------- |
 | $n$, $s$, $.$, $.[p]^?$, $\{\}$ | $\top$ |
 | $\$x$ | $\$x \in v$ |
-| $\irlb{break}{x}$ | $\$x \in l$ |
+| $\jqlb{break}{x}$ | $\$x \in l$ |
 | $[f]$ | $\wf(f, c)$ |
 | $\{\$x: \$y\}$, $\$x \cartesian \$y$ | $\$x \in v$ and $\$y \in v$,
-| $f \star g$, $\irtc{f}{g}$ | $\wf(f, c)$ and $\wf(g, c)$ |
-| $f \iras \$x | g$ | $\wf(f)$ and $\wf(g, (d, v \cup \{\$x\}, l))$ |
-| $\irlb{label}{x} | f$ | $\wf(f, (d, v, l \cup \{\$x\}))$ |
-| $\irite{\$x}{f}{g}$ | $\$x \in v$ and $\wf(f, c)$ and $\wf(g, c)$ |
-| $\irfold{\fold}{f_x}{\$x}{(.; f; g)}$ | $\wf(f_x, c)$ and $\wf((f | g), (d, v \cup \{\$x\}, l))$ |
-| $\irdef{x(x_1; \dots; x_n)}{f} g$ | $\wf(f, (d \cup \bigcup_i \{(x_i, 0)\}, v, l))$ and $\wf(g, (d \cup \{(x, n)\}, v, l))$ |
+| $f \star g$, $\jqtc{f}{g}$ | $\wf(f, c)$ and $\wf(g, c)$ |
+| $f \jqas \$x | g$ | $\wf(f)$ and $\wf(g, (d, v \cup \{\$x\}, l))$ |
+| $\jqlb{label}{x} | f$ | $\wf(f, (d, v, l \cup \{\$x\}))$ |
+| $\jqite{\$x}{f}{g}$ | $\$x \in v$ and $\wf(f, c)$ and $\wf(g, c)$ |
+| $\jqfold{\fold}{f_x}{\$x}{(.; f; g)}$ | $\wf(f_x, c)$ and $\wf((f | g), (d, v \cup \{\$x\}, l))$ |
+| $\jqdef{x(x_1; \dots; x_n)}{f} g$ | $\wf(f, (d \cup \bigcup_i \{(x_i, 0)\}, v, l))$ and $\wf(g, (d \cup \{(x, n)\}, v, l))$ |
 | $x(f_1; \dots; f_n)$ | $(x, n) \in d$ and $\forall i. \wf(f_i, c)$ |
 
 Table: Wellformedness of an IR filter $\varphi$ with respect to a context $c = (d, v, l)$. {#tab:wf}
@@ -292,18 +292,18 @@ For hygienic reasons, we require that labels are disjoint from variables.
 This can be easily ensured by prefixing labels and variables differently.
 
 ::: {.example}
-Consider the filter $\irlb{label}{x} | . \iras \$x | \$x + \$x, \irlb{break}{x}$.
+Consider the filter $\jqlb{label}{x} | . \jqas \$x | \$x + \$x, \jqlb{break}{x}$.
 Here, we have to rename to ensure that labels and variables are disjoint, yielding e.g.
-$\irlb{label}{l_x} | . \iras \$v_x | \$v_x + \$v_x, \irlb{break}{l_x}$.
+$\jqlb{label}{l_x} | . \jqas \$v_x | \$v_x + \$v_x, \jqlb{break}{l_x}$.
 :::
 
 Furthermore, we require that identifiers with the same name represent filters with equal arity.
 This can be ensured by postfixing all identifiers with their arity.
 
 ::: {.example}
-Consider the filter $\irdef{f(g)}{g} \irdef{f}{.} f(f)$.
+Consider the filter $\jqdef{f(g)}{g} \jqdef{f}{.} f(f)$.
 Here, we have to rename identifiers to prevent shadowing issues in the semantics, yielding e.g.
-$\irdef{f^1(g^0)}{g^0} \irdef{f^0}{.} f^1(f^0)$.
+$\jqdef{f^1(g^0)}{g^0} \jqdef{f^0}{.} f^1(f^0)$.
 :::
 
 ::: {.example}
@@ -311,16 +311,16 @@ Consider the jq filter $\jqdef{\jqf{recurse}(f)}{., (f | \jqf{recurse}(f))} \jqf
 which returns the infinite stream of output values $n, n+1, \dots$
 when provided with an input number $n$.
 Lowering this to IR yields
-$\irdef{\irf{recurse}(f)}{., (f | \irf{recurse}(f))} \irf{recurse}(. \iras \$x' | 1 \iras \$y' | \$x' + \$y')$.
+$\jqdef{\jqf{recurse}(f)}{., (f | \jqf{recurse}(f))} \jqf{recurse}(. \jqas \$x' | 1 \jqas \$y' | \$x' + \$y')$.
 :::
 
 ::: {.example}
 Consider the following jq program:
 \begin{align*}
-&\irdef{\irf{empty}}{(\{\}[]) \iras \$x | .} \\
-&\irdef{\irf{select}(f)}{\rsep\irite{f}{.}{\irf{empty}}} \\
-&\irdef{\irf{negative}}{. < 0} \\
-&.[] | \irf{select}(\irf{negative})
+&\jqdef{\jqf{empty}}{(\{\}[]) \jqas \$x | .} \\
+&\jqdef{\jqf{select}(f)}{\rsep\jqite{f}{.}{\jqf{empty}}} \\
+&\jqdef{\jqf{negative}}{. < 0} \\
+&.[] | \jqf{select}(\jqf{negative})
 \end{align*}
 When given an array as an input, it yields
 those elements of the array that are smaller than $0$.^[
@@ -336,10 +336,10 @@ those elements of the array that are smaller than $0$.^[
 ]
 Lowering this to IR yields
 \begin{align*}
-&\irdef{\irf{empty}}{(. \iras \$x' | \{\} | .[]) \iras \$x | .} \\
-&\irdef{\irf{select}(f)}{f \iras \$x' | \irite{\$x'}{.}{\irf{empty}}} \\
-&\irdef{\irf{negative}}{. \iras \$x' | 0 \iras \$y' | \$x' < \$y'} \\
-&. \iras \$x' | . | .[] | \irf{select}(\irf{negative})
+&\jqdef{\jqf{empty}}{(. \jqas \$x' | \{\} | .[]) \jqas \$x | .} \\
+&\jqdef{\jqf{select}(f)}{f \jqas \$x' | \jqite{\$x'}{.}{\jqf{empty}}} \\
+&\jqdef{\jqf{negative}}{. \jqas \$x' | 0 \jqas \$y' | \$x' < \$y'} \\
+&. \jqas \$x' | . | .[] | \jqf{select}(\jqf{negative})
 \end{align*}
 :::
 
