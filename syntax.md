@@ -30,9 +30,9 @@ where:
 
 - $p$ is a _path part_ defined by the grammar $p \coloneq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
 - $P$ is a _pattern_ defined by the grammar $P \coloneq \quad \$x \gror [P, \dots, P] \gror \{f: P, \dots, f: P\}$.
-- $x$ is an identifier (such as `empty`).
-- $n$ is a number (such as `42` or `3.14`).
-- $s$ is a string (such as `"Hello world!"`).
+- $x$ is an identifier (such as $\jqf{empty}$).
+- $n$ is a number (such as $42$ or $3.14$).
+- $s$ is a string (such as "Hello world!").
 
 We use the superscript "$?$" to denote an optional presence of "?"; in particular,
 $f [p]^? \dots [p]^?$ can be
