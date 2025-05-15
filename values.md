@@ -11,8 +11,8 @@ Furthermore, we assume that $\valt$ can be encoded in lambda calculus.
 
 We encode boolean values as follows:
 \begin{align*}
-\true : \boolt &\coloneq \lambda t\, f. t \\
-\false: \boolt &\coloneq \lambda t\, f. f
+\true : \boolt &\coloneqq \lambda t\, f. t \\
+\false: \boolt &\coloneqq \lambda t\, f. f
 \end{align*}
 
 We assume the existence of functions
@@ -25,16 +25,16 @@ We use natural numbers to store label identifiers.
 The elements returned by our filters are _value results_ $\resultt$, which are
 either OK or an exception (an error or a break).
 \begin{align*}
-\ok    &: \valt \to \resultt \coloneq \lambda x\, o\, e\, b. o\, x \\
-\err   &: \valt \to \resultt \coloneq \lambda x\, o\, e\, b. e\, x \\
-\breakf&:  \mathbb N \to \resultt \coloneq \lambda x\, o\, e\, b. b\, x
+\ok    &: \valt \to \resultt \coloneqq \lambda x\, o\, e\, b. o\, x \\
+\err   &: \valt \to \resultt \coloneqq \lambda x\, o\, e\, b. e\, x \\
+\breakf&: \mathbb N \to \resultt \coloneqq \lambda x\, o\, e\, b. b\, x
 \end{align*}
 
 We will use _lists_ $\listt$ of value results as return type of filters.
 Because the jq language is evaluated lazily, lists can be infinite.
 \begin{alignat*}{3}
-\cons&: \resultt \to \listt \to{} &&\listt \coloneq \lambda h\, t. && \lambda c\, n. c\, h\, t \\
-\nil&:                                  &&\listt \coloneq                && \lambda c\, n. n
+\cons&: \resultt \to \listt \to{} &&\listt \coloneqq \lambda h\, t. && \lambda c\, n. c\, h\, t \\
+\nil&:                                  &&\listt \coloneqq                && \lambda c\, n. n
 \end{alignat*}
 
 We write the empty list
@@ -52,7 +52,7 @@ Y_n: & ((T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U) \to T_1 \
 \end{alignat*}
 
 We define the concatenation of two lists $l$ and $r$ as
-$$l + r \coloneq Y_1\, (\lambda f\, l. l\, (\lambda h\, t. \cons\, h\, (f\, t))\, r)\, l,$$
+$$l + r \coloneqq Y_1\, (\lambda f\, l. l\, (\lambda h\, t. \cons\, h\, (f\, t))\, r)\, l,$$
 which satisfies the equational property
 $$l + r = l\, (\lambda h\, t. \cons\, h\, (t + r))\, r.$$
 For simplicity, we will define recursive functions from here on mostly by equational properties,
@@ -66,9 +66,9 @@ $l \bindl f$ applies $f$ to all elements of $l$ and concatenates the outputs.
 For a list $l$ and a function $f$ from a _value_ to a list,
 $l \bind f$ applies OK values in $l$ to $f$ and returns exception values in $l$.
 \begin{alignat*}{7}
-&\bindr&&: \resultt &&\to (\valt &&\to \resultt&&) &&\to \resultt &&\coloneq \lambda r\, f. r\, (\lambda o. f\, o)\, (\lambda e. r)\, (\lambda b. r) \\
-&\bindl&&: \listt &&\to (\resultt &&\to \listt&&) &&\to \listt &&\coloneq \lambda l\, f. l\, (\lambda h\, t. f\, h + (t \bindl f))\, \nil \\
-&\bind &&: \listt &&\to (\valt &&\to \listt&&) &&\to \listt &&\coloneq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
+&\bindr&&: \resultt &&\to (\valt &&\to \resultt&&) &&\to \resultt &&\coloneqq \lambda r\, f. r\, (\lambda o. f\, o)\, (\lambda e. r)\, (\lambda b. r) \\
+&\bindl&&: \listt &&\to (\resultt &&\to \listt&&) &&\to \listt &&\coloneqq \lambda l\, f. l\, (\lambda h\, t. f\, h + (t \bindl f))\, \nil \\
+&\bind &&: \listt &&\to (\valt &&\to \listt&&) &&\to \listt &&\coloneqq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
 \end{alignat*}
 
 
@@ -95,8 +95,8 @@ That means that every arithmetic operation can fail.
 Definitions of the arithmetic operators for JSON values are given in @sec:arithmetic.
 
 The value type must also provide Boolean operations
-$\{<, \leq, >, \geq, \stackrel{?}{=}, \neq\}$, where
-$l \stackrel{?}{=} r$ returns whether $l$ equals $r$, and
+$\{<, \leq, >, \geq, \iseq, \neq\}$, where
+$l \iseq r$ returns whether $l$ equals $r$, and
 $l \neq r$ returns its negation.
 Each of these Boolean operations is of type $\valt \to \valt \to \valt$.
 The order on JSON values is defined in @sec:json-order.
@@ -116,8 +116,8 @@ that transforms a list into a value result:
 It returns an array if all list elements are values, or into
 the first exception in the list otherwise:
 \begin{alignat*}{2}
-\sumf&: \listt \to \valt &&\to \resultt \coloneq \lambda l\, n. l\, (\lambda h\, t. h \bindr (\lambda o. (n + o \bindr \sumf\, t)))\, (\ok(n)) \\
-\arr &: \listt           &&\to \resultt \coloneq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok((\arr_1\, v))}))\, \arr_0
+\sumf&: \listt \to \valt &&\to \resultt \coloneqq \lambda l\, n. l\, (\lambda h\, t. h \bindr (\lambda o. (n + o \bindr \sumf\, t)))\, (\ok(n)) \\
+\arr &: \listt           &&\to \resultt \coloneqq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok((\arr_1\, v))}))\, \arr_0
 \end{alignat*}
 Here, the function $\sumf$ takes a list $l$ and a zero value $n$ and
 returns the sum of the zero value and the list elements if they are all OK,

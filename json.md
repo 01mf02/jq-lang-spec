@@ -6,7 +6,7 @@ In this section, we will define JSON values.
 Furthermore, we will define several functions and operations on values.
 
 A JSON value $v$ has the shape
-$$v \coloneq \nullf \gror \false \gror \true \gror n \gror s \gror [v_0, ..., v_n] \gror \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n},$$
+$$v \coloneqq \nullf \gror \false \gror \true \gror n \gror s \gror [v_0, ..., v_n] \gror \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n},$$
 where $n$ is a number and $s$ is a string.
 We write a string $s$ as $c_0...c_n$, where $c$ is a character.
 A value of the shape $[v_0, ..., v_n]$ is called an _array_ and
@@ -57,10 +57,10 @@ supports the arithmetic operations $+$, $-$, $\times$, $\div$, and $\modulo$ (mo
 
 In this subsection, we will introduce functions to construct arrays and objects.
 \begin{alignat*}{3}
-\arr _0:{}&             &&            && \valt \coloneq [] \\
-\arr _1:{}&             &&\valt \to{} && \valt \coloneq \lambda v. [v] \\
-\objf_0:{}&             &&            && \valt \coloneq \obj{} \\
-\objf_1:{}& \valt \to{} &&\valt \to{} && \resultt \coloneq \lambda k\, v. \begin{cases}
+\arr _0:{}&             &&            && \valt \coloneqq [] \\
+\arr _1:{}&             &&\valt \to{} && \valt \coloneqq \lambda v. [v] \\
+\objf_0:{}&             &&            && \valt \coloneqq \obj{} \\
+\objf_1:{}& \valt \to{} &&\valt \to{} && \resultt \coloneqq \lambda k\, v. \begin{cases}
   \ok \obj{k \mapsto v} & \text{if $k$ is a string} \\
   \err ... & \text{otherwise}
 \end{cases}
@@ -74,7 +74,7 @@ $\arr$ defined in @sec:value-ops based on $\arr_0$ and $\arr_1$.
 We are now going to define several functions on values.
 
 The _keys_ of a value are defined as follows:
-$$\keys: \valt \to \listt \coloneq \lambda v. \begin{cases}
+$$\keys: \valt \to \listt \coloneqq \lambda v. \begin{cases}
   \stream{\ok 0, ...,   \ok n} & \text{if } v = [v_0, ..., v_n] \\
   \stream{\ok{k_0}} + \keys\, v' & \text{if } v = \obj{k_0 \mapsto v_0} \cup v' \text{ and } k_0 = \min(\dom(v)) \\
   \stream{} & \text{if } v = {} \\
@@ -85,7 +85,7 @@ the domain of the object sorted by ascending order.
 For the used ordering, see @sec:json-order.
 
 We define the _length_ of a value as follows:
-$$\length: \valt \to \resultt \coloneq \lambda v. \begin{cases}
+$$\length: \valt \to \resultt \coloneqq \lambda v. \begin{cases}
   \ok 0    & \text{if } v = \nullf \\
   \ok |n|  & \text{if $v$ is a number $n$} \\
   \ok n    & \text{if } v = c_1...c_n \\
@@ -102,7 +102,7 @@ $|a|$ is the length of an array $a$, and
 $|o|$ is the cardinality of the domain of an object $o$.
 
 The _boolean value_ of a value $v$ is defined as follows:
-$$\bool: \valt \to \boolt \coloneq \lambda v. \begin{cases}
+$$\bool: \valt \to \boolt \coloneqq \lambda v. \begin{cases}
   \false & \text{if $v = \nullf$ or $v = \false$} \\
   \true & \text{otherwise}
 \end{cases}$$
@@ -135,7 +135,7 @@ respectively.
 ### Addition
 
 We define addition of two values $l$ and $r$ as follows:
-$$l + r \coloneq \begin{cases}
+$$l + r \coloneqq \begin{cases}
   \ok v & \text{if $l = \nullf$ and $r = v$, or $l = v$ and $r = \nullf$} \\
   \ok (n_1 + n_2) & \text{if $l$ is a number $n_1$ and $r$ is a number $n_2$} \\
   \ok (c_{l,1}...c_{l,m}c_{r,1}...c_{r,n}) & \text{if $l = c_{l,1}...c_{l,m}$ and $r = c_{r,1}...c_{r,n}$} \\
@@ -150,7 +150,7 @@ for objects, it corresponds to their union.
 ### Multiplication
 
 Given two objects $l$ and $r$, we define their _recursive merge_ $l \Cup r$ as:
-$$l \Cup r \coloneq \begin{cases}
+$$l \Cup r \coloneqq \begin{cases}
   {k \mapsto v_l \Cup v_r} \cup l' \Cup r' & \text{if $l = \obj{k \mapsto v_l} \cup l'$, $r = \obj{k \mapsto v_r} \cup r'$, and $v_l, v_r$ are objects} \\
   \obj{k \mapsto v_r} \cup l' \Cup r' & \text{if $l = {k \mapsto v_l} \cup l'$, $r = \obj{k \mapsto v_r} \cup r'$, and $v_l$ or $v_r$ is not an object} \\
   \obj{k \mapsto v_r} \cup l \Cup r' & \text{if $k \notin \dom(l)$ and $r = \obj{k \mapsto v_r} \cup r'$} \\
@@ -158,7 +158,7 @@ $$l \Cup r \coloneq \begin{cases}
 \end{cases}$$
 
 We use $\Cup$ in the following definition of multiplication of two values $l$ and $r$:
-$$l \times r \coloneq \begin{cases}
+$$l \times r \coloneqq \begin{cases}
   \ok(n_1 \times n_2) & \text{if $l$ is a number $n_1$ and $r$ is a number $n_2$} \\
   \sum_{i = 1}^n s & \text{if $l$ is a string $s$ and $r$ is a number $n \in \mathbb Z$} \\
   r \times l & \text{if $r$ is a string and $l \in \mathbb Z$} \\
@@ -174,7 +174,7 @@ The multiplication of two objects corresponds to their recursive merge as define
 ### Subtraction
 
 We now define subtraction of two values $l$ and $r$:
-$$l - r \coloneq \begin{cases}
+$$l - r \coloneqq \begin{cases}
   \ok(n_1 - n_2) & \text{if $l$ is a number $n_1$ and $r$ is a number $n_2$} \\
   \arr (\sum_{i, l_i \notin \{r_0, ..., r_n\}} \stream{\ok l_i}) & \text{if $l = [l_0, ..., l_n]$ and $r = [r_0, ..., r_n]$} \\
   \err ... & \text{otherwise}
@@ -188,7 +188,7 @@ an array containing those values of $l$ that are not contained in $r$.
 We will now define a function that
 splits a string $y + x$ by some non-empty separator string $s$.
 The function preserves the invariant that $y$ does not contain $s$:
-$$\splitf \coloneq \lambda x\, s\, y. \begin{cases}
+$$\splitf \coloneqq \lambda x\, s\, y. \begin{cases}
   \splitf\, (c_1...c_n)\, s\, (y + c_0) & \text{if $x = c_0...c_n$ and $c_0...c_{|s| - 1} \neq s$} \\
   [y] + \splitf\, (c_{|s|}...c_n)\, s\, "" & \text{if $x = c_0...c_n$ and $c_0...c_{|s| - 1} = s$} \\
   [y] & \text{otherwise ($|x| = 0$)}
@@ -196,7 +196,7 @@ $$\splitf \coloneq \lambda x\, s\, y. \begin{cases}
 
 We use this splitting function to define division of two values:
 
-$$l \div r \coloneq \begin{cases}
+$$l \div r \coloneqq \begin{cases}
   \ok(n_1 \div n_2) & \text{if $l$ is a number $n_1$ and $r$ is a number $n_2$} \\
   \ok [] & \text{if $l$ and $r$ are strings and $|l| = 0$} \\
   \arr (\sum_i \stream{\ok c_i}) & \text{if $l = c_0...c_n$, $r$ is a string, $|l| > 0$, and $|r| = 0$} \\
@@ -238,7 +238,7 @@ These serve to extract values that are contained within other values.
 
 The value $v[i]$ of a value $v$ at index $i$ is defined as follows:
 
-$$v[i] \coloneq \begin{cases}
+$$v[i] \coloneqq \begin{cases}
   \ok v_i    & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i \leq n$} \\
   \ok \nullf & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i > n$} \\
   v[n+i]     & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb Z \setminus \mathbb N$, and $0 \leq n+i$} \\
@@ -261,7 +261,7 @@ The behaviour of this operator for $i < 0$ is that $v[i]$ equals $v[|v| + i]$.
 :::
 
 Using the index operator, we can define the values $v[]$ in a value $v$ as follows:
-$$v[] \coloneq \keys v \bind \lambda k. \stream{v[k]}$$
+$$v[] \coloneqq \keys v \bind \lambda k. \stream{v[k]}$$
 When provided with
 an array $v = [v_0, ..., v_n]$ or
 an object $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$
@@ -269,7 +269,7 @@ an object $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$
 $v[]$ returns the stream $\stream{\ok v_0, ..., \ok v_n}$.
 
 Next, we define a slice operator:
-$$v[i:j] \coloneq \begin{cases}
+$$v[i:j] \coloneqq \begin{cases}
   \ok [v_i, ..., v_{j-1}] & \text{if $v = [v_0, ..., v_n]$ and $i, j \in \mathbb N$} \\
   \ok (c_i  ...  c_{j-1}) & \text{if $v =  c_0  ...  c_n $ and $i, j \in \mathbb N$} \\
   v[(n+i):j] & \text{if $|v| = n$, $i \in \mathbb Z \setminus \mathbb N$, and $0 \leq n+i$} \\
@@ -290,13 +290,13 @@ an empty string if $v$ is a string.
 $v[]$ fulfills this, whereas $v[i]$ and $v[i:j]$ return a single value result.
 For that reason, we now redefine these operators to return a stream of value results, by
 \begin{align*}
-v[i]   &\coloneq \stream{v[i]} \\
-v[i:j] &\coloneq \stream{v[i:j]}
+v[i]   &\coloneqq \stream{v[i]} \\
+v[i:j] &\coloneqq \stream{v[i:j]}
 \end{align*}
 Finally, we define the remaining access operators by using the slice operator:
 \begin{alignat*}{4}
-v[:j] &\coloneq                                       && v[0 &&: &j&] \\
-v[i:] &\coloneq \stream{\length\, v} \bind \lambda l. && v[i &&: &l&]
+v[:j] &\coloneqq                                       && v[0 &&: &j&] \\
+v[i:] &\coloneqq \stream{\length\, v} \bind \lambda l. && v[i &&: &l&]
 \end{alignat*}
 
 When $\length\, v$ yields an error, then $v[i:]$ yields an error, too.
@@ -318,7 +318,7 @@ a value $v: \valt$ and a function $f: \valt \to \listt$, and return a value resu
 The first update operator will be a counterpart to $v[]$.
 For all elements $x$ that are yielded by $v[]$,
 $v[] \update f$ replaces $x$ by $f(x)$:
-$$v[] \update f \coloneq \begin{cases}
+$$v[] \update f \coloneqq \begin{cases}
   \arr (\sum_i f(v_i)) & \text{if } v = [v_0, ..., v_n] \\
   \sumf\, (\keys v \bind \lambda k. v[k] \bind \lambda v. \stream{\objif\, k\, (f\, v)})\, \obj{} & \text{if $v$ is an object} \\
   \err ... & \text{otherwise}
@@ -327,7 +327,7 @@ $$v[] \update f \coloneq \begin{cases}
 Here, we use the function $\sumf$ from @sec:value-ops as well as
 a helper function for the case that $v$ is an object.
 This function takes an object key $k$ and $s: \listt$ and returns a value result:
-$$\objif \coloneq \lambda k\, s. s\, (\lambda h\, t. h \bindr \lambda o. \ok \obj{k \mapsto o})\, (\ok \obj{})$$
+$$\objif \coloneqq \lambda k\, s. s\, (\lambda h\, t. h \bindr \lambda o. \ok \obj{k \mapsto o})\, (\ok \obj{})$$
 
 For an input array $v = [v_0, ..., v_n]$,
 $v[] \update f$ replaces each $v_i$ by the output of $f(v_i)$, yielding
@@ -342,10 +342,10 @@ jq only considers the first value yielded by $f$.
 For the next operators, we will use the following function
 $\cut\, v\, i\, j\, n\, s$, which
 replaces the slice $[i:j]$ of an array $v$ of length $n$ by a stream $s$:
-$$\cut \coloneq \lambda v\, i\, j\, n\, s. \sumf\, (v[0:i] + s + v[j:n])\, []$$
+$$\cut \coloneqq \lambda v\, i\, j\, n\, s. \sumf\, (v[0:i] + s + v[j:n])\, []$$
 
 The next operator replaces the $i$-th element of a value $v$ by the outputs of $f$:
-$$v[i] \update f \coloneq \begin{cases}
+$$v[i] \update f \coloneqq \begin{cases}
   \cut\, v\, i\, (i+1)\, n\, \stream{\arr (f v_i)} & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i \leq n$} \\
   v[n+i] \update f & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb Z \setminus \mathbb N$, and $0 \leq n+i$} \\
   \objif\, i\, (f\, v') \bindr \lambda y. y + o & \text{if } v = \obj{i \mapsto v'} \cup o \\
@@ -361,7 +361,7 @@ we cannot provide a default element e that would make the key disappear
 
 The final operator is the update counterpart of the operator $v[i:j]$.
 It replaces the slice $v[i:j]$ by the concatenation of the outputs of $f$ on $v[i:j]$.
-$$v[i:j] \update f \coloneq \begin{cases}
+$$v[i:j] \update f \coloneqq \begin{cases}
   \cut\, v\, i\, j\, n\, (v[i:j] >>= f) & \text{if $v = [v_0, ..., v_n],$ $i, j \in \mathbb N$, and $i \leq j$} \\
   \ok v & \text{if $v = [v_0, ..., v_n]$, $i, j \in \mathbb N$, and $i > j$} \\
   v[(n+i):j] \update f & \text{if $|v| = n$, $i \in \mathbb Z \setminus \mathbb N$, and $0 \leq n+i$} \\
@@ -382,8 +382,8 @@ $f$ returns multiple values, in which case jq considers only the first output of
 
 Similarly to @sec:json-access, we define the remaining operators by $v[i:j]$:
 \begin{alignat*}{3}
-v[:j] \update f &\coloneq                             && v[0:&j] \update f \\
-v[i:] \update f &\coloneq \length v \bindr \lambda l. && v[i:&l] \update f
+v[:j] \update f &\coloneqq                             && v[0:&j] \update f \\
+v[i:] \update f &\coloneqq \length v \bindr \lambda l. && v[i:&l] \update f
 \end{alignat*}
 
 

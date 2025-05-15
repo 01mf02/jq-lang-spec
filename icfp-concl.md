@@ -3,13 +3,11 @@
 We have shown formal syntax and semantics of
 a large subset of the jq programming language.
 
-On the syntax side, we first defined
-formal syntax (HIR) that closely corresponds to actual jq syntax.
-We then gave a lowering that reduces HIR to a simpler subset (MIR),
-in order to simplify the semantics later.
-We finally showed how a subset of actual jq syntax can be translated into HIR and thus MIR.
+On the syntax side, we first defined a subset of jq's filter syntax.
+We then introduced a simpler subset (IR) in order to simplify the semantics later,
+and gave a lowering from concrete jq syntax to IR.
 
-On the semantics side, we gave formal semantics based on MIR.
+On the semantics side, we gave formal semantics based on IR.
 First, we defined values and basic operations on them.
 Then, we used this to define the semantics of jq programs,
 by specifying how to compile a jq program to a lambda term.

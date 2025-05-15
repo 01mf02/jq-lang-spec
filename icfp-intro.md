@@ -72,8 +72,7 @@ give a glimpse of actual jq syntax and behaviour.
 From that point on, the structure of the text follows
 the execution of a jq program as shown in @fig:structure.
 @sec:syntax formalises a subset of jq syntax and shows how jq syntax can be
-transformed to increasingly low-level intermediate representations called
-HIR (@sec:hir) and MIR (@sec:mir).
+transformed to a more low-level intermediate representation called IR (@sec:mir).
 After this, the semantics part starts:
 @sec:values defines several data types and corresponding lambda terms, such as
 values, value results, and lists.
