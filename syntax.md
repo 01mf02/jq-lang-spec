@@ -17,7 +17,7 @@ We will now present a subset of jq syntax^[
 
 A _filter_ $f$ is defined by the grammar
 \begin{align*}
-f &\coloneq \quad n \gror s \gror . \gror .. \\
+f &\coloneqq \quad n \gror s \gror . \gror .. \\
   &\gror (f) \gror f? \gror [] \gror [f] \gror \{f: f, \dots, f: f\} \gror f [p]^? \dots [p]^? \\
   &\gror f \star f \gror f \cartesian f \\
   &\gror f \jqas P | f \gror \jqfold{reduce}{f}{P}{(f; f)} \gror \jqfold{foreach}{f}{P}{(f; f; f)} \gror \$x \\
@@ -28,8 +28,8 @@ f &\coloneq \quad n \gror s \gror . \gror .. \\
 \end{align*}
 where:
 
-- $p$ is a _path part_ defined by the grammar $p \coloneq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
-- $P$ is a _pattern_ defined by the grammar $P \coloneq \quad \$x \gror [P, \dots, P] \gror \{f: P, \dots, f: P\}$.
+- $p$ is a _path part_ defined by the grammar $p \coloneqq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
+- $P$ is a _pattern_ defined by the grammar $P \coloneqq \quad \$x \gror [P, \dots, P] \gror \{f: P, \dots, f: P\}$.
 - $x$ is an identifier (such as $\jqf{empty}$).
 - $n$ is a number (such as $42$ or $3.14$).
 - $s$ is a string (such as "Hello world!").
@@ -85,7 +85,7 @@ in a much less verbose way than for actual jq syntax.
 
 An IR filter $f$ is defined by the grammar
 \begin{align*}
-f &\coloneq \quad n \gror s \gror . \\
+f &\coloneqq \quad n \gror s \gror . \\
   &\gror [] \gror [f] \gror {} \gror \{\$x: \$x\} \gror .[p] \\
   &\gror f \star f \gror \$x \cartesian \$x \\
   &\gror f \jqas \$x | f \gror \jqfold{reduce}{f}{\$x}{(.; f)} \gror \jqfold{foreach}{f}{\$x}{(.; f; f)} \gror \$x \\
@@ -164,10 +164,10 @@ $\floor{f \star g} = \floor f \star \floor g$.
 
 We define filters that yield the boolean values as
 \begin{align*}
-\jqf{true}  &\coloneq (0 \iseq 0), \\
-\jqf{false} &\coloneq (0  \neq 0).
+\jqf{true}  &\coloneqq (0 \iseq 0), \\
+\jqf{false} &\coloneqq (0  \neq 0).
 \end{align*}
-The filter "$\jqf{bool} \coloneq (\jqite{.}{\true}{\false})$"
+The filter "$\jqf{bool} \coloneqq (\jqite{.}{\true}{\false})$"
 maps its input to its boolean value.
 
 In the lowering of the folding operators $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$
