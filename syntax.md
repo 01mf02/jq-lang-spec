@@ -2,7 +2,7 @@
 
 We first describe the syntax for a large subset of the jq language in @sec:hir.
 Next, we define a reduced subset of jq syntax called
-intermediate representation (IR) in @sec:mir.
+intermediate representation (IR) in @sec:ir.
 We provide a way to translate from jq syntax to IR.
 We will use IR later to define the semantics in @sec:semantics.
 
@@ -76,7 +76,7 @@ We consider equivalent the following notations^[
   $\jqite{f_1}{g_1}{(\jqite{f_2}{g_2}{\dots (\jqite{f_n}{g_n}{h}) \dots})}$.
 
 
-## IR {#sec:mir}
+## IR {#sec:ir}
 
 We are now going to define IR filters and
 show how to _lower_ a jq filter to an IR filter.
@@ -228,8 +228,8 @@ Semantically, we will see that this is equivalent to $(.[]? | .[])$.
 
 ::: {.example}
 The jq filter $\mu \equiv .[0]$ is lowered to
-$\floor \mu \equiv . \jqas \$x | . | (\$x | 0) \jqas \$y | .[\$y]$.
-Semantically, we will see that $\floor \mu$ is equivalent to $0 \jqas \$y | .[\$y]$.
+$\floor \mu \equiv (. \jqas \$x | . | (\$x | 0) \jqas \$y | .[\$y])$.
+Semantically, we will see that $\floor \mu$ is equivalent to $(0 \jqas \$y | .[\$y])$.
 The jq filter $\varphi \equiv ([3] | .[0] = (\jqf{length}, 2))$
 is lowered to the IR filter
 $\floor \varphi \equiv ([3] | (\jqf{length}, 2) \jqas \$z | \floor \mu \update \$z)$.

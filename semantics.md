@@ -83,7 +83,7 @@ Let us discuss its different cases:
 - "$.$": Returns its input value. This is the identity filter.
 - $n$ or $s$: Returns the value corresponding to the number $n$ or string $s$.
 - $\$x$: Returns the value currently bound to the variable $\$x$.
-  Wellformedness of the filter (as defined in @sec:mir) ensures that
+  Wellformedness of the filter (as defined in @sec:ir) ensures that
   whenever we evaluate $\$x$, it must have been substituted,
   for example by a surrounding call to $f \jqas \$x | g$.
 - $[]$ or $\{\}$: Creates an empty array or object.
