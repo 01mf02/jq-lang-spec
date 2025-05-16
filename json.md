@@ -190,7 +190,7 @@ splits a string $y + x$ by some non-empty separator string $s$.
 The function preserves the invariant that $y$ does not contain $s$:
 $$\splitf \coloneqq \lambda x\, s\, y. \begin{cases}
   \splitf\, (c_1...c_n)\, s\, (y + c_0) & \text{if $x = c_0...c_n$ and $c_0...c_{|s| - 1} \neq s$} \\
-  [y] + \splitf\, (c_{|s|}...c_n)\, s\, "" & \text{if $x = c_0...c_n$ and $c_0...c_{|s| - 1} = s$} \\
+  [y] + \splitf\, (c_{|s|}...c_n)\, s\, \jqstr{} & \text{if $x = c_0...c_n$ and $c_0...c_{|s| - 1} = s$} \\
   [y] & \text{otherwise ($|x| = 0$)}
 \end{cases}$$
 
@@ -200,18 +200,18 @@ $$l \div r \coloneqq \begin{cases}
   \ok(n_1 \div n_2) & \text{if $l$ is a number $n_1$ and $r$ is a number $n_2$} \\
   \ok [] & \text{if $l$ and $r$ are strings and $|l| = 0$} \\
   \arr (\sum_i \stream{\ok c_i}) & \text{if $l = c_0...c_n$, $r$ is a string, $|l| > 0$, and $|r| = 0$} \\
-  \ok(\splitf\, l\, r\, "") & \text{if $l$ and $r$ are strings, $|l| > 0$, and $|r| > 0$} \\
+  \ok(\splitf\, l\, r\, \jqstr{}) & \text{if $l$ and $r$ are strings, $|l| > 0$, and $|r| > 0$} \\
   \err ... & \text{otherwise}
 \end{cases}$$
 
 ::: {.example}
-  Let $s = "ab"$.
+  Let $s = \jqstr{ab}$.
   We have that
-  $s \div s = ["", ""]$.
+  $s \div s = [\jqstr{}, \jqstr{}]$.
   Furthermore,
-  $"c" \div s = ["c"]$,
-  $(s + "c" + s           ) \div s = ["", "c", ""  ]$ and
-  $(s + "c" + s + "de") \div s = ["", "c", "de"]$.
+  $\jqstr{c} \div s = [\jqstr{c}]$,
+  $(s + \jqstr{c} + s             ) \div s = [\jqstr{}, \jqstr{c}, \jqstr{}  ]$ and
+  $(s + \jqstr{c} + s + \jqstr{de}) \div s = [\jqstr{}, \jqstr{c}, \jqstr{de}]$.
 :::
 
 From this example, we can infer the following lemma.

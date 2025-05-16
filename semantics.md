@@ -328,35 +328,35 @@ paths pointing to non-existent data, and
 missing paths.
 
 ::: {.example #ex:obj-update-arr}
-  Consider the input value $\obj{"a" \mapsto \obj{"b" \mapsto 1}}$ and the filter
+  Consider the input value $\obj{\jqstr{a} \mapsto \obj{\jqstr{b} \mapsto 1}}$ and the filter
   $(.[], .[][]) \update g$, where $g$ is $[]$.
   Executing this filter in jq first builds the path
-  $.["a"]$ stemming from "$.[]$", then
-  $.["a"]["b"]$ stemming from "$.[][]$".
+  $.[\jqstr{a}]$ stemming from "$.[]$", then
+  $.[\jqstr{a}][\jqstr{b}]$ stemming from "$.[][]$".
   Next, jq folds over the paths,
   using the input value as initial accumulator and
   updating the accumulator at each path with $g$.
   The final output is thus the output of
-  $(.["a"] \update g) | (.["a"]["b"] \update g)$.
-  The output of the first step $.["a"] \update g$ is $\obj{"a" \mapsto []}$.
-  This value is the input to the second step $.["a"]["b"] \update g$,
+  $(.[\jqstr{a}] \update g) | (.[\jqstr{a}][\jqstr{b}] \update g)$.
+  The output of the first step $.[\jqstr{a}] \update g$ is $\obj{\jqstr{a} \mapsto []}$.
+  This value is the input to the second step $.[\jqstr{a}][\jqstr{b}] \update g$,
   which yields an error because
-  we cannot index the array $[]$ at the path $.["a"]$ by $.["b"]$.
+  we cannot index the array $[]$ at the path $.[\jqstr{a}]$ by $.[\jqstr{b}]$.
 :::
 
 We can also have surprising behaviour that does not manifest any error.
 
 ::: {.example #ex:obj-update-obj}
   Consider the same input value and filter as in @ex:obj-update-arr,
-  but now with $g$ set to $\obj{"c": 2}$.
-  The output of the first step $.["a"] \update g$ is $\obj{"a" \mapsto \obj{"c" \mapsto 2}}$.
-  This value is the input to the second step $.["a"]["b"] \update g$, which yields
-  $\obj{"a" \mapsto \obj{"c" \mapsto 2, "b" \mapsto \obj{"c" \mapsto 2}}}$.
-  Here, the remaining path ($.["a"]["b"]$) pointed to
+  but now with $g$ set to $\obj{\jqstr{c}: 2}$.
+  The output of the first step $.[\jqstr{a}] \update g$ is $\obj{\jqstr{a} \mapsto \obj{\jqstr{c} \mapsto 2}}$.
+  This value is the input to the second step $.[\jqstr{a}][\jqstr{b}] \update g$, which yields
+  $\obj{\jqstr{a} \mapsto \obj{\jqstr{c} \mapsto 2, \jqstr{b} \mapsto \obj{\jqstr{c} \mapsto 2}}}$.
+  Here, the remaining path ($.[\jqstr{a}][\jqstr{b}]$) pointed to
   data that was removed by the update on the first path,
   so this data gets reintroduced by the update.
   On the other hand, the data introduced by the first update step
-  (at the path $.["a"]["c"]$) is not part of the original path,
+  (at the path $.[\jqstr{a}][\jqstr{c}]$) is not part of the original path,
   so it is _not_ updated.
 :::
 
@@ -367,8 +367,8 @@ $(f_1, f_2) \update g$ as $(f_1 \update g) | (f_2 \update g)$.
 That way, the paths of $f_2$ would point precisely to the data returned by
 $f_1 \update g$, thus avoiding the problems depicted by the examples above.
 In particular, with such an approach,
-@ex:obj-update-arr would yield $\obj{"a" \mapsto []}$ instead of an error, and
-@ex:obj-update-obj would yield $\obj{"a" \mapsto \obj{"c" \mapsto \obj{"c" \mapsto 2}}}$.
+@ex:obj-update-arr would yield $\obj{\jqstr{a} \mapsto []}$ instead of an error, and
+@ex:obj-update-obj would yield $\obj{\jqstr{a} \mapsto \obj{\jqstr{c} \mapsto \obj{\jqstr{c} \mapsto 2}}}$.
 
 In the remainder of this section, we will show
 semantics that extend this idea to all update operations.
@@ -547,30 +547,30 @@ $\jqlb{label}{x} | g$ and $\jqtc{f}{g}$.
 ::: {.example name="The Curious Case of Alternation"}
   The semantics of $(f \alt g) \update \sigma$ can be rather surprising:
   For the input
-  $\obj{"a" \mapsto \true}$, the filter
-  $(.["a"] \alt .["b"]) \update 1$ yields
-  $\obj{"a" \mapsto 1}$.
-  This is what we might expect, because the input has an entry for $"a"$.
+  $\obj{\jqstr{a} \mapsto \true}$, the filter
+  $(.[\jqstr{a}] \alt .[\jqstr{b}]) \update 1$ yields
+  $\obj{\jqstr{a} \mapsto 1}$.
+  This is what we might expect, because the input has an entry for $\jqstr{a}$.
   Now let us evaluate the same filter on the input
-  $\obj{"a" \mapsto \false}$, which yields
-  $\obj{"a" \mapsto \false, "b" \mapsto 1}$.
-  Here, while the input still has an entry for $"a"$ like above,
-  its boolean value is _not_ true, so $.["b"] \update 1$ is executed.
-  In the same spirit, for the input $\obj{}$ the filter yields $\obj{"b" \mapsto 1}$,
-  because $.["a"]$ yields $\nullf$ for the input,
-  which also has the boolean value $\false$, therefore $.["b"] \update 1$ is executed.
+  $\obj{\jqstr{a} \mapsto \false}$, which yields
+  $\obj{\jqstr{a} \mapsto \false, \jqstr{b} \mapsto 1}$.
+  Here, while the input still has an entry for $\jqstr{a}$ like above,
+  its boolean value is _not_ true, so $.[\jqstr{b}] \update 1$ is executed.
+  In the same spirit, for the input $\obj{}$ the filter yields $\obj{\jqstr{b} \mapsto 1}$,
+  because $.[\jqstr{a}]$ yields $\nullf$ for the input,
+  which also has the boolean value $\false$, therefore $.[\jqstr{b}] \update 1$ is executed.
 
   For the input
   $\obj{}$, the filter
-  $(\false \alt .["b"]) \update 1$ yields
-  $\obj{"b" \mapsto 1}$.
+  $(\false \alt .[\jqstr{b}]) \update 1$ yields
+  $\obj{\jqstr{b} \mapsto 1}$.
   This is remarkable insofar as $\false$ is not a valid path expression
   because it returns a value that does not refer to any part of the original input,
   yet the filter does not return an error.
   This is because
-  $\false$ triggers $.["b"] \update 1$, so
+  $\false$ triggers $.[\jqstr{b}] \update 1$, so
   $\false$ is never used as path expression.
-  However, running the filter $(\true \alt .["b"]) \update 1$
+  However, running the filter $(\true \alt .[\jqstr{b}]) \update 1$
   _does_ yield an error, because
   $\true$ triggers $\true \update 1$, and
   $\true$ is not a valid path expression.
