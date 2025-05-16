@@ -25,16 +25,16 @@ We use natural numbers to store label identifiers.
 The elements returned by our filters are _value results_ $\resultt$, which are
 either OK or an exception (an error or a break).
 \begin{align*}
-\ok    &: \valt \to \resultt \coloneqq \lambda x\, o\, e\, b. o\, x \\
-\err   &: \valt \to \resultt \coloneqq \lambda x\, o\, e\, b. e\, x \\
-\breakf&: \mathbb N \to \resultt \coloneqq \lambda x\, o\, e\, b. b\, x
+\ok    &{}: \valt \to \resultt \coloneqq \lambda x\, o\, e\, b. o\, x \\
+\err   &{}: \valt \to \resultt \coloneqq \lambda x\, o\, e\, b. e\, x \\
+\breakf&{}: \mathbb N \to \resultt \coloneqq \lambda x\, o\, e\, b. b\, x
 \end{align*}
 
 We will use _lists_ $\listt$ of value results as return type of filters.
 Because the jq language is evaluated lazily, lists can be infinite.
 \begin{alignat*}{3}
-\cons&: \resultt \to \listt \to{} &&\listt \coloneqq \lambda h\, t. && \lambda c\, n. c\, h\, t \\
-\nil&:                                  &&\listt \coloneqq                && \lambda c\, n. n
+\cons&{}: \resultt \to \listt \to{} &&\listt \coloneqq \lambda h\, t. && \lambda c\, n. c\, h\, t \\
+\nil&{}:                                  &&\listt \coloneqq                && \lambda c\, n. n
 \end{alignat*}
 
 We write the empty list
@@ -66,9 +66,9 @@ $l \bindl f$ applies $f$ to all elements of $l$ and concatenates the outputs.
 For a list $l$ and a function $f$ from a _value_ to a list,
 $l \bind f$ applies OK values in $l$ to $f$ and returns exception values in $l$.
 \begin{alignat*}{7}
-&\bindr&&: \resultt &&\to (\valt &&\to \resultt&&) &&\to \resultt &&\coloneqq \lambda r\, f. r\, (\lambda o. f\, o)\, (\lambda e. r)\, (\lambda b. r) \\
-&\bindl&&: \listt &&\to (\resultt &&\to \listt&&) &&\to \listt &&\coloneqq \lambda l\, f. l\, (\lambda h\, t. f\, h + (t \bindl f))\, \nil \\
-&\bind &&: \listt &&\to (\valt &&\to \listt&&) &&\to \listt &&\coloneqq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
+&\bindr&&{}: \resultt &&\to (\valt &&\to \resultt&&) &&\to \resultt &&\coloneqq \lambda r\, f. r\, (\lambda o. f\, o)\, (\lambda e. r)\, (\lambda b. r) \\
+&\bindl&&{}: \listt &&\to (\resultt &&\to \listt&&) &&\to \listt &&\coloneqq \lambda l\, f. l\, (\lambda h\, t. f\, h + (t \bindl f))\, \nil \\
+&\bind &&{}: \listt &&\to (\valt &&\to \listt&&) &&\to \listt &&\coloneqq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
 \end{alignat*}
 
 
@@ -116,8 +116,8 @@ that transforms a list into a value result:
 It returns an array if all list elements are values, or into
 the first exception in the list otherwise:
 \begin{alignat*}{2}
-\sumf&: \listt \to \valt &&\to \resultt \coloneqq \lambda l\, n. l\, (\lambda h\, t. h \bindr (\lambda o. (n + o \bindr \sumf\, t)))\, (\ok(n)) \\
-\arr &: \listt           &&\to \resultt \coloneqq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok((\arr_1\, v))}))\, \arr_0
+\sumf&{}: \listt \to \valt &&\to \resultt \coloneqq \lambda l\, n. l\, (\lambda h\, t. h \bindr (\lambda o. (n + o \bindr \sumf\, t)))\, (\ok(n)) \\
+\arr &{}: \listt           &&\to \resultt \coloneqq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok((\arr_1\, v))}))\, \arr_0
 \end{alignat*}
 Here, the function $\sumf$ takes a list $l$ and a zero value $n$ and
 returns the sum of the zero value and the list elements if they are all OK,

@@ -295,8 +295,8 @@ v[i:j] &\coloneqq \stream{v[i:j]}
 \end{align*}
 Finally, we define the remaining access operators by using the slice operator:
 \begin{alignat*}{4}
-v[:j] &\coloneqq                                       && v[0 &&: &j&] \\
-v[i:] &\coloneqq \stream{\length\, v} \bind \lambda l. && v[i &&: &l&]
+v[:j] &\coloneqq                                       && v[0 &&{}: &j&] \\
+v[i:] &\coloneqq \stream{\length\, v} \bind \lambda l. && v[i &&{}: &l&]
 \end{alignat*}
 
 When $\length\, v$ yields an error, then $v[i:]$ yields an error, too.

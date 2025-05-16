@@ -11,9 +11,9 @@ The evaluation strategy is call-by-name.
 We will use pairs to store two functions
 --- a run and an update function --- that characterise each filter $\filtert$.
 \begin{alignat*}{4}
-  \pair&:                &(\valt \to \listt) &\to ((\valt \to \listt) \to \valt \to \listt) \to \filtert &&\coloneqq \lambda x\, y\, f. f\, x\, y  \\
-   \run&: \filtert \to{} &(\valt \to \listt) &                                                           &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
-   \upd&: \filtert       &                   &\to ((\valt \to \listt) \to \valt \to \listt)              &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
+  \pair&{}:                &(\valt \to \listt) &\to ((\valt \to \listt) \to \valt \to \listt) \to \filtert &&\coloneqq \lambda x\, y\, f. f\, x\, y  \\
+   \run&{}: \filtert \to{} &(\valt \to \listt) &                                                           &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
+   \upd&{}: \filtert       &                   &\to ((\valt \to \listt) \to \valt \to \listt)              &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
 \end{alignat*}
 The lambda term $\sem \varphi$ corresponding to a filter $\varphi$ that we will define
 will always be a pair of two functions, namely a run and an update function.
@@ -132,7 +132,7 @@ Let us discuss its different cases:
   takes a label $\fresh$ and a list $l$ of value results,
   returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
   \begin{align*}
-  \labelf&: \mathbb N \to \listt \to \listt \\
+  \labelf&{}: \mathbb N \to \listt \to \listt \\
          &\coloneqq \lambda \fresh\, l. l\, (\lambda h\, t. (\lambda c. h\, (\lambda o. c)\, (\lambda e. c)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b\, \stream{}\, c))\, (\stream h  + \labelf\, \fresh\, t))\, \stream()
   \end{align*}
   In this function, $c$ gets bound to $\stream h  + \labelf\, \fresh\, t$,
@@ -236,7 +236,7 @@ $\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$.
 \newcommand{\foldf}{\operatorname{fold}}
 Let us start by defining a general folding function $\foldf$:
 \begin{align*}
-\foldf&: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
+\foldf&{}: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
 &\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, v \bind (\lambda y. g\, h\, y + F\, t\, y))\, (n\, v))
 \end{align*}
 This function takes
@@ -263,8 +263,8 @@ Instantiating $\foldf$ with these two functions, we obtain the following:
 Here, $\reducef$ and $\foreachf$ are the functions used in @tab:eval-semantics.
 Their types are:
 \begin{alignat*}{2}
-\reducef &: (\valt \to \valt \to \listt)                                  &&\to \listt \to \valt \to \listt \\
-\foreachf&: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) &&\to \listt \to \valt \to \listt
+\reducef &{}: (\valt \to \valt \to \listt)                                  &&\to \listt \to \valt \to \listt \\
+\foreachf&{}: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) &&\to \listt \to \valt \to \listt
 \end{alignat*}
 We will now look at what the evaluation of the various folding filters expands to.
 Assuming that the filter $f_x$ evaluates to $\stream{x_0, ..., x_n}$,
@@ -662,7 +662,7 @@ For this, we first introduce a function $\foldf_{\update}$,
 as counterpart to the function $\foldf$ in @sec:folding.
 Its first argument is of type $\valt \to (\valt \to \listt) \to \valt \to \listt$, which we abbreviate as $\mathcal U$:
 \begin{align*}
-\foldf_{\update}&: \mathcal U \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
+\foldf_{\update}&{}: \mathcal U \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
 &\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, (\lambda x. g\, h\, x \bind F\, t)\, v)\, (n\, v))
 \end{align*}
 Using this function, we can now define
@@ -672,6 +672,6 @@ Using this function, we can now define
 \end{alignat*}
 The types of the functions are:
 \begin{alignat*}{2}
-\reducef _{\update}&: \mathcal U                &&\to (\valt \to \listt) \to \listt \to \valt \to \listt \\
-\foreachf_{\update}&: \mathcal U \to \mathcal U &&\to (\valt \to \listt) \to \listt \to \valt \to \listt
+\reducef _{\update}&{}: \mathcal U                &&\to (\valt \to \listt) \to \listt \to \valt \to \listt \\
+\foreachf_{\update}&{}: \mathcal U \to \mathcal U &&\to (\valt \to \listt) \to \listt \to \valt \to \listt
 \end{alignat*}
