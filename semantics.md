@@ -208,7 +208,7 @@ using only the filters for which we gave semantics in @tab:eval-semantics.
 :::
 
 ::: {.example #ex:labels name="Labels"}
-  Let us consider the filter $\varphi \equiv \rsep \jqlb{label}{x} | \jqlb{break}{x}$.
+  Let us consider the filter $\varphi \equiv \jqlb{label}{x} | \jqlb{break}{x}$.
   We have:
   \begin{align*}
   \eval\, \sem \varphi\, v

@@ -318,7 +318,7 @@ $\jqdef{\jqf{recurse}(f)}{., (f | \jqf{recurse}(f))} \jqf{recurse}(. \jqas \$x' 
 Consider the following jq program:
 \begin{align*}
 &\jqdef{\jqf{empty}}{(\{\}[]) \jqas \$x | .} \\
-&\jqdef{\jqf{select}(f)}{\rsep\jqite{f}{.}{\jqf{empty}}} \\
+&\jqdef{\jqf{select}(f)}{\jqite{f}{.}{\jqf{empty}}} \\
 &\jqdef{\jqf{negative}}{. < 0} \\
 &.[] | \jqf{select}(\jqf{negative})
 \end{align*}

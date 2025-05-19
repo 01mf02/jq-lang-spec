@@ -1,16 +1,16 @@
 <!-- https://tex.stackexchange.com/questions/742495/spacing-before-and-after-text-operators -->
-\newcommand{\rsep}{\mathclose{}}
+\newcommand{\mathoc}[1]{\mathopen{}#1\mathclose{}}
 
 <!-- jq syntax -->
 \newcommand{\jqf }[1]{\mathtt{#1}}
 \newcommand{\jqkw}[1]{\mathrel{\jqf{#1}}}
 \newcommand{\jqstr}[1]{\text{"#1"}}
 \newcommand{\jqas}{\jqkw{as}}
-\newcommand{\jqdef }[2]{\jqkw{def} #1\!: #2;\;}
-\newcommand{\jqite }[3]{\jqkw{if} #1 \jqkw{then} #2 \jqkw{else} #3 \jqkw{end}}
-\newcommand{\jqfold}[4]{\jqkw{#1} #2 \jqas #3\; #4}
-\newcommand{\jqlb  }[2]{\jqkw{#1}\, \$#2}
-\newcommand{\jqtc  }[2]{\jqkw{try} #1 \jqkw{catch} #2}
+\newcommand{\jqdef }[2]{\mathoc{\jqkw{def} #1\!: #2;\;}}
+\newcommand{\jqite }[3]{\mathoc{\jqkw{if} #1 \jqkw{then} #2 \jqkw{else} #3 \jqkw{end}}}
+\newcommand{\jqfold}[4]{\mathoc{\jqkw{#1} #2 \jqas #3\; #4}}
+\newcommand{\jqlb  }[2]{\mathoc{\jqkw{#1}\, \$#2}}
+\newcommand{\jqtc  }[2]{\mathoc{\jqkw{try} #1 \jqkw{catch} #2}}
 
 \newcommand{\gror}{\mathbin{\quad\|\quad}}
 \newcommand{\cartesian}{\mathrel{\circ}}
