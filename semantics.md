@@ -517,7 +517,7 @@ Our update semantics support all kinds of filters $\varphi$ that are supported b
 $\jqlb{label}{x} | g$ and $\jqtc{f}{g}$.
 
 ::: {.example name="Update compilation"}
-  Let us consider the jq filter $(.[] \update .+.)$.
+  Let us consider the jq filter $(.[] \update (.+.))$.
   When given an array as input, this filter outputs a new array where
   each value in the input array is replaced by the output of $.+.$ on the value.
   The filter $.+.$ returns the sum of the input and the input,
