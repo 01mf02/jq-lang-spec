@@ -129,8 +129,8 @@ replace certain occurrences of filters by variables
 | $f$ `=` $g$ | $\floor g \jqas \$x' | \floor{f \update \$x'}$ |
 | $f$ $\arith$`=` $g$ | $\floor g \jqas \$x' | \floor{f \update . \arith \$x'}$ |
 | $f$ `//=` $g$ | $\floor{f \update . \alt g}$ |
-| $f \jqkw{and} g$ | $\floor{\jqite{f}{(g | \jqf{bool})}{\text{false}}}$ |
-| $f \jqkw{or}  g$ | $\floor{\jqite{f}{\text{true}}{(g | \jqf{bool})}}$ |
+| $f \jqkw{and} g$ | $\floor{\jqite{f}{(g | \jqf{bool})}{\jqf{false}}}$ |
+| $f \jqkw{or}  g$ | $\floor{\jqite{f}{\jqf{true}}{(g | \jqf{bool})}}$ |
 | $f \star g$ | $\floor f \star \floor g$ |
 | $f \cartesian g$ | $\floor f \jqas \$x' | \floor g \jqas \$y' | \$x' \cartesian \$y'$ |
 | $f \jqas \$x | g$ | $\floor f \jqas \$x | \floor g$ |
@@ -167,7 +167,7 @@ We define filters that yield the boolean values as
 \jqf{true}  &\coloneqq (0 \iseq 0), \\
 \jqf{false} &\coloneqq (0  \neq 0).
 \end{align*}
-The filter "$\jqf{bool} \coloneqq (\jqite{.}{\true}{\false})$"
+The filter "$\jqf{bool} \coloneqq (\jqite{.}{\jqf{true}}{\jqf{false}})$"
 maps its input to its boolean value.
 
 In the lowering of the folding operators $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$
