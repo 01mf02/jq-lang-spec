@@ -127,7 +127,7 @@ replace certain occurrences of filters by variables
 | $\{f_1: g_1, \dots, f_n: g_n\}$ | $\floor{\{f_1: g_1\} + \dots + \{f_n: g_n\}}$ |
 | $f [p_1]^? \dots [p_n]^?$ | $. \jqas \$x' | \floor f | \floor{[p_1]^?}_{\$x'} | \dots | \floor{[p_n]^?}_{\$x'}$ |
 | $f$ `=` $g$ | $\floor g \jqas \$x' | \floor{f \update \$x'}$ |
-| $f$ $\arith$`=` $g$ | $\floor g \jqas \$x' | \floor{f \update . \arith \$x'}$ |
+| $f$ $\arith$`=` $g$ | $\floor g \jqas \$x' | \floor{f \update (. \arith \$x')}$ |
 | $f$ `//=` $g$ | $\floor{f \update . \alt g}$ |
 | $f \jqkw{and} g$ | $\floor{\jqite{f}{(g | \jqf{bool})}{\jqf{false}}}$ |
 | $f \jqkw{or}  g$ | $\floor{\jqite{f}{\jqf{true}}{(g | \jqf{bool})}}$ |
