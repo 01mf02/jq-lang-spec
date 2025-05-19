@@ -71,7 +71,8 @@ function Div(el)
   else
     local name = name and " (" .. name .. ")" or ""
     local head = pandoc.Emph(env:gsub("^%l", string.upper) .. name)
-    return pandoc.DefinitionList({{head, el.content}})
+    local dl = pandoc.DefinitionList({{head, el.content}})
+    return el.identifier ~= "" and pandoc.Div(dl, {id = el.identifier}) or dl
   end
 end
 
