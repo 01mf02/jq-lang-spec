@@ -133,7 +133,7 @@ Let us discuss its different cases:
   returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
   \begin{align*}
   \labelf&{}: \mathbb N \to \listt \to \listt \\
-         &\coloneqq \lambda \fresh\, l. l\, (\lambda h\, t. (\lambda c. h\, (\lambda o. c)\, (\lambda e. c)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b\, \stream{}\, c))\, (\stream h  + \labelf\, \fresh\, t))\, \stream()
+         &\coloneqq \lambda \fresh\, l. l\, (\lambda h\, t. (\lambda c. h\, (\lambda o. c)\, (\lambda e. c)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b\, \stream{}\, c))\, (\stream h  + \labelf\, \fresh\, t))\, \stream{}
   \end{align*}
   In this function, $c$ gets bound to $\stream h  + \labelf\, \fresh\, t$,
   which is the function output when the head $h$ is not equal to $\labelf\, \fresh$.
@@ -539,7 +539,7 @@ $\jqlb{label}{x} | g$ and $\jqtc{f}{g}$.
   &= \lambda v. \run\, \sem{. \jqas \$x | \$x + \$x}\, v \\
   &= \lambda v. \run\, \sem{.} \bind (\lambda \$x. \run\, \sem{\$x + \$x}\, v) \\
   &= \lambda v. \stream{\ok v} \bind (\lambda \$x. \stream{\$x + \$x}) \\
-  &= \lambda v. \stream(v + v)
+  &= \lambda v. \stream{v + v}
   \end{align*}
   In summary, $\eval \sem \varphi v = (v[] \update (\lambda v. \stream{v + v}))$.
 :::
