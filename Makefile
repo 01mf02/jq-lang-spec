@@ -16,7 +16,7 @@ HTMLOPTS=$(PANOPTS) --citeproc --mathjax
 
 all: icfp.pdf spec.pdf spec.html
 clean:
-	rm *.aux *.bbl *.blg *.log *.pdf structure.tex icfp.tex spec.tex
+	rm *.aux *.bbl *.blg *.log *.pdf structure.tex icfp.tex spec.tex spec.html
 
 icfp.tex: icfp.yaml $(ICFP) $(DEPS) structure.tex ccs.tex
 	pandoc --metadata-file $< $(ICFP) $(LATEXOPTS) -o $@ -H ccs.tex
