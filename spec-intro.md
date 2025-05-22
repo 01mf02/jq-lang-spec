@@ -39,5 +39,5 @@ This text is structured as follows:
 @sec:values defines values.
 @sec:semantics defines the output of jq programs, and
 @sec:updates defines the output of jq updates.
-In the appendix,
+Finally,
 @sec:json defines JSON values as well as some operations on them used in jq.
