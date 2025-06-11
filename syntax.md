@@ -14,6 +14,8 @@ We will now present a subset of jq syntax^[
   However, these constructions can be transformed into
   semantically equivalent syntax as treated in this text.
 ] of which we have already seen examples in @sec:tour.
+We write $l \coloneqq \quad r_1 \gror \dots \gror r_n$ to say that
+$l$ is of shape $r_i$ for some $i \leq n$.
 
 A _filter_ $f$ is defined by the grammar
 \begin{align*}
@@ -42,7 +44,13 @@ $f [p] [p] [p]$, and so on.
 We write $[]$ instead of $[\emptyset]$.
 The potential instances of the operators $\star$ and $\cartesian$ are given in @tab:binops.
 All operators $\star$ and $\cartesian$ are left-associative, except for
-"`|`", "`=`", "`|=`", and "$\arith$`=`".
+"`|`", "`=`", "`|=`", and "$\arith$`=`".[^update-op]
+
+[^update-op]:
+  Although jq's update operator "`|=`" resembles the semantic entailment relation "$\models$",
+  it has a completely different meaning, deriving from
+  the combination of composition "`|`" and update "`=`".
+  We do not use semantic entailment "$\models$" in this paper.
 
 We will handle the operators `reduce` and `foreach` very similarly; therefore,
 we introduce $\fold$ to stand for either `reduce` or `foreach`.
