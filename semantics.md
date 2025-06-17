@@ -65,7 +65,7 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $f, g$ | $\run\, \sem f\, v + \run\, \sem g\, v$ |
 | $f | g$ | $\run\, \sem f\, v \bind \run\, \sem g$ |
 | $f \alt g$ | $(\lambda t. t\, (\lambda \_\, \_. t)\, (\run\, \sem g\, v))\, (\run\, \sem f\, v \bind \trues)$ |
-| $f \jqas \$x | g$ | $\run\, \sem f\, v \bind (\lambda \$x. \run, \sem g\, v)$ |
+| $f \jqas \$x | g$ | $\run\, \sem f\, v \bind (\lambda \$x. \run\, \sem g\, v)$ |
 | $\jqtc{f}{g}$ | $\run\, \sem f\, v \bind_L \lambda r. r\, (\lambda o. \stream r)\, (\run\, \sem g)\, (\lambda b. \stream r)$ |
 | $\jqlb{label}{x} | f$ | $\labelf \fresh\, ((\lambda \$x\, \fresh. \run\, \sem f\, v)\, \fresh\, (\operatorname{succ}\, \fresh))$ |
 | $\jqlb{break}{x}$ | $\stream{\breakf\, \$x}$ |
