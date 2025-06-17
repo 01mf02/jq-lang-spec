@@ -4,7 +4,7 @@ import Data.Map ((!))
 
 import qualified Syn
 import qualified Def
-import Def (Option(None, Some))
+import Def (Option(None, Some), toMaybe)
 import qualified Val
 import Val (ValueR, Value, ok)
 
@@ -40,6 +40,9 @@ freshBin vs l r f =
   let (lx, rx) = (show vs, show $ vs + 1) in
   Bind (compile vs l) lx $ Bind (compile (vs + 1) r) rx $ f lx rx
 
+fresh :: Int -> Syn.Term -> (Var -> Int -> Filter) -> Filter
+fresh vs tm f = let x = show vs in Bind (compile vs tm) x $ f x (vs + 1)
+
 compile :: Int -> Syn.Term -> Filter
 compile vs f' = case f' of
   Syn.Id -> Id
@@ -57,6 +60,9 @@ compile vs f' = case f' of
   Syn.BinOp(l, Syn.Math(op), r) -> freshBin vs l r (\l r -> MathOp l op r)
   Syn.Pipe(l, None, r) -> Compose (compile vs l) (compile vs r)
   Syn.Pipe(l, Some(Def.Var(v)), r) -> Bind (compile vs l) v (compile vs r)
+  Syn.IfThenElse((if_, then_) : tl, else_) -> fresh vs if_ $
+    \x vs -> Ite x (compile vs then_) (compile vs $ Syn.IfThenElse(tl, else_))
+  Syn.IfThenElse([], else_) -> maybe Id (compile vs) $ toMaybe else_
   Syn.TryCatch(try, Some(catch)) -> TryCatch (compile vs try) (compile vs catch)
   Syn.Label(l, f) -> Label l (compile vs f)
   Syn.Break(l) -> Break l
@@ -122,12 +128,12 @@ run f' c@Ctx{vars, lbls} v = case f' of
 
 main :: IO ()
 main = do
-  bla <- getContents
-  print bla
-  let tm = read bla :: Syn.Term
+  stdin <- getContents
+  print stdin
+  let tm = read stdin :: Syn.Term
   print tm
-  let filter = compile 0 tm
-  print $ filter
+  let f = compile 0 tm
   let c = Ctx {vars = Map.empty, funs = Map.empty, lbls = Map.empty} 
   let v = Val.Null
-  print $ run filter c v
+  print f
+  print $ run f c v

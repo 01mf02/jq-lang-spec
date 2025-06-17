@@ -3,6 +3,10 @@ module Def where
 data Option a = None | Some(a)
   deriving (Read, Show)
 
+toMaybe :: Option a -> Maybe a
+toMaybe None = Nothing
+toMaybe (Some(x)) = Just x
+
 data StrPart tm = Str(String) | Term(tm) | Char(Char)
   deriving (Read, Show)
 
