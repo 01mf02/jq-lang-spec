@@ -3,16 +3,10 @@ module Def where
 data Option a = None | Some(a)
   deriving (Read, Show)
 
-data StrPart tm =
-    Str(String)
-  | Term(tm)
-  | Char(Char)
+data StrPart tm = Str(String) | Term(tm) | Char(Char)
   deriving (Read, Show)
 
-data Pattern tm =
-    Var(String)
-  | Arr([Pattern tm])
-  | Obj([(tm, Pattern tm)])
+data Pattern tm = Var(String) | Arr([Pattern tm]) | Obj([(tm, Pattern tm)])
   deriving (Read, Show)
 
 data Path f = Path([(Part f, Opt)])
