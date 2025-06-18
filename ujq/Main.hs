@@ -110,6 +110,8 @@ reduce update acc (x : tl) = app (app (\y -> reduce update y tl) . update acc) [
 foreach :: Value x => (x -> x -> [ValueR x]) -> x -> [ValueR x] -> [ValueR x]
 foreach _ acc [] = []
 foreach update acc (x : tl) = app (app (\y -> ok y : foreach update y tl) . update acc) [x]
+bind :: Var -> v -> Ctx v -> Ctx v
+bind x v c@Ctx{vars} = c {vars = Map.insert x v vars}
 
 run :: Value v => Filter -> Ctx v -> v -> [ValueR v]
 run f' c@Ctx{vars, lbls} v = case f' of
@@ -125,7 +127,7 @@ run f' c@Ctx{vars, lbls} v = case f' of
   Obj1 kx vx -> [Val.obj1 (vars ! kx) (vars ! vx)]
   Concat f g -> run f c v ++ run g c v
   Compose f g -> app (\y -> run g c y) $ run f c v
-  Bind f x g -> app (\y -> run g (c {vars = Map.insert x y vars}) v) $ run f c v
+  Bind f x g -> app (\y -> run g (bind x y c) v) $ run f c v
   Var x -> [ok $ vars ! x]
   TryCatch f g -> tryCatch (\e -> run g c e) $ run f c v
   Label l f -> let li = Map.size lbls in label li $ run f (c {lbls = Map.insert l li lbls}) v
