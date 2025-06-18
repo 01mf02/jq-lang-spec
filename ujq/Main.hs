@@ -32,7 +32,7 @@ data Filter = Id
   | Ite Var Filter Filter
   | TryCatch Filter Filter
   | Reduce Filter Var Filter
-  | Foreach Filter Var Filter
+  | Foreach Filter Var Filter Filter
   | Def String [String] Filter Filter
   | App String [Filter]
   deriving Show
@@ -58,7 +58,7 @@ compile vs f' = case f' of
   Syn.Var(x) -> Var(x)
   Syn.Neg(f) -> let x = show vs in Bind (compile vs f) x $ Neg x
   Syn.BinOp(l, Syn.Comma, r) -> Concat (compile vs l) (compile vs r)
-  Syn.BinOp(l, Syn.Cmp(op), r) -> freshBin vs l r (\l r -> BoolOp l op r)
+  Syn.BinOp(l, Syn.Cmp (op), r) -> freshBin vs l r (\l r -> BoolOp l op r)
   Syn.BinOp(l, Syn.Math(op), r) -> freshBin vs l r (\l r -> MathOp l op r)
   Syn.Pipe(l, None, r) -> Compose (compile vs l) (compile vs r)
   Syn.Pipe(l, Some(Def.Var(v)), r) -> Bind (compile vs l) v (compile vs r)
@@ -69,9 +69,13 @@ compile vs f' = case f' of
   Syn.Label(l, f) -> Label l (compile vs f)
   Syn.Break(l) -> Break l
   Syn.Fold("reduce", xs, Def.Var(x), [init, update]) -> fresh vs Syn.Id $
-    \x' vs -> compile vs init `Compose` Reduce (Var x' `Compose` compile vs xs) x (compile vs update)
-  Syn.Fold("foreach", xs, Def.Var(x), [init, update]) -> fresh vs Syn.Id $
-    \x' vs -> compile vs init `Compose` Foreach (Var x' `Compose` compile vs xs) x (compile vs update)
+    \x' vs -> Compose (compile vs init) $
+      Reduce  (Var x' `Compose` compile vs xs) x (compile vs update)
+  Syn.Fold("foreach", xs, Def.Var(x), [init, update, project]) -> fresh vs Syn.Id $
+    \x' vs -> Compose (compile vs init) $
+      Foreach (Var x' `Compose` compile vs xs) x (compile vs update) (compile vs project)
+  Syn.Fold("foreach", xs, x, [init, update]) -> compile vs $
+    Syn.Fold("foreach", xs, x, [init, update, Syn.Id])
   Syn.Def(defs, t) -> foldr (\ (name, args, rhs) -> Def name args (compile vs rhs)) (compile vs t) defs
   Syn.Call(name, args) -> App name (map (compile vs) args)
 
@@ -89,8 +93,8 @@ mathOp op = case op of
   Syn.Div -> Val.div
   Syn.Rem -> Val.rem
 
-app :: (v -> [ValueR v]) -> [ValueR v] -> [ValueR v]
-app f = mconcat . map (\r -> case r of {Left _ -> [r]; Right y -> f y})
+app :: (x -> [Either e y]) -> [Either e x] -> [Either e y]
+app f = mconcat . map (\r -> case r of {Left e -> [Left e]; Right y -> f y})
 
 tryCatch :: (v -> [ValueR v]) -> [ValueR v] -> [ValueR v]
 tryCatch catch l = case l of
@@ -103,13 +107,18 @@ label lbl = takeWhile $ \r -> case r of
   Left (Val.Break lbl') | lbl == lbl' -> False
   _ -> True
 
-reduce :: Value x => (x -> x -> [ValueR x]) -> x -> [ValueR x] -> [ValueR x]
-reduce _ acc [] = [ok acc]
-reduce update acc (x : tl) = app (app (\y -> reduce update y tl) . update acc) [x]
+fold :: (x -> y -> [Either e y]) -> (x -> y -> [Either e y]) -> (y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
+fold f g n xs acc = case xs of
+  [] -> n acc
+  Right x : tl -> app (\y -> g x y ++ fold f g n tl y) $ f x acc
+  Left e : _ -> [Left e]
 
-foreach :: Value x => (x -> x -> [ValueR x]) -> x -> [ValueR x] -> [ValueR x]
-foreach _ acc [] = []
-foreach update acc (x : tl) = app (app (\y -> ok y : foreach update y tl) . update acc) [x]
+reduce :: (x -> y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
+reduce update = fold update (\_x _y -> []) (\y -> [Right y])
+
+foreach :: (x -> y -> [Either e y]) -> (x -> y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
+foreach update init = fold update init (\_y -> [])
+
 bind :: Var -> v -> Ctx v -> Ctx v
 bind x v c@Ctx{vars} = c {vars = Map.insert x v vars}
 
@@ -133,8 +142,8 @@ run f' c@Ctx{vars, lbls} v = case f' of
   Label l f -> let li = Map.size lbls in label li $ run f (c {lbls = Map.insert l li lbls}) v
   Break l -> [Left $ Val.Break (lbls ! l)]
   Ite x f g -> run (if Val.toBool $ vars ! x then f else g) c v
-  Reduce xs x update -> reduce (\y xv -> run update (c {vars = Map.insert x xv vars}) y) v (run xs c v)
-  Foreach xs x update -> foreach (\y xv -> run update (c {vars = Map.insert x xv vars}) y) v (run xs c v)
+  Reduce fx x f -> reduce (\xv -> run f (bind x xv c)) (run fx c v) v
+  Foreach fx x f g -> foreach (\xv -> run f (bind x xv c)) (\xv -> run g (bind x xv c)) (run fx c v) v
   Def f_name arg_names rhs g ->
     let add = Map.insert (f_name, length arg_names) (Just arg_names, rhs, c) in
     run g (c {funs = add $ funs c}) v

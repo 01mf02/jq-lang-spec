@@ -30,4 +30,8 @@ Restrictions:
 
 Further examples:
 
+    ./ujq 'def a: 1; def b: 2; a + b'
     ./ujq 'if . then 0 elif . == . then 1 end'
+    ./ujq 'reduce  (2, 3) as $x (1; .+$x)'
+    ./ujq 'foreach (2, 3) as $x (1; .+$x)
+    ./ujq 'foreach (2, 3) as $x (1; .+$x; [., $x])'
