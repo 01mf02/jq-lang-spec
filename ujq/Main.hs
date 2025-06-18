@@ -15,7 +15,7 @@ data Filter = Id
   | Recurse
   | ToString
   | Num String
-  | Stri String
+  | Str String
   | Arr0
   | Obj0
   | ArrN Filter
@@ -28,9 +28,11 @@ data Filter = Id
   | Bind Filter Var Filter
   | Label String Filter
   | Break String
-  | Variable Var
+  | Var Var
   | Ite Var Filter Filter
   | TryCatch Filter Filter
+  | Reduce Filter Var Filter
+  | Foreach Filter Var Filter
   | Def String [String] Filter Filter
   | App String [Filter]
   deriving Show
@@ -48,12 +50,12 @@ compile vs f' = case f' of
   Syn.Id -> Id
   Syn.Recurse -> Recurse
   Syn.Num n -> Num n
-  Syn.Str(None, [Def.Str s]) -> Stri s
+  Syn.Str(None, [Def.Str s]) -> Str s
   Syn.Arr(None) -> Arr0
   Syn.Arr(Some(a)) -> ArrN (compile vs a)
   Syn.Obj([]) -> Obj0
   Syn.Obj([(k, Some(v))]) -> freshBin vs k v Obj1
-  Syn.Var(x) -> Variable(x)
+  Syn.Var(x) -> Var(x)
   Syn.Neg(f) -> let x = show vs in Bind (compile vs f) x $ Neg x
   Syn.BinOp(l, Syn.Comma, r) -> Concat (compile vs l) (compile vs r)
   Syn.BinOp(l, Syn.Cmp(op), r) -> freshBin vs l r (\l r -> BoolOp l op r)
@@ -66,6 +68,10 @@ compile vs f' = case f' of
   Syn.TryCatch(try, Some(catch)) -> TryCatch (compile vs try) (compile vs catch)
   Syn.Label(l, f) -> Label l (compile vs f)
   Syn.Break(l) -> Break l
+  Syn.Fold("reduce", xs, Def.Var(x), [init, update]) -> fresh vs Syn.Id $
+    \x' vs -> compile vs init `Compose` Reduce (Var x' `Compose` compile vs xs) x (compile vs update)
+  Syn.Fold("foreach", xs, Def.Var(x), [init, update]) -> fresh vs Syn.Id $
+    \x' vs -> compile vs init `Compose` Foreach (Var x' `Compose` compile vs xs) x (compile vs update)
   Syn.Def([(name, args, rhs)], t) -> Def name args (compile vs rhs) (compile vs t)
   Syn.Call(name, args) -> App name (map (compile vs) args)
 
@@ -97,11 +103,19 @@ label lbl = takeWhile $ \r -> case r of
   Left (Val.Break lbl') | lbl == lbl' -> False
   _ -> True
 
+reduce :: Value x => (x -> x -> [ValueR x]) -> x -> [ValueR x] -> [ValueR x]
+reduce _ acc [] = [ok acc]
+reduce update acc (x : tl) = app (app (\y -> reduce update y tl) . update acc) [x]
+
+foreach :: Value x => (x -> x -> [ValueR x]) -> x -> [ValueR x] -> [ValueR x]
+foreach _ acc [] = []
+foreach update acc (x : tl) = app (app (\y -> ok y : foreach update y tl) . update acc) [x]
+
 run :: Value v => Filter -> Ctx v -> v -> [ValueR v]
 run f' c@Ctx{vars, lbls} v = case f' of
   Id -> [ok v]
   Num n -> [ok $ Val.fromNum n]
-  Stri s -> [ok $ Val.fromStr s]
+  Str s -> [ok $ Val.fromStr s]
   Neg x -> [Val.neg (vars ! x)]
   BoolOp lx op rx -> [ok $ Val.fromBool $ Syn.boolOp op (vars ! lx) (vars ! rx)]
   MathOp lx op rx -> [mathOp op (vars ! lx) (vars ! rx)]
@@ -112,11 +126,13 @@ run f' c@Ctx{vars, lbls} v = case f' of
   Concat f g -> run f c v ++ run g c v
   Compose f g -> app (\y -> run g c y) $ run f c v
   Bind f x g -> app (\y -> run g (c {vars = Map.insert x y vars}) v) $ run f c v
-  Variable x -> [ok $ vars ! x]
+  Var x -> [ok $ vars ! x]
   TryCatch f g -> tryCatch (\e -> run g c e) $ run f c v
   Label l f -> let li = Map.size lbls in label li $ run f (c {lbls = Map.insert l li lbls}) v
   Break l -> [Left $ Val.Break (lbls ! l)]
   Ite x f g -> run (if Val.toBool $ vars ! x then f else g) c v
+  Reduce xs x update -> reduce (\y xv -> run update (c {vars = Map.insert x xv vars}) y) v (run xs c v)
+  Foreach xs x update -> foreach (\y xv -> run update (c {vars = Map.insert x xv vars}) y) v (run xs c v)
   Def f_name arg_names rhs g ->
     let add = Map.insert (f_name, length arg_names) (Just arg_names, rhs, c) in
     run g (c {funs = add $ funs c}) v
