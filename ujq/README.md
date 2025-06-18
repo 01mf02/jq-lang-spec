@@ -35,3 +35,5 @@ Further examples:
     ./ujq 'reduce  (2, 3) as $x (1; .+$x)'
     ./ujq 'foreach (2, 3) as $x (1; .+$x)
     ./ujq 'foreach (2, 3) as $x (1; .+$x; [., $x])'
+    ./ujq '{a: 1, b: 2}'
+    ./ujq '[. == ., 1] + ["a", {}]'

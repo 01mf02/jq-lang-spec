@@ -54,7 +54,10 @@ compile vs f' = case f' of
   Syn.Arr(None) -> Arr0
   Syn.Arr(Some(a)) -> ArrN (compile vs a)
   Syn.Obj([]) -> Obj0
-  Syn.Obj([(k, Some(v))]) -> freshBin vs k v Obj1
+  Syn.Obj([(k, v)]) ->
+    let index i = Syn.Path(Syn.Id, Def.Path([(Def.Index i, Def.Essential)])) in
+    freshBin vs k (case v of {Some(v) -> v; None -> index k}) Obj1
+  Syn.Obj(kv : tl) -> compile vs $ Syn.BinOp(Syn.Obj([kv]), Syn.Math(Syn.Add), Syn.Obj(tl))
   Syn.Var(x) -> Var(x)
   Syn.Neg(f) -> let x = show vs in Bind (compile vs f) x $ Neg x
   Syn.BinOp(l, Syn.Comma, r) -> Concat (compile vs l) (compile vs r)
