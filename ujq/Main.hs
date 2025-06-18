@@ -72,7 +72,7 @@ compile vs f' = case f' of
     \x' vs -> compile vs init `Compose` Reduce (Var x' `Compose` compile vs xs) x (compile vs update)
   Syn.Fold("foreach", xs, Def.Var(x), [init, update]) -> fresh vs Syn.Id $
     \x' vs -> compile vs init `Compose` Foreach (Var x' `Compose` compile vs xs) x (compile vs update)
-  Syn.Def([(name, args, rhs)], t) -> Def name args (compile vs rhs) (compile vs t)
+  Syn.Def(defs, t) -> foldr (\ (name, args, rhs) -> Def name args (compile vs rhs)) (compile vs t) defs
   Syn.Call(name, args) -> App name (map (compile vs) args)
 
 data Ctx v = Ctx {
