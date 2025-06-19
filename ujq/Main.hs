@@ -35,6 +35,7 @@ data Filter = Id
   | Foreach Filter Var Filter Filter
   | Def String [String] Filter Filter
   | App String [Filter]
+  | Path (Val.Index Var) Def.Opt
   deriving Show
 
 freshBin :: Int -> Syn.Term -> Syn.Term -> (Var -> Var -> Filter) -> Filter
@@ -44,6 +45,15 @@ freshBin vs l r f =
 
 fresh :: Int -> Syn.Term -> (Var -> Int -> Filter) -> Filter
 fresh vs tm f = let x = show vs in Bind (compile vs tm) x $ f x (vs + 1)
+
+compilePath :: Var -> Int -> (Def.Part Syn.Term, Def.Opt) -> Filter
+compilePath x vs (part, opt) = case part of
+  Def.Index(i) -> fresh vs (app i) $ \i _vs -> Path (Val.Index i) opt
+  Def.Range(None, None) -> Path (Val.Range Nothing Nothing) opt
+  Def.Range(Some(l), None) -> fresh vs (app l) $ \l _vs -> Path (Val.Range (Just l) Nothing) opt
+  Def.Range(None, Some(r)) -> fresh vs (app r) $ \r _vs -> Path (Val.Range Nothing (Just r)) opt
+  Def.Range(Some(l), Some(h)) -> fresh vs (app l) $ \l vs -> fresh vs (app h) $ \h _vs -> Path (Val.Range (Just l) (Just h)) opt
+  where app tm = Syn.Pipe(Syn.Var(x), None, tm)
 
 compile :: Int -> Syn.Term -> Filter
 compile vs f' = case f' of
@@ -79,6 +89,8 @@ compile vs f' = case f' of
       Foreach (Var x' `Compose` compile vs xs) x (compile vs update) (compile vs project)
   Syn.Fold("foreach", xs, x, [init, update]) -> compile vs $
     Syn.Fold("foreach", xs, x, [init, update, Syn.Id])
+  Syn.Path(head, Def.Path(path)) -> fresh vs Syn.Id $
+    \x' vs -> foldl (\acc -> Compose acc . compilePath x' vs) (compile vs head) path
   Syn.Def(defs, t) -> foldr (\ (name, args, rhs) -> Def name args (compile vs rhs)) (compile vs t) defs
   Syn.Call(name, args) -> App name (map (compile vs) args)
 
@@ -147,6 +159,7 @@ run f' c@Ctx{vars, lbls} v = case f' of
   Ite x f g -> run (if Val.toBool $ vars ! x then f else g) c v
   Reduce fx x f -> reduce (\xv -> run f (bind x xv c)) (run fx c v) v
   Foreach fx x f g -> foreach (\xv -> run f (bind x xv c)) (\xv -> run g (bind x xv c)) (run fx c v) v
+  Path part opt -> Val.index v (fmap ((!) vars) part) opt
   Def f_name arg_names rhs g ->
     let add = Map.insert (f_name, length arg_names) (Just arg_names, rhs, c) in
     run g (c {funs = add $ funs c}) v

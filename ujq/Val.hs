@@ -2,7 +2,10 @@ module Val where
 
 import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
-import Text.Read (readMaybe)
+import Data.Foldable (toList)
+--import Text.Read (readMaybe)
+
+import Def (Opt(Optional, Essential))
 
 data Val = Null
   | Bool Bool
@@ -22,6 +25,13 @@ ok = Right
 err :: Value v => String -> ValueR v
 err = Left . Error . fromStr
 
+data Index i = Index i | Range (Maybe i) (Maybe i)
+  deriving Show
+
+instance Functor Index where
+  fmap f (Index i)   = Index (f i)
+  fmap f (Range l h) = Range (fmap f l) (fmap f h)
+
 class (Eq a, Ord a) => Value a where
   toBool :: a -> Bool
   fromBool :: Bool -> a
@@ -31,6 +41,8 @@ class (Eq a, Ord a) => Value a where
   arr :: [ValueR a] -> ValueR a
   obj0 :: a
   obj1 :: a -> a -> ValueR a
+
+  index :: a -> Index a -> Opt -> [ValueR a]
 
   add :: a -> a -> ValueR a
   sub :: a -> a -> ValueR a
@@ -47,6 +59,11 @@ instance Value Val where
   fromBool = Bool
   fromNum n = Num $ read n
   fromStr = Str
+
+  index (Arr a) (Range Nothing Nothing) Essential = fmap ok $ toList a
+  index (Arr a) (Index (Num i)) Essential = [ok $ maybe Null id $ Seq.lookup (round i) a]
+  index v i Essential = [err $ "could not index " ++ show v ++ " with " ++ show i]
+  index _ _ Optional = []
 
   add Null v = ok v
   add v Null = ok v
