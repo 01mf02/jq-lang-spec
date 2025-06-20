@@ -47,11 +47,14 @@ fresh vs tm f = let x = show vs in Bind (compile vs tm) x $ f x (vs + 1)
 compilePath :: Var -> Int -> (Def.Part Syn.Term, Def.Opt) -> Filter
 compilePath x vs (part, opt) = case part of
   Def.Index(i) -> fresh vs (app i) $ \i _vs -> Path (Val.Index i) opt
-  Def.Range(None, None) -> Path (Val.Range Nothing Nothing) opt
-  Def.Range(Some(l), None) -> fresh vs (app l) $ \l _vs -> Path (Val.Range (Just l) Nothing) opt
-  Def.Range(None, Some(r)) -> fresh vs (app r) $ \r _vs -> Path (Val.Range Nothing (Just r)) opt
-  Def.Range(Some(l), Some(h)) -> fresh vs (app l) $ \l vs -> fresh vs (app h) $ \h _vs -> Path (Val.Range (Just l) (Just h)) opt
-  where app tm = Syn.Pipe(Syn.Var(x), None, tm)
+  Def.Range(l, r) -> case (app <$> toMaybe l, app <$> toMaybe r) of
+    (Nothing, Nothing) -> range Nothing Nothing
+    (Just l, Nothing) -> fresh vs l $ \l _vs -> range (Just l) Nothing
+    (Nothing, Just r) -> fresh vs r $ \r _vs -> range Nothing (Just r)
+    (Just l, Just r) -> fresh vs l $ \l vs -> fresh vs r $ \r _vs -> range (Just l) (Just r)
+  where
+    app tm = Syn.Pipe(Syn.Var(x), None, tm)
+    range l r = Path (Val.Range l r) opt
 
 compile :: Int -> Syn.Term -> Filter
 compile vs f' = case f' of
