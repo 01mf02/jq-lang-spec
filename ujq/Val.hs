@@ -60,8 +60,8 @@ instance Value Val where
   fromNum n = Num $ read n
   fromStr = Str
 
-  index (Arr a) (Range Nothing Nothing) Essential = fmap ok $ toList a
-  index (Arr a) (Index (Num i)) Essential = [ok $ maybe Null id $ Seq.lookup (round i) a]
+  index (Arr a) (Range Nothing Nothing) _ = fmap ok $ toList a
+  index (Arr a) (Index (Num i)) _ = [ok $ maybe Null id $ Seq.lookup (round i) a]
   index v i Essential = [err $ "could not index " ++ show v ++ " with " ++ show i]
   index _ _ Optional = []
 
