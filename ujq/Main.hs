@@ -93,7 +93,7 @@ compile vs f' = case f' of
   Syn.Path(head, Def.Path(path)) -> fresh vs Syn.Id $
     \x' vs -> foldl (\acc -> Compose acc . compilePath x' vs) (compile vs head) path
   Syn.Def(defs, t) -> foldr (\ (name, args, rhs) -> Def name args (compile vs rhs)) (compile vs t) defs
-  Syn.Call(name, args) -> App name (map (compile vs) args)
+  Syn.Call(name, args) -> App name $ map (compile vs) args
 
 data Ctx v = Ctx {
   vars :: Map.Map Var v,
