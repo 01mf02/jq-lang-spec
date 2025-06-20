@@ -39,9 +39,7 @@ data Filter = Id
   deriving Show
 
 freshBin :: Int -> Syn.Term -> Syn.Term -> (Var -> Var -> Filter) -> Filter
-freshBin vs l r f =
-  let (lx, rx) = (show vs, show $ vs + 1) in
-  Bind (compile vs l) lx $ Bind (compile (vs + 1) r) rx $ f lx rx
+freshBin vs l r f = fresh vs l $ \ lx vs -> fresh vs r $ \rx _vs -> f lx rx
 
 fresh :: Int -> Syn.Term -> (Var -> Int -> Filter) -> Filter
 fresh vs tm f = let x = show vs in Bind (compile vs tm) x $ f x (vs + 1)
