@@ -25,6 +25,7 @@ data Filter = Id
   | MathOp Var Syn.MathOp Var
   | Concat Filter Filter
   | Compose Filter Filter
+  | Alt Filter Filter
   | Bind Filter Var Filter
   | Label String Filter
   | Break String
@@ -76,6 +77,7 @@ compile vs f' = case f' of
   Syn.Var(x) -> Var(x)
   Syn.Neg(f) -> let x = show vs in Bind (compile vs f) x $ Neg x
   Syn.BinOp(l, Syn.Comma, r) -> Concat (compile vs l) (compile vs r)
+  Syn.BinOp(l, Syn.Alt, r) -> Alt (compile vs l) (compile vs r)
   Syn.BinOp(l, Syn.Cmp (op), r) -> freshBin vs l r (\l r -> BoolOp l op r)
   Syn.BinOp(l, Syn.Math(op), r) -> freshBin vs l r (\l r -> MathOp l op r)
   Syn.Pipe(l, None, r) -> Compose (compile vs l) (compile vs r)
@@ -162,6 +164,7 @@ run f' c@Ctx{vars, lbls} v = case f' of
   Concat f g -> run f c v ++ run g c v
   Compose f g -> app (\y -> run g c y) $ run f c v
   Bind f x g -> app (\y -> run g (bind x y c) v) $ run f c v
+  Alt f g -> case filter (either (const True) Val.toBool) (run f c v) of {[] -> run g c v; l -> l}
   Var x -> [ok $ vars ! x]
   TryCatch f g -> tryCatch (\e -> run g c e) $ run f c v
   Label l f -> let li = Map.size lbls in label li $ run f (c {lbls = Map.insert l li lbls}) v
