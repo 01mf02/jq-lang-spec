@@ -138,9 +138,14 @@ foreach update init = fold update init (\_y -> [])
 bind :: Var -> v -> Ctx v -> Ctx v
 bind x v c@Ctx{vars} = c {vars = Map.insert x v vars}
 
+recurse :: Value v => v -> [ValueR v]
+recurse v = [ok v] ++ app recurse (Val.index v (Val.Range Nothing Nothing) Def.Optional)
+
 run :: Value v => Filter -> Ctx v -> v -> [ValueR v]
 run f' c@Ctx{vars, lbls} v = case f' of
   Id -> [ok v]
+  Recurse -> recurse v
+  ToString -> [ok $ Val.fromStr $ show v]
   Num n -> [ok $ Val.fromNum n]
   Str s -> [ok $ Val.fromStr s]
   Neg x -> [Val.neg (vars ! x)]
