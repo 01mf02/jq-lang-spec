@@ -78,6 +78,8 @@ compile vs f' = case f' of
   Syn.Neg(f) -> let x = show vs in Bind (compile vs f) x $ Neg x
   Syn.BinOp(l, Syn.Comma, r) -> Concat (compile vs l) (compile vs r)
   Syn.BinOp(l, Syn.Alt, r) -> Alt (compile vs l) (compile vs r)
+  Syn.BinOp(l, Syn.And, r) -> compile vs $ Syn.IfThenElse([(l, Syn.Pipe(r, None, Syn.bool))], Some(Syn.false))
+  Syn.BinOp(l, Syn.Or,  r) -> compile vs $ Syn.IfThenElse([(l, Syn.true)], Some(Syn.Pipe(r, None, Syn.bool)))
   Syn.BinOp(l, Syn.Cmp (op), r) -> freshBin vs l r (\l r -> BoolOp l op r)
   Syn.BinOp(l, Syn.Math(op), r) -> freshBin vs l r (\l r -> MathOp l op r)
   Syn.Pipe(l, None, r) -> Compose (compile vs l) (compile vs r)

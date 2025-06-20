@@ -1,7 +1,7 @@
 module Syn where
 
 import qualified Def
-import Def (Option)
+import Def (Option(None, Some))
 
 data Term =
     Id
@@ -23,6 +23,11 @@ data Term =
   | Var(String)
   | Path(Term, Def.Path Term)
   deriving (Read, Show)
+
+true, false, bool :: Term
+true  = BinOp(Arr(None), Cmp(Eq), Arr(None))
+false = BinOp(Arr(None), Cmp(Ne), Arr(None))
+bool = IfThenElse([(Id, true)], Some(false))
 
 type StrPart = Def.StrPart Term
 type Pattern = Def.Pattern Term
