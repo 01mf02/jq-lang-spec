@@ -32,7 +32,7 @@ instance Functor Index where
   fmap f (Index i)   = Index (f i)
   fmap f (Range l h) = Range (fmap f l) (fmap f h)
 
-class (Eq a, Ord a) => Value a where
+class (Eq a, Ord a, Show a) => Value a where
   toBool :: a -> Bool
   fromBool :: Bool -> a
   fromNum :: String -> a

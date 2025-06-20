@@ -61,7 +61,11 @@ compile vs f' = case f' of
   Syn.Id -> Id
   Syn.Recurse -> Recurse
   Syn.Num n -> Num n
-  Syn.Str(None, [Def.Str s]) -> Str s
+  Syn.Str(_, []) -> Str ""
+  Syn.Str(_, [Def.Str s]) -> Str s
+  Syn.Str(_, [Def.Char c]) -> Str [c]
+  Syn.Str(f, [Def.Term t]) -> Compose (compile vs t) (maybe ToString (\f -> App f []) $ toMaybe f)
+  Syn.Str(f, hd : tl) -> compile vs $ Syn.BinOp(Syn.Str(f, [hd]), Syn.Math(Syn.Add), Syn.Str(f, tl))
   Syn.Arr(None) -> Arr0
   Syn.Arr(Some(a)) -> ArrN (compile vs a)
   Syn.Obj([]) -> Obj0
