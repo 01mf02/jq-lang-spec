@@ -62,6 +62,7 @@ instance Value Val where
 
   index (Arr a) (Range Nothing Nothing) _ = fmap ok $ toList a
   index (Arr a) (Index (Num i)) _ = [ok $ maybe Null id $ Seq.lookup (round i) a]
+  index (Obj o) (Index i) _ = [ok $ maybe Null id $ Map.lookup i o]
   index v i Essential = [err $ "could not index " ++ show v ++ " with " ++ show i]
   index _ _ Optional = []
 
