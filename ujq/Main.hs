@@ -98,7 +98,10 @@ compile vs f' = case f' of
   Syn.IfThenElse((if_, then_) : tl, else_) -> fresh vs if_ $
     \x vs -> Ite x (compile vs then_) (compile vs $ Syn.IfThenElse(tl, else_))
   Syn.IfThenElse([], else_) -> maybe Id (compile vs) $ toMaybe else_
-  Syn.TryCatch(try, Some(catch)) -> TryCatch (compile vs try) (compile vs catch)
+  -- try f catch g
+  Syn.TryCatch(f, g) -> TryCatch (compile vs f) $ maybe empty (compile vs) $ toMaybe g where
+    -- [][] as $x | .
+    empty = Bind (Arr0 `Compose` Path (Val.Range Nothing Nothing) Def.Essential) "" Id
   Syn.Label(l, f) -> Label l (compile vs f)
   Syn.Break(l) -> Break l
   Syn.Fold("reduce", xs, Def.Var(x), [init, update]) -> fresh vs Syn.Id $
