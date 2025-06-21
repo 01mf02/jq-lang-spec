@@ -26,6 +26,7 @@ data Filter = Id
   | Concat Filter Filter
   | Compose Filter Filter
   | Alt Filter Filter
+  | Update Filter Filter
   | Bind Filter Var Filter
   | Label String Filter
   | Break String
@@ -82,6 +83,16 @@ compile vs f' = case f' of
   Syn.BinOp(l, Syn.Or,  r) -> compile vs $ Syn.IfThenElse([(l, Syn.true)], Some(Syn.Pipe(r, None, Syn.bool)))
   Syn.BinOp(l, Syn.Cmp (op), r) -> freshBin vs l r (\l r -> BoolOp l op r)
   Syn.BinOp(l, Syn.Math(op), r) -> freshBin vs l r (\l r -> MathOp l op r)
+  -- f |= g
+  Syn.BinOp(f, Syn.Update, g) -> Update (compile vs f) (compile vs g)
+  -- f = g
+  Syn.BinOp(f, Syn.Assign, g) -> fresh vs g $ \x' vs -> compile vs $
+    Syn.BinOp(f, Syn.Update, Syn.Var(x'))
+  -- f += g, f -= g, ...
+  Syn.BinOp(f, Syn.UpdateMath(op), g) -> fresh vs g $ \x' vs -> compile vs $
+    Syn.BinOp(f, Syn.Update, Syn.BinOp(Syn.Id, Syn.Math(op), Syn.Var(x')))
+  -- f //= g
+  Syn.BinOp(f, Syn.UpdateAlt, g) -> compile vs $ Syn.BinOp(f, Syn.Update, Syn.BinOp(Syn.Id, Syn.Alt, g))
   Syn.Pipe(l, None, r) -> Compose (compile vs l) (compile vs r)
   Syn.Pipe(l, Some(Def.Var(v)), r) -> Bind (compile vs l) v (compile vs r)
   -- $x as [p1, ..., pn] | g

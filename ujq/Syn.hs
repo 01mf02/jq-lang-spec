@@ -40,10 +40,10 @@ data BinaryOp =
   | Assign
   | Update
   | UpdateAlt
+  | UpdateMath(MathOp)
   | Math(MathOp)
   | Cmp(BoolOp)
   deriving (Read, Show)
-    --UpdateMath(ops::Math),
  
 data MathOp = Add | Sub | Mul | Div | Rem
   deriving (Read, Show)
