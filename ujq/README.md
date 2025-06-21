@@ -40,3 +40,4 @@ Further examples:
     ./ujq '{("a", "b"): (1, 2)}'
     ./ujq '[[1, 2], 3] | .[0][1]'
     ./ujq '[0, {a: 1}, 2] as [$x, {a: $y}] | $x, $y'
+    ./ujq 'foreach ([1, "a"], [2, "b"]) as [$x, $y] (0; .+$x; [., $y])'

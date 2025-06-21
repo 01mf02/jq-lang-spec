@@ -127,6 +127,15 @@ compile vs f' = case f' of
       Foreach (Var x' `Compose` compile vs xs) x (compile vs update) (compile vs project)
   Syn.Fold("foreach", xs, x, [init, update]) -> compile vs $
     Syn.Fold("foreach", xs, x, [init, update, Syn.Id])
+  Syn.Fold(typ, fx, p, init : tl) | not $ Def.isVarPattern p ->
+    let pvs = Def.patternVars p in
+    let serPat = case map Syn.Var pvs of {[] -> None; hd : tl -> Some $ foldl (\acc x -> Syn.BinOp(acc, Syn.Comma, x)) hd tl} in
+    let deserTm = Def.Arr(map Def.Var pvs) in
+    let x' = show vs in
+    let ser tm = Syn.Pipe(tm, Some(p), Syn.Arr(serPat)) in
+    let deser tm = Syn.Pipe(Syn.Var(x'), Some(deserTm), tm) in
+    compile (vs + 1) $ Syn.Fold(typ, ser fx, Def.Var(x'), init : map deser tl)
+  Syn.Fold(_, _, _, _) -> error "unknown folding operation"
   Syn.Path(head, Def.Path(path)) -> fresh vs Syn.Id $
     \x' vs -> foldl (\acc -> Compose acc . compilePath x' vs) (compile vs head) path
   Syn.Def(defs, t) -> foldr (\ (name, args, rhs) -> Def name args (compile vs rhs)) (compile vs t) defs
