@@ -84,6 +84,17 @@ compile vs f' = case f' of
   Syn.BinOp(l, Syn.Math(op), r) -> freshBin vs l r (\l r -> MathOp l op r)
   Syn.Pipe(l, None, r) -> Compose (compile vs l) (compile vs r)
   Syn.Pipe(l, Some(Def.Var(v)), r) -> Bind (compile vs l) v (compile vs r)
+  -- $x as [p1, ..., pn] | g
+  Syn.Pipe(Syn.Var(x), Some(Def.Arr(p)), g) -> compile vs $
+    Syn.Pipe(Syn.Var(x), Some(Def.Obj(zipWith (\i pi -> (Syn.Num(show i), pi)) [0..] p)), g)
+  -- $x as {f1: p1, ...tl} | g
+  Syn.Pipe(Syn.Var(x), Some(Def.Obj((f1, p1) : tl)), g) ->
+    fresh vs (Syn.Path(Syn.Var(x), Def.Path([(Def.Index(f1), Def.Essential)]))) $
+    \x' vs -> compile vs $ Syn.Pipe(Syn.Var(x'), Some(p1), Syn.Pipe(Syn.Var(x), Some(Def.Obj(tl)), g))
+  -- $x as {} | g
+  Syn.Pipe(Syn.Var(_), Some(Def.Obj([])), g) -> compile vs g
+  -- f as p | g
+  Syn.Pipe(f, p@(Some(_)), g) -> fresh vs f $ \x' vs -> compile vs $ Syn.Pipe(Syn.Var(x'), p, g)
   Syn.IfThenElse((if_, then_) : tl, else_) -> fresh vs if_ $
     \x vs -> Ite x (compile vs then_) (compile vs $ Syn.IfThenElse(tl, else_))
   Syn.IfThenElse([], else_) -> maybe Id (compile vs) $ toMaybe else_
