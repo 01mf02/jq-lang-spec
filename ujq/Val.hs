@@ -53,11 +53,11 @@ class (Eq a, Ord a, Show a) => Value a where
 
 instance Value Val where
   arr = fmap (Arr . Seq.fromList) . sequence
-  obj0 = Val.Obj $ Map.empty
+  obj0 = Val.Obj Map.empty
   obj1 k v = ok $ Val.Obj $ Map.singleton k v
   toBool v = case v of {Null -> False; Bool b -> b; _ -> True}
   fromBool = Bool
-  fromNum n = Num $ read n
+  fromNum = Num . read
   fromStr = Str
 
   index (Arr a) (Range Nothing Nothing) _ = fmap ok $ toList a
