@@ -105,21 +105,44 @@ run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Reduce fx x f -> reduce (\xv -> run f (bind x (val xv) c)) (run fx c vp) vp
   Foreach fx x f g -> foreach (\xv -> run f (bind x (val xv) c)) (\xv -> run g (bind x (val xv) c)) (run fx c vp) vp
   Path part opt -> Val.idx vp (fmap ((!) vars) part) opt
-  Update f g ->
-    let paths = run f c (ValP {val = v, path = Just []}) in
-    map (fmap newVal) $ updatePaths (map (fmap val) . run g c . newVal) paths v
+  Update f g -> map (fmap newVal) $ upd f c (map (fmap val) . run g c . newVal) v
+    --let paths = run f c (ValP {val = v, path = Just []}) in
+    --map (fmap newVal) $ updatePaths (map (fmap val) . run g c . newVal) paths v
   IR.Def f_name arg_names rhs g ->
     let add = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) in
     run g (c {funs = add $ funs c}) vp
   App f_name args -> case maybe err id $ Map.lookup sig $ funs c of
     Fun f -> f args c vp
-    Arg rhs c' -> run rhs (c' {funs = funs c'}) vp
+    Arg rhs c' -> run rhs c' vp
     fun@(Eval.Def arg_names rhs c') ->
       let funs' = (sig, fun) : zipWith (\name arg -> ((name, 0), (Arg arg c))) arg_names args in
       run rhs (c' {funs = Map.fromList funs' `Map.union` funs c'}) vp
     where
      sig = (f_name, length args)
      err = error $ "undefined function: " ++ f_name ++ "/" ++ show (length args)
+
+upd :: Value v => Filter -> Ctx v -> (v -> [ValueR v]) -> v -> [ValueR v]
+upd phi c@Ctx{vars, lbls} sigma v = case phi of
+  Id -> sigma v
+  Compose f g -> upd f c (upd g c sigma) v
+  Concat f g ->  app (upd g c sigma) $ upd f c sigma v
+  Bind f x g -> reduce (\y -> upd g (bind x (val y) c) sigma) (run f c (newVal v)) v
+  Break l -> [Left $ Val.Break (lbls ! l)]
+  Ite x f g -> upd (if Val.toBool $ vars ! x then f else g) c sigma v
+  IR.Def f_name arg_names rhs g ->
+    let add = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) in
+    upd g (c {funs = add $ funs c}) sigma v
+  App f_name args -> case maybe err id $ Map.lookup sig $ funs c of
+    Fun f -> error $ "todo"
+    Arg rhs c' -> upd rhs c' sigma v
+    -- TODO: deduplicate with `run`
+    fun@(Eval.Def arg_names rhs c') ->
+      let funs' = (sig, fun) : zipWith (\name arg -> ((name, 0), (Arg arg c))) arg_names args in
+      upd rhs (c' {funs = Map.fromList funs' `Map.union` funs c'}) sigma v
+    where
+     sig = (f_name, length args)
+     err = error $ "undefined function: " ++ f_name ++ "/" ++ show (length args)
+  _ -> error "todo"
 
 builtins :: Value v => Map.Map (String, Int) (Named v)
 builtins = Map.fromList $ map (\ (sig, f) -> (sig, Fun f)) $
