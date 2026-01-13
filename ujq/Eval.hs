@@ -6,16 +6,27 @@ import Data.Map ((!))
 import qualified Syn
 import qualified Def
 import qualified Val
-import Val (ValueR, ValP(..), ValPE, Value, ok, newVal)
+import Val (ValueR, ValP(..), ValPE, Value, ok, err, newVal)
 import IR
 
 type Arg = String
 
+-- Named filter, such as `length`, `x`, or `has($k)`
+data Named v =
+    -- filter argument, such as `x` on the RHS of `def f(x): x`
+    Arg Filter (Ctx v)
+    -- defined filter, such as `f(0)` in `def f(x): ...; f(0)`
+  | Def [Arg] Filter (Ctx v)
+    -- builtin function, such as `length`
+  | Fun (Builtin v)
+
+type Builtin v = [Filter] -> Ctx v -> ValP v -> [ValPE v]
+
 data Ctx v = Ctx {
   vars :: Map.Map Var v,
-  funs :: Map.Map (String, Int) (Maybe [Arg], Filter, Ctx v),
+  funs :: Map.Map (String, Int) (Named v),
   lbls :: Map.Map String Int
-} deriving Show
+}
 
 mathOp :: Value a => Syn.MathOp -> a -> a -> ValueR a
 mathOp op = case op of
@@ -86,7 +97,7 @@ run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Compose f g -> app (\y -> run g c y) $ run f c vp
   Bind f x g -> app (\y -> run g (bind x (val y) c) vp) $ run f c vp
   Alt f g -> case filter (either (const True) (Val.toBool . val)) (run f c vp) of {[] -> run g c vp; l -> l}
-  Var x -> [ok $ newVal $ vars ! x]
+  IR.Var x -> [ok $ newVal $ vars ! x]
   TryCatch f g -> tryCatch (run g c) $ run f c vp
   Label l f -> let li = Map.size lbls in label li $ run f (c {lbls = Map.insert l li lbls}) vp
   Break l -> [Left $ Val.Break (lbls ! l)]
@@ -97,11 +108,24 @@ run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Update f g ->
     let paths = run f c (ValP {val = v, path = Just []}) in
     map (fmap newVal) $ updatePaths (map (fmap val) . run g c . newVal) paths v
-  Def f_name arg_names rhs g ->
-    let add = Map.insert (f_name, length arg_names) (Just arg_names, rhs, c) in
+  IR.Def f_name arg_names rhs g ->
+    let add = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) in
     run g (c {funs = add $ funs c}) vp
-  App f_name args ->
-    let sig = (f_name, length args) in
-    let fun@(arg_names, rhs, c') = funs c ! sig in
-    let funs' = maybe [] (\names -> (sig, fun) : zipWith (\name arg -> ((name, 0), (Nothing, arg, c))) names args) arg_names in
-    run rhs (c' {funs = Map.fromList funs' `Map.union` funs c'}) vp
+  App f_name args -> case maybe err id $ Map.lookup sig $ funs c of
+    Fun f -> f args c vp
+    Arg rhs c' -> run rhs (c' {funs = funs c'}) vp
+    fun@(Eval.Def arg_names rhs c') ->
+      let funs' = (sig, fun) : zipWith (\name arg -> ((name, 0), (Arg arg c))) arg_names args in
+      run rhs (c' {funs = Map.fromList funs' `Map.union` funs c'}) vp
+    where
+     sig = (f_name, length args)
+     err = error $ "undefined function: " ++ f_name ++ "/" ++ show (length args)
+
+builtins :: Value v => Map.Map (String, Int) (Named v)
+builtins = Map.fromList $ map (\ (sig, f) -> (sig, Fun f)) $
+  [ (("path", 1), \args c vp -> map getPath $ run (args !! 0) c (ValP {val = val vp, path = Just []}))
+  ]
+
+getPath :: Value v => ValPE v -> ValPE v
+getPath vpe =
+  vpe >>= maybe (err "cannot determine path") ok . path >>= Val.arr . map ok >>= return . newVal
