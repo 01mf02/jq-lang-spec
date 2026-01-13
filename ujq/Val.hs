@@ -54,7 +54,8 @@ class (Eq a, Ord a, Show a) => Value a where
   obj1 :: a -> a -> ValueR a
 
   idx :: ValP a -> Index a -> Opt -> [ValPE a]
-  upd :: a -> a -> (a -> [ValueR a]) -> ValueR a
+  upd ::      a -> Index a -> Opt -> (a -> [ValueR a]) -> ValueR a
+  --upd ::      a -> a -> (a -> [ValueR a]) -> ValueR a
 
   add :: a -> a -> ValueR a
   sub :: a -> a -> ValueR a
@@ -80,6 +81,7 @@ instance Value Val where
     (v, i, Essential) -> [err $ "could not index " ++ show v ++ " with " ++ show i]
     (_, _, Optional) -> []
 
+{-
   upd (Arr a) (Num i) f = case Seq.lookup (round i) a of
     Nothing -> ok (Arr a)
     Just x -> case f x of
@@ -91,6 +93,7 @@ instance Value Val where
       hd : _ -> hd >>= \y -> ok $ Obj $ Map.update (const $ Just y) k o
       [] -> ok $ Obj $ Map.update (const Nothing) k o
   upd v i _ = err $ "could not update " ++ show v ++ " at " ++ show i
+-}
 
   add Null v = ok v
   add v Null = ok v

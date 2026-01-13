@@ -68,6 +68,7 @@ bind x v c@Ctx{vars} = c {vars = Map.insert x v vars}
 recurse :: Value v => ValP v -> [ValPE v]
 recurse vp = [ok vp] ++ app recurse (Val.idx vp (Val.Range Nothing Nothing) Def.Optional)
 
+{-
 updatePath :: Value v => (v -> [ValueR v]) -> [v] -> v -> [ValueR v]
 updatePath f [] v = f v
 updatePath f (hd:tl) v = [Val.upd v hd (\x -> updatePath f tl x)]
@@ -78,6 +79,7 @@ updatePaths f (hd : tl) v = case hd of
   Right (ValP {path = Just p}) -> app (updatePaths f tl) (updatePath f (reverse p) v)
   Right (ValP {path = Nothing, val}) -> [Val.err $ "invalid path expression with result " ++ show val]
   Left e -> [Left e]
+-}
 
 run :: Value v => Filter -> Ctx v -> ValP v -> [ValPE v]
 run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
@@ -125,10 +127,11 @@ upd :: Value v => Filter -> Ctx v -> (v -> [ValueR v]) -> v -> [ValueR v]
 upd phi c@Ctx{vars, lbls} sigma v = case phi of
   Id -> sigma v
   Compose f g -> upd f c (upd g c sigma) v
-  Concat f g ->  app (upd g c sigma) $ upd f c sigma v
+  Concat f g -> app (upd g c sigma) $ upd f c sigma v
   Bind f x g -> reduce (\y -> upd g (bind x (val y) c) sigma) (run f c (newVal v)) v
   Break l -> [Left $ Val.Break (lbls ! l)]
   Ite x f g -> upd (if Val.toBool $ vars ! x then f else g) c sigma v
+  Path part opt -> [Val.upd v (fmap ((!) vars) part) opt sigma]
   IR.Def f_name arg_names rhs g ->
     let add = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) in
     upd g (c {funs = add $ funs c}) sigma v
