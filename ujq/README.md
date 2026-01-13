@@ -24,7 +24,7 @@ Restrictions:
 - `ujq` takes only a single argument, namely a filter to be executed.
   It runs this filter with the input value `null`.
   To run a filter with input from a file, you can use something like
-  `./ujq "`cat foo.json`"' | .'`.
+  `./ujq "$(cat foo.json)"' | .'`.
   However, unlike `jq`, this works only if there is a single JSON value in the input file.
   Furthermore, this also accepts certain non-JSON values, such as `{a: 1}`.
 
