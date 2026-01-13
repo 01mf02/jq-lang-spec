@@ -100,5 +100,19 @@ instance Value Val where
   add (Obj x) (Obj y) = ok $ Obj $ y <> x
   add x y = err $ "could not add " ++ show x ++ " and " ++ show y
 
+  mul (Num x) (Num y) = ok $ Num $ x * y
+  mul (Num x) (Str y) = ok $ Str $ mconcat $ replicate (floor x) y
+  mul (Str x) (Num y) = mul (Num y) (Str x)
+  mul x y = err $ "could not multiply " ++ show x ++ " and " ++ show y
+
+  sub (Num x) (Num y) = ok $ Num $ x - y
+  sub x y = err $ "could not subtract " ++ show x ++ " and " ++ show y
+
+  div (Num x) (Num y) = ok $ Num $ x / y
+  div x y = err $ "could not divide " ++ show x ++ " and " ++ show y
+
+  rem (Num x) (Num y) = ok $ Num $ fromIntegral $ (floor x) `Prelude.rem` (floor y)
+  rem x y = err $ "could not calculate remainder of " ++ show x ++ " and " ++ show y
+
   neg (Num n) = ok $ Num $ -n
   neg v = err $ "could not negate " ++ show v
