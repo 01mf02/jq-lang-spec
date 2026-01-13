@@ -51,7 +51,7 @@ compilePath x vs (part, opt) = case part of
     (Nothing, Just r) -> fresh vs r $ \r _vs -> range Nothing (Just r)
     (Just l, Just r) -> fresh vs l $ \l vs -> fresh vs r $ \r _vs -> range (Just l) (Just r)
   where
-    app tm = Syn.Pipe(Syn.Var(x), None, tm)
+    app tm = Syn.pipe (Syn.Var(x)) tm
     range l r = Path (Val.Range l r) opt
 
 compile :: Int -> Syn.Term -> Filter
@@ -79,8 +79,8 @@ compile vs f' = case f' of
   Syn.Neg(f) -> let x = show vs in Bind (compile vs f) x $ Neg x
   Syn.BinOp(l, Syn.Comma, r) -> Concat (compile vs l) (compile vs r)
   Syn.BinOp(l, Syn.Alt, r) -> Alt (compile vs l) (compile vs r)
-  Syn.BinOp(l, Syn.And, r) -> compile vs $ Syn.IfThenElse([(l, Syn.Pipe(r, None, Syn.bool))], Some(Syn.false))
-  Syn.BinOp(l, Syn.Or,  r) -> compile vs $ Syn.IfThenElse([(l, Syn.true)], Some(Syn.Pipe(r, None, Syn.bool)))
+  Syn.BinOp(l, Syn.And, r) -> compile vs $ Syn.IfThenElse([(l, Syn.pipe r Syn.bool)], Some(Syn.false))
+  Syn.BinOp(l, Syn.Or,  r) -> compile vs $ Syn.IfThenElse([(l, Syn.true)], Some(Syn.pipe r Syn.bool))
   Syn.BinOp(l, Syn.Cmp (op), r) -> freshBin vs l r (\l r -> BoolOp l op r)
   Syn.BinOp(l, Syn.Math(op), r) -> freshBin vs l r (\l r -> MathOp l op r)
   -- f |= g
@@ -93,19 +93,19 @@ compile vs f' = case f' of
     Syn.BinOp(f, Syn.Update, Syn.BinOp(Syn.Id, Syn.Math(op), Syn.Var(x')))
   -- f //= g
   Syn.BinOp(f, Syn.UpdateAlt, g) -> compile vs $ Syn.BinOp(f, Syn.Update, Syn.BinOp(Syn.Id, Syn.Alt, g))
-  Syn.Pipe(l, None, r) -> Compose (compile vs l) (compile vs r)
-  Syn.Pipe(l, Some(Def.Var(v)), r) -> Bind (compile vs l) v (compile vs r)
+  Syn.BinOp(l, Syn.Pipe(None), r) -> Compose (compile vs l) (compile vs r)
+  Syn.BinOp(l, Syn.Pipe(Some(Def.Var(v))), r) -> Bind (compile vs l) v (compile vs r)
   -- $x as [p1, ..., pn] | g
-  Syn.Pipe(Syn.Var(x), Some(Def.Arr(p)), g) -> compile vs $
-    Syn.Pipe(Syn.Var(x), Some(Def.Obj(zipWith (\i pi -> (Syn.Num(show i), pi)) [0..] p)), g)
+  Syn.BinOp(Syn.Var(x), Syn.Pipe(Some(Def.Arr(p))), g) -> compile vs $
+    Syn.bind (Syn.Var(x)) (Def.Obj(zipWith (\i pi -> (Syn.Num(show i), pi)) [0..] p)) g
   -- $x as {f1: p1, ...tl} | g
-  Syn.Pipe(Syn.Var(x), Some(Def.Obj((f1, p1) : tl)), g) ->
+  Syn.BinOp(Syn.Var(x), Syn.Pipe(Some(Def.Obj((f1, p1) : tl))), g) ->
     fresh vs (Syn.Path(Syn.Var(x), Def.Path([(Def.Index(f1), Def.Essential)]))) $
-    \x' vs -> compile vs $ Syn.Pipe(Syn.Var(x'), Some(p1), Syn.Pipe(Syn.Var(x), Some(Def.Obj(tl)), g))
+    \x' vs -> compile vs $ Syn.bind (Syn.Var(x')) p1 $ Syn.bind (Syn.Var(x)) (Def.Obj(tl)) g
   -- $x as {} | g
-  Syn.Pipe(Syn.Var(_), Some(Def.Obj([])), g) -> compile vs g
+  Syn.BinOp(Syn.Var(_), Syn.Pipe(Some(Def.Obj([]))), g) -> compile vs g
   -- f as p | g
-  Syn.Pipe(f, p@(Some(_)), g) -> fresh vs f $ \x' vs -> compile vs $ Syn.Pipe(Syn.Var(x'), p, g)
+  Syn.BinOp(f, Syn.Pipe(Some(p)), g) -> fresh vs f $ \x' vs -> compile vs $ Syn.bind (Syn.Var(x')) p g
   Syn.IfThenElse((if_, then_) : tl, else_) -> fresh vs if_ $
     \x vs -> Ite x (compile vs then_) (compile vs $ Syn.IfThenElse(tl, else_))
   Syn.IfThenElse([], else_) -> maybe Id (compile vs) $ toMaybe else_
@@ -128,8 +128,8 @@ compile vs f' = case f' of
     let serPat = case map Syn.Var pvs of {[] -> None; hd : tl -> Some $ foldl (\acc x -> Syn.BinOp(acc, Syn.Comma, x)) hd tl} in
     let deserTm = Def.Arr(map Def.Var pvs) in
     let x' = show vs in
-    let ser tm = Syn.Pipe(tm, Some(p), Syn.Arr(serPat)) in
-    let deser tm = Syn.Pipe(Syn.Var(x'), Some(deserTm), tm) in
+    let ser tm = Syn.bind tm p (Syn.Arr(serPat)) in
+    let deser tm = Syn.bind (Syn.Var(x')) deserTm tm in
     compile (vs + 1) $ Syn.Fold(typ, ser fx, Def.Var(x'), init : map deser tl)
   Syn.Fold(_, _, _, _) -> error "unknown folding operation"
   Syn.Path(head, Def.Path(path)) -> fresh vs Syn.Id $

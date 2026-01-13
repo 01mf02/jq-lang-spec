@@ -11,7 +11,6 @@ data Term =
   | Arr(Option Term)
   | Obj([(Term, Option Term)])
   | Neg(Term)
-  | Pipe(Term, Option Pattern, Term)
   | BinOp(Term, BinaryOp, Term)
   | Label(String, Term)
   | Break(String)
@@ -33,7 +32,8 @@ type StrPart = Def.StrPart Term
 type Pattern = Def.Pattern Term
 
 data BinaryOp =
-    Comma
+    Pipe(Option Pattern)
+  | Comma
   | Alt
   | Or
   | And
@@ -44,6 +44,12 @@ data BinaryOp =
   | Math(MathOp)
   | Cmp(BoolOp)
   deriving (Read, Show)
+
+pipe :: Term -> Term -> Term
+pipe l r = BinOp(l, Pipe(None), r)
+
+bind :: Term -> Pattern -> Term -> Term
+bind l p r = BinOp(l, Pipe(Some(p)), r)
  
 data MathOp = Add | Sub | Mul | Div | Rem
   deriving (Read, Show)
