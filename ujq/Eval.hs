@@ -68,6 +68,20 @@ bind x v c@Ctx{vars} = c {vars = Map.insert x v vars}
 recurse :: Value v => ValP v -> [ValPE v]
 recurse vp = [ok vp] ++ app recurse (Val.idx vp (Val.Range Nothing Nothing) Def.Optional)
 
+defCtx :: String -> [Arg] -> Filter -> Ctx v -> Ctx v
+defCtx f_name arg_names rhs c@Ctx{funs} =
+  c {funs = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) funs}
+
+bla f_name args c = case maybe err id $ Map.lookup sig $ funs c of
+  Fun f -> Left f
+  Arg rhs c' -> Right (rhs, c')
+  fun@(Eval.Def arg_names rhs c') ->
+    let funs' = (sig, fun) : zipWith (\name arg -> ((name, 0), (Arg arg c))) arg_names args in
+    Right (rhs, c' {funs = Map.fromList funs' `Map.union` funs c'})
+  where
+    sig = (f_name, length args)
+    err = error $ "undefined function: " ++ f_name ++ "/" ++ show (length args)
+
 run :: Value v => Filter -> Ctx v -> ValP v -> [ValPE v]
 run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Id -> [ok vp]
@@ -95,18 +109,10 @@ run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Foreach fx x f g -> foreach (\xv -> run f (bind x (val xv) c)) (\xv -> run g (bind x (val xv) c)) (run fx c vp) vp
   Path part opt -> Val.idx vp (fmap ((!) vars) part) opt
   Update f g -> map (fmap newVal) $ upd f c (map (fmap val) . run g c . newVal) v
-  IR.Def f_name arg_names rhs g ->
-    let add = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) in
-    run g (c {funs = add $ funs c}) vp
-  App f_name args -> case maybe err id $ Map.lookup sig $ funs c of
-    Fun f -> f args c vp
-    Arg rhs c' -> run rhs c' vp
-    fun@(Eval.Def arg_names rhs c') ->
-      let funs' = (sig, fun) : zipWith (\name arg -> ((name, 0), (Arg arg c))) arg_names args in
-      run rhs (c' {funs = Map.fromList funs' `Map.union` funs c'}) vp
-    where
-     sig = (f_name, length args)
-     err = error $ "undefined function: " ++ f_name ++ "/" ++ show (length args)
+  IR.Def f_name arg_names rhs g -> run g (defCtx f_name arg_names rhs c) vp
+  App f_name args -> case bla f_name args c of
+    Left f -> f args c vp
+    Right (rhs, c) -> run rhs c vp
 
 upd :: Value v => Filter -> Ctx v -> (v -> [ValueR v]) -> v -> [ValueR v]
 upd phi c@Ctx{vars, lbls} sigma v = case phi of
@@ -117,19 +123,10 @@ upd phi c@Ctx{vars, lbls} sigma v = case phi of
   Break l -> [Left $ Val.Break (lbls ! l)]
   Ite x f g -> upd (if Val.toBool $ vars ! x then f else g) c sigma v
   Path part opt -> [Val.upd v (fmap ((!) vars) part) opt sigma]
-  IR.Def f_name arg_names rhs g ->
-    let add = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) in
-    upd g (c {funs = add $ funs c}) sigma v
-  App f_name args -> case maybe err id $ Map.lookup sig $ funs c of
-    Fun f -> error $ "todo"
-    Arg rhs c' -> upd rhs c' sigma v
-    -- TODO: deduplicate with `run`
-    fun@(Eval.Def arg_names rhs c') ->
-      let funs' = (sig, fun) : zipWith (\name arg -> ((name, 0), (Arg arg c))) arg_names args in
-      upd rhs (c' {funs = Map.fromList funs' `Map.union` funs c'}) sigma v
-    where
-     sig = (f_name, length args)
-     err = error $ "undefined function: " ++ f_name ++ "/" ++ show (length args)
+  IR.Def f_name arg_names rhs g -> upd g (defCtx f_name arg_names rhs c) sigma v
+  App f_name args -> case bla f_name args c of
+    Left f -> error $ "todo"
+    Right (rhs, c) -> upd rhs c sigma v
   _ -> error "todo"
 
 builtins :: Value v => Map.Map (String, Int) (Named v)
