@@ -55,7 +55,6 @@ class (Eq a, Ord a, Show a) => Value a where
 
   idx :: ValP a -> Index a -> Opt -> [ValPE a]
   upd ::      a -> Index a -> Opt -> (a -> [ValueR a]) -> ValueR a
-  --upd ::      a -> a -> (a -> [ValueR a]) -> ValueR a
 
   add :: a -> a -> ValueR a
   sub :: a -> a -> ValueR a
@@ -77,23 +76,29 @@ instance Value Val where
   idx (ValP {val, path}) index opt = case (val, index, opt) of
     (Arr a, Range Nothing Nothing, _) -> zipWith (\i val -> ok $ ValP {path = (fromInt i :) <$> path, val}) [0..] $ toList a
     (Arr a, Index (Num i), _) -> [ok $ ValP {path = (Num i :) <$> path, val = maybe Null id $ Seq.lookup (round i) a}]
+    (Obj o, Range Nothing Nothing, _) -> map (\(k, val) -> ok $ ValP {path = (k:) <$> path, val}) $ Map.toList o
     (Obj o, Index i, _) -> [ok $ ValP {path = (i:) <$> path, val = maybe Null id $ Map.lookup i o}]
     (v, i, Essential) -> [err $ "could not index " ++ show v ++ " with " ++ show i]
     (_, _, Optional) -> []
 
-{-
-  upd (Arr a) (Num i) f = case Seq.lookup (round i) a of
-    Nothing -> ok (Arr a)
+  upd (Arr a) (Index (Num i)) opt f = case Seq.lookup (round i) a of
+    Nothing -> case opt of
+      Optional -> ok (Arr a)
+      Essential -> error "todo"
     Just x -> case f x of
       hd : _ -> hd >>= \y -> ok $ Arr $ Seq.update (round i) y a
       [] -> ok $ Arr $ Seq.deleteAt (round i) a
-  upd (Obj o) k f = case Map.lookup k o of
+  upd (Arr a) (Range Nothing Nothing) _ f = arr $ toList a >>= f
+  upd (Obj o) (Index k) _ f = case Map.lookup k o of
     Nothing -> ok (Obj o)
     Just x -> case f x of
       hd : _ -> hd >>= \y -> ok $ Obj $ Map.update (const $ Just y) k o
       [] -> ok $ Obj $ Map.update (const Nothing) k o
-  upd v i _ = err $ "could not update " ++ show v ++ " at " ++ show i
--}
+  upd (Obj o) (Range Nothing Nothing) _ f =
+    fmap (Obj . Map.fromList) $ sequence $
+    concatMap (\(k, v) -> map(fmap ((k,))) $ take 1 $ f v) $
+    Map.toList o
+  upd v i _ _ = err $ "could not update " ++ show v ++ " at " ++ show i
 
   add Null v = ok v
   add v Null = ok v
