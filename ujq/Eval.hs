@@ -68,19 +68,6 @@ bind x v c@Ctx{vars} = c {vars = Map.insert x v vars}
 recurse :: Value v => ValP v -> [ValPE v]
 recurse vp = [ok vp] ++ app recurse (Val.idx vp (Val.Range Nothing Nothing) Def.Optional)
 
-{-
-updatePath :: Value v => (v -> [ValueR v]) -> [v] -> v -> [ValueR v]
-updatePath f [] v = f v
-updatePath f (hd:tl) v = [Val.upd v hd (\x -> updatePath f tl x)]
-
-updatePaths :: Value v => (v -> [ValueR v]) -> [ValPE v] -> v -> [ValueR v]
-updatePaths _ [] v = [ok v]
-updatePaths f (hd : tl) v = case hd of
-  Right (ValP {path = Just p}) -> app (updatePaths f tl) (updatePath f (reverse p) v)
-  Right (ValP {path = Nothing, val}) -> [Val.err $ "invalid path expression with result " ++ show val]
-  Left e -> [Left e]
--}
-
 run :: Value v => Filter -> Ctx v -> ValP v -> [ValPE v]
 run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Id -> [ok vp]
@@ -108,8 +95,6 @@ run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Foreach fx x f g -> foreach (\xv -> run f (bind x (val xv) c)) (\xv -> run g (bind x (val xv) c)) (run fx c vp) vp
   Path part opt -> Val.idx vp (fmap ((!) vars) part) opt
   Update f g -> map (fmap newVal) $ upd f c (map (fmap val) . run g c . newVal) v
-    --let paths = run f c (ValP {val = v, path = Just []}) in
-    --map (fmap newVal) $ updatePaths (map (fmap val) . run g c . newVal) paths v
   IR.Def f_name arg_names rhs g ->
     let add = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) in
     run g (c {funs = add $ funs c}) vp
