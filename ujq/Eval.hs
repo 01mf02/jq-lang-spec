@@ -72,6 +72,7 @@ defCtx :: String -> [Arg] -> Filter -> Ctx v -> Ctx v
 defCtx f_name arg_names rhs c@Ctx{funs} =
   c {funs = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) funs}
 
+bla :: String -> [Filter] -> Ctx v -> Either (Builtin v) (Filter, Ctx v)
 bla f_name args c = case maybe err id $ Map.lookup sig $ funs c of
   Fun f -> Left f
   Arg rhs c' -> Right (rhs, c')
