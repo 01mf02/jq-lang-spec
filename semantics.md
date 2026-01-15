@@ -47,6 +47,7 @@ $$\eval: \filtert \to \valt \to \listt \coloneqq \lambda \varphi. (\lambda \fres
 
 \newcommand{\reducef }{\operatorname{reduce }}
 \newcommand{\foreachf}{\operatorname{foreach}}
+\newcommand{\untilf}{\operatorname{until}}
 \newcommand{\labelf}{\operatorname{label}}
 
 Table: Evaluation semantics. {#tab:eval-semantics}
@@ -64,7 +65,7 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $\$x \cartesian \$y$ | $\stream{\ok{(\$x \cartesian \$y)}}$ |
 | $f, g$ | $\run\, \sem f\, v + \run\, \sem g\, v$ |
 | $f | g$ | $\run\, \sem f\, v \bind \run\, \sem g$ |
-| $f \alt g$ | $(\lambda t. t\, (\lambda \_\, \_. t)\, (\run\, \sem g\, v))\, (\run\, \sem f\, v \bind \trues)$ |
+| $f \alt g$ | $(\run\, \sem f\, v \bind \trues)\, (\lambda h\, t. \stream h + t)\, (\run\, \sem g\, v)$ |
 | $f \jqas \$x | g$ | $\run\, \sem f\, v \bind (\lambda \$x. \run\, \sem g\, v)$ |
 | $\jqtc{f}{g}$ | $\run\, \sem f\, v \bind_L \lambda r. r\, (\lambda o. \stream r)\, (\run\, \sem g)\, (\lambda b. \stream r)$ |
 | $\jqlb{label}{x} | f$ | $\labelf \fresh\, ((\lambda \$x\, \fresh. \run\, \sem f\, v)\, \fresh\, (\operatorname{succ}\, \fresh))$ |
@@ -131,12 +132,12 @@ Let us discuss its different cases:
   This uses a function $\labelf$ that
   takes a label $\fresh$ and a list $l$ of value results,
   returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
-  \begin{align*}
-  \labelf&{}: \mathbb N \to \listt \to \listt \\
-         &\coloneqq \lambda \fresh\, l. l\, (\lambda h\, t. (\lambda c. h\, (\lambda o. c)\, (\lambda e. c)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b\, \stream{}\, c))\, (\stream h  + \labelf\, \fresh\, t))\, \stream{}
-  \end{align*}
-  In this function, $c$ gets bound to $\stream h  + \labelf\, \fresh\, t$,
-  which is the function output when the head $h$ is not equal to $\labelf\, \fresh$.
+  \begin{alignat*}{3}
+  \untilf&{}: (\resultt \to \mathbb B) &{}\to{}& \listt \to \listt \coloneqq
+  \lambda p\, l. l\, (\lambda h\, t. p\, h\, \stream{}\, (\stream h + \untilf\, p\, t)) \\
+  \labelf&{}: \mathbb N &\to{}& \listt \to \listt \coloneqq
+  \lambda \fresh. \untilf\, (\lambda r. r\, (\lambda o. \false)\, (\lambda e. \false)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b))
+  \end{alignat*}
 - $\jqlb{break}{x}$: Returns a value result $\breakf\, \$x$.
   Similarly to the evaluation of variables $\$x$ described above,
   wellformedness of the filter (as defined in @sec:hir) ensures that
