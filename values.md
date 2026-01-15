@@ -116,8 +116,8 @@ that transforms a list into a value result:
 It returns an array if all list elements are values, or into
 the first exception in the list otherwise:
 \begin{alignat*}{2}
-\sumf&{}: \listt \to \valt &&\to \resultt \coloneqq \lambda l\, n. l\, (\lambda h\, t. h \bindr (\lambda o. (n + o \bindr \sumf\, t)))\, (\ok(n)) \\
-\arr &{}: \listt           &&\to \resultt \coloneqq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok((\arr_1\, v))}))\, \arr_0
+\sumf&{}: \listt \to \valt &&\to \resultt \coloneqq \lambda l\, n. l\, (\lambda h\, t. h \bindr (\lambda o. (n + o \bindr \sumf\, t)))\, (\ok\, n) \\
+\arr &{}: \listt           &&\to \resultt \coloneqq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok\, (\arr_1\, v)}))\, \arr_0
 \end{alignat*}
 Here, the function $\sumf$ takes a list $l$ and a zero value $n$ and
 returns the sum of the zero value and the list elements if they are all OK,
