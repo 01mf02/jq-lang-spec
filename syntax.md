@@ -74,14 +74,14 @@ We consider equivalent the following notations^[
   define a nullary filter as `def x(): f; g` instead of `def x: f; g`.
 ]:
 
-- $f?$ and $\jqkw{try} f$,
-- $x$ and $x()$,
+- $f?$ and $\jqkw{try} f$
+- $x$ and $x()$
 - $\jqfold{foreach}{f_x}{P}{(f_y; f)}$ and
-  $\jqfold{foreach}{f_x}{P}{(f_y; f; .)}$,
+  $\jqfold{foreach}{f_x}{P}{(f_y; f; .)}$
 - $\jqdef{x}{f} g$ and
-  $\jqdef{x()}{f} g$,
+  $\jqdef{x()}{f} g$
 - $\jqkw{if} f_1 \jqkw{then} g_1 \jqkw{elif} f_2 \jqkw{then} g_2 \dots \jqkw{elif} f_n \jqkw{then} g_n \jqkw{else} h \jqkw{end}$ and \newline
-  $\jqite{f_1}{g_1}{(\jqite{f_2}{g_2}{\dots (\jqite{f_n}{g_n}{h}) \dots})}$.
+  $\jqite{f_1}{g_1}{(\jqite{f_2}{g_2}{\dots (\jqite{f_n}{g_n}{h}) \dots})}$
 
 
 ## IR {#sec:ir}
@@ -94,7 +94,7 @@ in a much less verbose way than for actual jq syntax.
 An IR filter $f$ is defined by the grammar
 \begin{align*}
 f &\coloneqq \quad n \gror s \gror . \\
-  &\gror [] \gror [f] \gror {} \gror \{\$x: \$x\} \gror .[p] \\
+  &\gror [] \gror [f] \gror {} \gror \{\$x: \$x\} \gror .[p]^? \\
   &\gror f \star f \gror \$x \cartesian \$x \\
   &\gror f \jqas \$x | f \gror \jqfold{reduce}{f}{\$x}{(.; f)} \gror \jqfold{foreach}{f}{\$x}{(.; f; f)} \gror \$x \\
   &\gror {\jqite{\$x}{f}{f}} \gror \jqtc{f}{f} \\
@@ -119,7 +119,7 @@ Table: Operators in concrete jq syntax and their corresponding IR operators. {#t
 
 Compared to actual jq syntax, IR filters
 have significantly simpler path operations
-($.[p]$ versus $f [p]^? \dots [p]^?$) and
+(such as $.[p]^?$ versus $f [p]^? \dots [p]^?$) and
 replace certain occurrences of filters by variables
 (e.g. $\$x \cartesian \$x$ versus $f \cartesian f$).
 
