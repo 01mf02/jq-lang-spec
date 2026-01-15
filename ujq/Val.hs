@@ -2,18 +2,30 @@ module Val where
 
 import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
+import qualified Data.List as List
 import Data.Foldable (toList)
 --import Text.Read (readMaybe)
 
 import Def (Opt(Optional, Essential))
 
-data Val = Null
+data Val =
+    Null
   | Bool Bool
   | Num Float
   | Str String
   | Arr (Seq.Seq Val)
   | Obj (Map.Map Val Val)
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show Val where
+  show Null = "null"
+  show (Bool False) = "false"
+  show (Bool True ) = "true"
+  show (Num n) | n == fromInteger (round n) = show $ round n
+  show (Num n) = show n
+  show (Str s) = show s
+  show (Arr a) = "[" ++ (List.intercalate "," $ map show $ toList a) ++ "]"
+  show (Obj o) = "{" ++ (List.intercalate "," $ map (\(k, v) -> show k ++ ":" ++ show v) $ Map.toList o) ++ "}"
 
 data Exn v = Error v | Break Int
   deriving Show
