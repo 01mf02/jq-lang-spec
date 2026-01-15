@@ -2,7 +2,7 @@ module IR where
 
 import qualified Syn
 import qualified Def
-import Def (Option(None, Some), toMaybe)
+import Def (Option(None, Some), Part(Range), Opt(Optional), toMaybe)
 import qualified Val
 
 type Var = String
@@ -53,6 +53,18 @@ compilePath x vs (part, opt) = case part of
   where
     app tm = Syn.pipe (Syn.Var(x)) tm
     range l r = Path (Val.Range l r) opt
+
+-- `def rec: ., (.[]? | rec); rec`.
+recRun :: Filter
+recRun = Def "rec" [] ((iter `Compose` App "rec" []) `Concat` Id) $ App "rec" []
+
+-- `.[]?`
+iter :: Filter
+iter = Path (Val.Range Nothing Nothing) Optional
+
+-- `def rec: (.[]? | rec), .; rec`.
+recUpd :: Filter
+recUpd = Def "rec" [] (Id `Concat` (iter `Compose` App "rec" [])) $ App "rec" []
 
 compile :: Int -> Syn.Term -> Filter
 compile vs f' = case f' of

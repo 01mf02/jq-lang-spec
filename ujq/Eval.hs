@@ -4,7 +4,6 @@ import qualified Data.Map as Map
 import Data.Map ((!))
 
 import qualified Syn
-import qualified Def
 import qualified Val
 import Val (ValueR, ValP(..), ValPE, Value, ok, err, newVal)
 import IR
@@ -50,11 +49,28 @@ label lbl = takeWhile $ \r -> case r of
   Left (Val.Break lbl') | lbl == lbl' -> False
   _ -> True
 
+trues :: Value v => [ValPE v] -> [ValPE v]
+trues = filter (either (const True) (Val.toBool . val))
+
 fold :: (x -> y -> [Either e y]) -> (x -> y -> [Either e y]) -> (y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
 fold f g n xs acc = case xs of
   [] -> n acc
   Right x : tl -> app (\y -> g x y ++ fold f g n tl y) $ f x acc
   Left e : _ -> [Left e]
+
+type Update e x y = (x -> (y -> [Either e y]) -> y -> [Either e y])
+
+foldUpd :: Update e x y -> (x -> y -> [Either e y]) -> (y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
+foldUpd f g n l v = case l of
+  [] -> n v
+  Right h : t -> f h (\x -> app (foldUpd f g n t) (g h x)) v
+  Left e : _ -> [Left e]
+
+reduceUpd :: Update e x y -> (y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
+reduceUpd f sigma = foldUpd f (\h v -> [ok v]) sigma
+
+foreachUpd :: Update e x y -> Update e x y -> (y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
+foreachUpd f g sigma = foldUpd f (\h v -> g h sigma v) (\v -> [ok v])
 
 reduce :: (x -> y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
 reduce update = fold update (\_x _y -> []) (\y -> [Right y])
@@ -62,18 +78,18 @@ reduce update = fold update (\_x _y -> []) (\y -> [Right y])
 foreach :: (x -> y -> [Either e y]) -> (x -> y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
 foreach update init = fold update init (\_y -> [])
 
+-- Bind a variable to a value.
 bind :: Var -> v -> Ctx v -> Ctx v
 bind x v c@Ctx{vars} = c {vars = Map.insert x v vars}
 
-recurse :: Value v => ValP v -> [ValPE v]
-recurse vp = [ok vp] ++ app recurse (Val.idx vp (Val.Range Nothing Nothing) Def.Optional)
-
-defCtx :: String -> [Arg] -> Filter -> Ctx v -> Ctx v
-defCtx f_name arg_names rhs c@Ctx{funs} =
+-- Bind a definition in a context.
+bindDef :: String -> [Arg] -> Filter -> Ctx v -> Ctx v
+bindDef f_name arg_names rhs c@Ctx{funs} =
   c {funs = Map.insert (f_name, length arg_names) (Eval.Def arg_names rhs c) funs}
 
-bla :: String -> [Filter] -> Ctx v -> Either (Builtin v) (Filter, Ctx v)
-bla f_name args c = case maybe err id $ Map.lookup sig $ funs c of
+-- Retrieve either the builtin function or the filter corresponding to a named function call.
+getNamed :: String -> [Filter] -> Ctx v -> Either (Builtin v) (Filter, Ctx v)
+getNamed f_name args c = case maybe err id $ Map.lookup sig $ funs c of
   Fun f -> Left f
   Arg rhs c' -> Right (rhs, c')
   fun@(Eval.Def arg_names rhs c') ->
@@ -86,7 +102,7 @@ bla f_name args c = case maybe err id $ Map.lookup sig $ funs c of
 run :: Value v => Filter -> Ctx v -> ValP v -> [ValPE v]
 run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Id -> [ok vp]
-  Recurse -> recurse vp
+  Recurse -> run IR.recRun c vp
   ToString -> [ok $ newVal $ Val.fromStr $ show v]
   Num n -> [ok $ newVal $ Val.fromNum n]
   Str s -> [ok $ newVal $ Val.fromStr s]
@@ -100,7 +116,7 @@ run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Concat f g -> run f c vp ++ run g c vp
   Compose f g -> app (\y -> run g c y) $ run f c vp
   Bind f x g -> app (\y -> run g (bind x (val y) c) vp) $ run f c vp
-  Alt f g -> case filter (either (const True) (Val.toBool . val)) (run f c vp) of {[] -> run g c vp; l -> l}
+  Alt f g -> case trues $ run f c vp of {[] -> run g c vp; l -> l}
   IR.Var x -> [ok $ newVal $ vars ! x]
   TryCatch f g -> tryCatch (run g c) $ run f c vp
   Label l f -> let li = Map.size lbls in label li $ run f (c {lbls = Map.insert l li lbls}) vp
@@ -110,26 +126,31 @@ run f c@Ctx{vars, lbls} vp@Val.ValP{val = v} = case f of
   Foreach fx x f g -> foreach (\xv -> run f (bind x (val xv) c)) (\xv -> run g (bind x (val xv) c)) (run fx c vp) vp
   Path part opt -> Val.idx vp (fmap ((!) vars) part) opt
   Update f g -> map (fmap newVal) $ upd f c (map (fmap val) . run g c . newVal) v
-  IR.Def f_name arg_names rhs g -> run g (defCtx f_name arg_names rhs c) vp
-  App f_name args -> case bla f_name args c of
+  IR.Def f_name arg_names rhs g -> run g (bindDef f_name arg_names rhs c) vp
+  App f_name args -> case getNamed f_name args c of
     Left f -> f args c vp
     Right (rhs, c) -> run rhs c vp
 
 upd :: Value v => Filter -> Ctx v -> (v -> [ValueR v]) -> v -> [ValueR v]
 upd phi c@Ctx{vars, lbls} sigma v = case phi of
   Id -> sigma v
+  Recurse -> upd IR.recUpd c sigma v
   Compose f g -> upd f c (upd g c sigma) v
   Concat f g -> app (upd g c sigma) $ upd f c sigma v
-  Bind f x g -> reduce (\y -> upd g (bind x (val y) c) sigma) (run f c (newVal v)) v
-  Break l -> [Left $ Val.Break (lbls ! l)]
-  Ite x f g -> upd (if Val.toBool $ vars ! x then f else g) c sigma v
+  Alt f g -> upd (case trues $ run f c $ newVal v of {[] -> g; _ -> f}) c sigma v
   Path part opt -> [Val.upd v (fmap ((!) vars) part) opt sigma]
-  IR.Def f_name arg_names rhs g -> upd g (defCtx f_name arg_names rhs c) sigma v
-  App f_name args -> case bla f_name args c of
+  Bind f x g -> reduce (\y -> upd g (bind x (val y) c) sigma) (run f c $ newVal v) v
+  Ite x f g -> upd (if Val.toBool $ vars ! x then f else g) c sigma v
+  Break l -> [Left $ Val.Break (lbls ! l)]
+  Reduce fx x f -> reduceUpd (\xv -> upd f (bind x xv c)) sigma (map (fmap val) $ run fx c $ newVal v) v
+  Foreach fx x f g -> foreachUpd (\xv -> upd f (bind x xv c)) (\xv -> upd g (bind x xv c)) sigma (map (fmap val) $ run fx c $ newVal v) v
+  IR.Def f_name arg_names rhs g -> upd g (bindDef f_name arg_names rhs c) sigma v
+  App f_name args -> case getNamed f_name args c of
     Left f -> error $ "todo"
     Right (rhs, c) -> upd rhs c sigma v
   _ -> error "todo"
 
+-- Builtin functions.
 builtins :: Value v => Map.Map (String, Int) (Named v)
 builtins = Map.fromList $ map (\ (sig, f) -> (sig, Fun f)) $
   [ (("path", 1), \args c vp -> map getPath $ run (args !! 0) c (ValP {val = val vp, path = Just []}))
