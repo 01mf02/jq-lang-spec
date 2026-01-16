@@ -1,59 +1,76 @@
 # Values {#sec:values}
 
 In this section, we define several data types, such as
-values, value results, and lists, in simply typed lambda calculus.
-To ease the understanding, we will informally give type names to certain terms.
+values, results, and lists, in simply typed lambda calculus.
 
 While jq operates uniquely on JSON values,
 we define the jq semantics for a general value type $\valt$.
 This value type must satisfy several properties that will be given in @sec:value-ops.
-Furthermore, we assume that $\valt$ can be encoded in lambda calculus.
 
-We encode boolean values as follows:
-\begin{align*}
-\true : \boolt &\coloneqq \lambda t\, f. t \\
-\false: \boolt &\coloneqq \lambda t\, f. f
-\end{align*}
+\newcommand{\some}{\operatorname{some}}
+\newcommand{\none}{\operatorname{none}}
+\newcommand{\fst}{\operatorname{fst}}
+\newcommand{\snd}{\operatorname{snd}}
 
-We assume the existence of functions
-$\succf: \mathbb N \to \mathbb N$ and
-$\zero: \mathbb N$ to construct natural numbers, as well as a function
+We use letters such as $T$, $U$, $X$, and $Y$ for type variables.
+Let us fix some standard encodings for
+boolean values $\boolt$,
+natural numbers $\mathbb N$,
+optional values $\optt\, T$,
+lists $\stream T$, and
+pairs $(T, U)$:
+\begin{alignat*}{2}
+\true &: \boolt &&\coloneqq \lambda t\, f. t \\
+\false&: \boolt &&\coloneqq \lambda t\, f. f \\
+\succf&: \mathbb N \to \mathbb N &&\coloneqq \lambda n\, s\, z. s\, n \\
+\zero&: \mathbb N &&\coloneqq \lambda s\, z. z \\
+\some&: T \to \optt\,T &&\coloneqq \lambda x\, s\, n. s\, x \\
+\none&: \optt\,T &&\coloneqq \lambda s\, n. n \\
+\cons&: T \to \stream T \to \stream T &&\coloneqq \lambda h\, t. \lambda c\, n. c\, h\, t \\
+\nil&: \stream T &&\coloneqq \lambda c\, n. n \\
+\pair&{}: T \to U \to (T, U) &&\coloneqq \lambda x\, y\, p. p\, x\, y  \\
+\fst&{}: (T, U) \to T &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
+\snd&{}: (T, U) \to T &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
+\end{alignat*}
+
+We use natural numbers to store label identifiers.
+We can construct a function
 $\nateq: \mathbb N \to \mathbb N \to \boolt$ that returns
 $\true$ if two natural numbers are equal, else $\false$.
-We use natural numbers to store label identifiers.
-
-The elements returned by our filters are _value results_ $\resultt$, which are
-either OK or an exception (an error or a break).
-\begin{align*}
-\ok    &{}: \valt \to \resultt \coloneqq \lambda x\, o\, e\, b. o\, x \\
-\err   &{}: \valt \to \resultt \coloneqq \lambda x\, o\, e\, b. e\, x \\
-\breakf&{}: \mathbb N \to \resultt \coloneqq \lambda x\, o\, e\, b. b\, x
-\end{align*}
-
-We will use _lists_ $\listt$ of value results as return type of filters.
-Because the jq language is evaluated lazily, lists can be infinite.
-\begin{alignat*}{3}
-\cons&{}: \resultt \to \listt \to{} &&\listt \coloneqq \lambda h\, t. && \lambda c\, n. c\, h\, t \\
-\nil&{}:                                  &&\listt \coloneqq                && \lambda c\, n. n
-\end{alignat*}
 
 We write the empty list
 $\nil$ as $\stream{}$ and
 $\cons\, r_1\, (\cons\, r_2\, ...)$ as $\stream{r_1, r_2, ...}$.
+Because the jq language is evaluated lazily, lists can be infinite.
+
+The elements returned by jq filters are _value results_ $\resultt\, T$, which are
+either OK, an exception, or a break.
+\begin{align*}
+\ok    &{}: T \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. o\, x \\
+\err   &{}: \valt \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. e\, x \\
+\breakf&{}: \mathbb N \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. b\, x
+\end{align*}
+
+A _value-path_ $\valpatht = (\valt,\, \optt\, \stream \valt)$ is
+a pair of a value and an optional list of values.
+The optional list is called the _path_ of the value.
+The idea behind it is that if the path is present,
+it represents the location of the value in input data.
+
+Filters return lists of value-path results, i.e. $\stream{\resultt\, \valpatht}$.
 
 We assume the existence of a set of Y combinators $Y_n$ that we will use to
 define recursive functions of arity $n$.
 For each $n$, we have that $Y_n f = f (Y_n f)$ holds.
 Furthermore, the types of $Y_n$ are:
 \begin{alignat*}{4}
-Y_1: & ((T_1                 &&\to U) \to T_1                 &&\to U) \to T_1                 &&\to U \\
+Y_1:{}& ((T_1                 &&\to U) \to T_1                 &&\to U) \to T_1                 &&\to U \\
 ... \\
-Y_n: & ((T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U
+Y_n:{}& ((T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U
 \end{alignat*}
-
-We define the concatenation of two lists $l$ and $r$ as
+For example, these combinators allow us to define the concatenation of two lists $l$ and $r$ as
 $$l + r \coloneqq Y_1\, (\lambda f\, l. l\, (\lambda h\, t. \cons\, h\, (f\, t))\, r)\, l,$$
-which satisfies the equational property
+which satisfies the property
 $$l + r = l\, (\lambda h\, t. \cons\, h\, (t + r))\, r.$$
 For simplicity, we will define recursive functions from here on mostly by equational properties,
 from which we could easily derive proper definitions using the $Y_n$ combinators.
@@ -66,9 +83,9 @@ $l \bindl f$ applies $f$ to all elements of $l$ and concatenates the outputs.
 For a list $l$ and a function $f$ from a _value_ to a list,
 $l \bind f$ applies OK values in $l$ to $f$ and returns exception values in $l$.
 \begin{alignat*}{7}
-&\bindr&&{}: \resultt &&\to (\valt &&\to \resultt&&) &&\to \resultt &&\coloneqq \lambda r\, f. r\, (\lambda o. f\, o)\, (\lambda e. r)\, (\lambda b. r) \\
-&\bindl&&{}: \listt &&\to (\resultt &&\to \listt&&) &&\to \listt &&\coloneqq \lambda l\, f. l\, (\lambda h\, t. f\, h + (t \bindl f))\, \nil \\
-&\bind &&{}: \listt &&\to (\valt &&\to \listt&&) &&\to \listt &&\coloneqq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
+&\bindr&&{}: \resultt\, T &&\to (T &&\to \resultt\, U&&) &&\to \resultt\, U &&\coloneqq \lambda r\, f. r\, (\lambda o. f\, o)\, (\lambda e. r)\, (\lambda b. r) \\
+&\bindl&&{}: \stream T &&\to (T &&\to \stream U&&) &&\to \stream U &&\coloneqq \lambda l\, f. l\, (\lambda h\, t. f\, h + (t \bindl f))\, \nil \\
+&\bind &&{}: \stream{\resultt\, T} &&\to (T &&\to \stream{\resultt\, U}&&) &&\to \stream{\resultt\, U} &&\coloneqq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
 \end{alignat*}
 
 
