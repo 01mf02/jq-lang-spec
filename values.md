@@ -107,7 +107,7 @@ in the remainder of this text.
 
 The value type must provide arithmetic operations $\{+, -, \times, \div, \modulo\}$
 such that every arithmetic operation $\arith$ returns a value result, i.e.
-$\arith: \valt \to \valt \to \resultt$.
+$\arith: \valt \to \valt \to \resultt\, \valt$.
 That means that every arithmetic operation can fail.
 Definitions of the arithmetic operators for JSON values are given in @sec:arithmetic.
 
@@ -123,7 +123,7 @@ We assume the existence of several functions:
 - $\arr_0: \valt$ yields an empty array.
 - $\arr_1: \valt \to \valt$ constructs a singleton array from a value.
 - $\objf_0: \valt$ yields an empty object.
-- $\objf_1: \valt \to \valt \to \resultt$ constructs a singleton object from a key and value.
+- $\objf_1: \valt \to \valt \to \resultt\, \valt$ constructs a singleton object from a key and value.
   (It returns a value result instead of a value because it
   may fail in case that the provided value is not a valid key.)
 - $\bool: \valt \to \boolt$ takes a value and returns a boolean.
@@ -133,24 +133,25 @@ that transforms a list into a value result:
 It returns an array if all list elements are values, or into
 the first exception in the list otherwise:
 \begin{alignat*}{2}
-\sumf&{}: \listt \to \valt &&\to \resultt \coloneqq \lambda l\, n. l\, (\lambda h\, t. h \bindr (\lambda o. (n + o \bindr \sumf\, t)))\, (\ok\, n) \\
-\arr &{}: \listt           &&\to \resultt \coloneqq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok\, (\arr_1\, v)}))\, \arr_0
+\sumf&{}: \stream{\resultt\, \valt} \to \valt &&\to \resultt\, \valt \coloneqq \lambda l\, v. l\, (\lambda h\, t. h \bindr (\lambda o. (v + o \bindr \sumf\, t)))\, (\ok\, v) \\
+\arr &{}: \stream{\resultt\, \valt} &&\to \resultt\, \valt \coloneqq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok\, (\arr_1\, v)}))\, \arr_0
 \end{alignat*}
 Here, the function $\sumf$ takes a list $l$ and a zero value $n$ and
 returns the sum of the zero value and the list elements if they are all OK,
 otherwise it returns the first exception in the list.
-This uses the addition operator $+: \valt \to \valt \to \resultt$.
+This uses the addition operator $+: \valt \to \valt \to \resultt\, \valt$.
 
+<!-- TODO: path part definition in syntax section, but used already here -->
 Let $p$ a path part (as defined in @sec:syntax) containing values as indices.
 We assume two operators:
 
 - The _access operator_ $v[p]$ extracts values contained within $v$
-  at positions given by $p$, yielding a list of value results.
+  at positions given by $p$, yielding a list of value-path results $\stream{\resultt\, \valpatht}$.
   This operator will be used in @sec:semantics and
   is defined for JSON values in @sec:json-access.
 - The _update operator_ $v[p]^? \update f$ replaces
   those elements $v' = v[p]$ in $v$ by
-  the output of $f\, v'$, where $f: \valt \to \listt$.
+  the output of $f\, v'$, where $f: \valt \to \stream{\resultt\, \valt}$.
   The update operator yields a single value result.
   This operator will be used in @sec:updates and
   is defined for JSON values in @sec:json-update.
