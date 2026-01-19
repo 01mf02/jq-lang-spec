@@ -125,7 +125,7 @@ replace certain occurrences of filters by variables
 
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |
-| $n$, $s$, $.$, $\$x$, or $\jqlb{break}{x}$ | $\varphi$ |
+| $n$, $s$, $.$, $..$, $\$x$, or $\jqlb{break}{x}$ | $\varphi$ |
 | $(f)$ | $\floor f$ |
 | $f?$ | $\jqlb{label}{x'} | \jqtc{\floor f}{(\jqlb{break}{x'})}$ |
 | $[]$ or $\{\}$ | $\varphi$ |
