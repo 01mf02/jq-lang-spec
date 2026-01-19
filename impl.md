@@ -107,3 +107,90 @@ Table: Filter runtime in milliseconds with input 1000000. Lower is better. {#tab
   This shows the high cost of path-based updates, which
   our new update semantics --- and thus jaq --- avoid.
 :::
+
+## Update performance
+
+We now compare the performance of path-based updates (as used in jq) and
+path-less updates (as used in jaq).
+We evaluate on two different inputs:
+
+- `[range(1000000)]`        (an array of the shape `[0, ..., 999999]`)
+- `{"a": [range(1000000)]}` (an object of the shape `{"a": [0, ..., 999999]}`)
+
+The second input allows us to measure the impact of updating nested data.
+For both inputs, we evaluate the runtime of different actions,
+in order to determine the cost of different kinds of updates:
+
+- Construction: Only construct the input (identity function).
+  This serves as baseline, because all actions include input construction.
+- Native update: Update using the built-in update operator `|=`.
+  On jaq, this uses path-less  updates, whereas
+  on jq,  this uses path-based updates.
+- Manual update: Update without `|=`.
+- Path-based update: Update with `|=`, forcing the usage of paths.
+
+The filters that correspond to each of these actions are given in @tab:update-eval.
+Every update applies the identity function (`.`)
+to all elements of the array contained in its input,
+which means that they return output equal to the input.
+
+Action            | `[range(1000000)]`        | `{"a": [range(1000000)]}`
+----------------- | ------------------------- | -----------------------------
+Construction      | `.`                       | `.`
+Native update     | `.[] |= .`                | `.a[] |= .`
+Manual update     | `[.[] | .]`               | `{a: .a | [.[] | .]}`
+Path-based update | `getpath(path(.[])) |= .` | `getpath(path(.a[])) |= .`
+
+Table: Evaluated filter `f` depending on input and action. \label{tab:update-eval}
+
+\begin{figure}
+\input{eval/update.tex}
+\caption{Runtime to construct and process input. Lower is better.}
+\label{fig:update}
+\end{figure}
+
+We evaluate the runtime of input construction `i` and action `f` by
+running `$JQ -n 'i | f | empty`.[^empty-avoid]
+For example, to evaluate jaq's native update performance on array input,
+we measure the time of
+`jaq -n '[range(1000000)] | .[] |= . | empty`.
+
+[^empty-avoid]:
+  The usage of `empty` is necessary to avoid printing the output,
+  which can be very costly performance-wise.
+
+The results are given in @fig:update.
+Let us first look at the results for array input `[range(1000000)]`.
+We can see that native update performance differs enormously between
+jq and jaq:
+When subtracting the time for input construction,
+<!-- (2043−107)÷(113−74) = 49.64 -->
+jq takes about fifty times (!) as long for the update as jaq.
+We can also see that in jq,
+(path-based) native updates are significantly _slower_ than manual updates, whereas in jaq,
+(path-less)  native updates are _faster_ than manual updates.
+Finally, we can see that when forcing path-based updates,
+the performance of jaq plummets, arriving
+at the same order of magnitude as jq's native updates.[^jq-path-force]
+That indicates that jq's low update performance is caused by path-based updates.
+
+[^jq-path-force]:
+  When forcing path-based updates in jq via `getpath(path(...)) |= ...`,
+  the performance also decreases compared to its (path-based) native updates.
+  That is because in this scenario, jq evaluates each path twice, namely
+  a first time via `|=` and a second time via `getpath(path(..))`.
+
+Now, let us look at the results for object input `{"a": [range(1000000)]}`,
+in order to study the performance of nested updates, namely
+updating all values of an array inside an object.
+First, we can observe that the performance of manual updates in both jq and jaq,
+as well as the performance of native update in jaq, remains stable.
+That means that these kinds of updates are not impacted by nesting.
+On the other hand, the performance of path-based updates clearly decreases.
+
+To sum it up:
+Path-based updates are significantly slower than
+manually updating data without the `|=` operator.
+Furthermore, path-based update performance is impacted negatively by nesting.
+However, updates can be made to achieve higher performance than manual updates,
+by using our path-less update semantics.

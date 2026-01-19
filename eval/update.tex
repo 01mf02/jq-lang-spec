@@ -1,0 +1,44 @@
+\pgfplotscreateplotcyclelist{redblue}{
+  {red,mark=none,pattern=dots,pattern color=red},
+  {blue,fill=blue!30!white,mark=none},
+}
+
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, horizontal sep=0.5cm, yticklabels at=edge left},
+  y=1cm,
+  xlabel=Runtime,
+  x unit=ms,
+  axis x line=bottom,
+  width=6.8cm,
+  xbar,
+  yticklabel style={align=left},
+  y dir=reverse,
+  ytick=data,
+  ytick style={draw=none},
+  xmin=0,
+  enlarge x limits={abs=8ex,upper},
+  enlarge y limits=0.2,
+  nodes near coords,
+  yticklabels={
+    Construction,
+    Native update,
+    Manual update,
+    Path-based update,
+  },
+  cycle list name=redblue,
+  reverse legend,
+]
+
+\nextgroupplot[title={\texttt{[range(1000000)]}}]
+\addplot+ table[y=f, x=time-jq ] {eval/arr.tsv};
+\addplot+ table[y=f, x=time-jaq] {eval/arr.tsv};
+\legend{jq,jaq}
+
+\nextgroupplot[title={\texttt{\{"a":\ [range(1000000)]\}}}]
+\addplot+ table[y=f, x=time-jq ] {eval/obj.tsv};
+\addplot+ table[y=f, x=time-jaq] {eval/obj.tsv};
+
+\end{groupplot}
+
+\end{tikzpicture}
