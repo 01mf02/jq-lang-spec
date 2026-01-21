@@ -3,9 +3,7 @@
 In this section, we define several data types, such as
 values, results, and lists, in simply typed lambda calculus.
 
-While jq operates uniquely on JSON values,
-we define the jq semantics for a general value type $\valt$.
-This value type must satisfy several properties that will be given in @sec:value-ops.
+## Preliminaries
 
 \newcommand{\some}{\operatorname{some}}
 \newcommand{\none}{\operatorname{none}}
@@ -43,6 +41,30 @@ $\nil$ as $\stream{}$ and
 $\cons\, r_1\, (\cons\, r_2\, ...)$ as $\stream{r_1, r_2, ...}$.
 Because the jq language is evaluated lazily, lists can be infinite.
 
+## Y combinators
+
+We assume the existence of a set of Y combinators $Y_n$ that we will use to
+define recursive functions of arity $n$.
+For each $n$, we have that $Y_n f = f (Y_n f)$ holds.
+Furthermore, the types of $Y_n$ are:
+\begin{alignat*}{4}
+Y_1:{}& ((T_1 &&\to U) \to T_1 &&\to U) \to T_1 &&\to U \\
+... \\
+Y_n:{}& ((T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U
+\end{alignat*}
+For example, these combinators allow us to define the concatenation of two lists $l$ and $r$ as
+$$l + r \coloneqq Y_1\, (\lambda f\, l. l\, (\lambda h\, t. \cons\, h\, (f\, t))\, r)\, l,$$
+which satisfies the property
+$$l + r = l\, (\lambda h\, t. \cons\, h\, (t + r))\, r.$$
+For simplicity, we will define recursive functions from here on mostly by equational properties,
+from which we could easily derive proper definitions using the $Y_n$ combinators.
+
+## Values and Results
+
+While jq operates uniquely on JSON values,
+we define the jq semantics for a general value type $\valt$.
+This value type must satisfy several properties that will be given in @sec:value-ops.
+
 The elements returned by jq filters are _value results_ $\resultt\, T$, which are
 either OK, an exception, or a break.
 \begin{align*}
@@ -57,21 +79,7 @@ The optional list is called the _path_ of the value.
 The idea behind it is that if the path is present,
 it represents the location of the value in input data.
 
-We assume the existence of a set of Y combinators $Y_n$ that we will use to
-define recursive functions of arity $n$.
-For each $n$, we have that $Y_n f = f (Y_n f)$ holds.
-Furthermore, the types of $Y_n$ are:
-\begin{alignat*}{4}
-Y_1:{}& ((T_1                 &&\to U) \to T_1                 &&\to U) \to T_1                 &&\to U \\
-... \\
-Y_n:{}& ((T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U
-\end{alignat*}
-For example, these combinators allow us to define the concatenation of two lists $l$ and $r$ as
-$$l + r \coloneqq Y_1\, (\lambda f\, l. l\, (\lambda h\, t. \cons\, h\, (f\, t))\, r)\, l,$$
-which satisfies the property
-$$l + r = l\, (\lambda h\, t. \cons\, h\, (t + r))\, r.$$
-For simplicity, we will define recursive functions from here on mostly by equational properties,
-from which we could easily derive proper definitions using the $Y_n$ combinators.
+## Composition
 
 We define three monadic bind operators to describe composition.
 For a result $r$ and a function $f$ from a value to a result,
