@@ -86,8 +86,39 @@ $l \bind f$ applies OK values in $l$ to $f$ and returns exception values in $l$.
 &\bind &&{}: \stream{\resultt\, T} &&\to (T &&\to \stream{\resultt\, U}&&) &&\to \stream{\resultt\, U} &&\coloneqq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
 \end{alignat*}
 
-<!-- TODO: implicit conversion between values and value-paths -->
+## Implicit conversion
 
+\newcommand{\fromvp}{\operatorname{from\_vp}}
+\newcommand{\tovp}{\operatorname{to\_vp}}
+
+We frequently mix values and value-paths.
+To avoid boilerplate, we assume that in contexts where
+one of these types is expected, but
+a value of the other type is given,
+the value is implicitly converted to match the expected type.
+A value can be converted to and from a value-path with the following functions:
+\begin{align*}
+\tovp   &{}: \valt \to \valpatht \coloneqq \lambda v. \pair\, v\, \none \\
+\fromvp &{}: \valpatht \to \valt \coloneqq \snd
+\end{align*}
+This conversion can also take place inside results and lists, as shown by the next example.
+
+::: {.example}
+If we have a value-path $v_p: \valpatht$ and
+apply it to a function that expects a $\valt$, then
+$v_p$ is implicitly substituted by
+$\fromvp \v_p$.
+
+If we have a result $r: \resultt\, \valt$ and
+apply it to a function that expects a $\valpatht$, then
+$r$ is implicitly substituted by
+$r \bindr (\lambda v. \ok\, (\tovp v))$.
+
+If we have a list $l: \stream{\resultt\, \valt}$ and
+apply it to a function that expects a $\stream{\resultt\, \valpatht}$, then
+$l$ is implicitly substituted by
+$l \bindl (\lambda r. \stream{r \bindr (\lambda v. \ok\, (\tovp v))})$.
+:::
 
 ## Value operations {#sec:value-ops}
 
