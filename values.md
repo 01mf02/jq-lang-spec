@@ -1,9 +1,9 @@
-# Values {#sec:values}
+# Preliminaries {#sec:values}
 
 In this section, we define several data types, such as
 values, results, and lists, in simply typed lambda calculus.
 
-## Preliminaries
+## Basic data types
 
 \newcommand{\some}{\operatorname{some}}
 \newcommand{\none}{\operatorname{none}}
@@ -31,7 +31,6 @@ pairs $(T, U)$:
 \snd&{}: (T, U) \to T &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
 \end{alignat*}
 
-We use natural numbers to store label identifiers.
 We can construct a function
 $\nateq: \mathbb N \to \mathbb N \to \boolt$ that returns
 $\true$ if two natural numbers are equal, else $\false$.
@@ -59,14 +58,14 @@ $$l + r = l\, (\lambda h\, t. \cons\, h\, (t + r))\, r.$$
 For simplicity, we will define recursive functions from here on mostly by equational properties,
 from which we could easily derive proper definitions using the $Y_n$ combinators.
 
-## Values and Results
+## Values and results
 
 While jq operates uniquely on JSON values,
 we define the jq semantics for a general value type $\valt$.
 This value type must satisfy several properties that will be given in @sec:value-ops.
 
 The elements returned by jq filters are _value results_ $\resultt\, T$, which are
-either OK, an exception, or a break.
+either OK, an error, or a break.
 \begin{align*}
 \ok    &{}: T \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. o\, x \\
 \err   &{}: \valt \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. e\, x \\
@@ -148,14 +147,12 @@ The value type must provide arithmetic operations $\{+, -, \times, \div, \modulo
 such that every arithmetic operation $\arith$ returns a value result, i.e.
 $\arith: \valt \to \valt \to \resultt\, \valt$.
 That means that every arithmetic operation can fail.
-Definitions of the arithmetic operators for JSON values are given in @sec:arithmetic.
 
 The value type must also provide Boolean operations
 $\{<, \leq, >, \geq, \iseq, \neq\}$, where
 $l \iseq r$ returns whether $l$ equals $r$, and
 $l \neq r$ returns its negation.
 Each of these Boolean operations is of type $\valt \to \valt \to \valt$.
-The order on JSON values is defined in @sec:json-order.
 
 We assume the existence of several functions:
 
@@ -186,17 +183,50 @@ We assume two operators:
 
 - The _access operator_ $v[p]$ extracts values contained within $v$
   at positions given by $p$, yielding a list of value-path results $\stream{\resultt\, \valpatht}$.
-  This operator will be used in @sec:semantics and
-  is defined for JSON values in @sec:json-access.
+  This operator will be used in @sec:semantics.
 - The _update operator_ $v[p]^? \update f$ replaces
   those elements $v' = v[p]$ in $v$ by
   the output of $f\, v'$, where $f: \valt \to \stream{\resultt\, \valt}$.
   The update operator yields a single value result.
-  This operator will be used in @sec:updates and
-  is defined for JSON values in @sec:json-update.
+  This operator will be used in @sec:updates.
 
 If $v[p]$ returns an error, then
 $v[p] \update f$ should yield an error and
 $v[p]? \update f$ should yield $v$.
 We define $v[p]? = v[p] \bindl \lambda r. r\, (\lambda o. \stream r)\, (\lambda e. \stream{})\, (\lambda b. \stream r)$.
 This simply discards any error yielded by $v[p]$.
+
+## JSON values {#sec:json}
+
+A JSON value $v$ has the shape
+$$v \coloneqq \nullf \gror \false \gror \true \gror n \gror s \gror [v_0, ..., v_n] \gror \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n},$$
+where $n$ is a number and $s$ is a string.
+A value of the shape $[v_0, ..., v_n]$ is called an _array_ and
+a value of the shape $\obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$ is
+an unordered map from _keys_ $k$ to values that we call an _object_.^[
+  The JSON syntax uses
+  $\obj{k_0: v_0, ..., k_n: v_n}$ instead of
+  $\obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$.
+  However, in this text, we use the
+  $\obj{k_0: v_0, ..., k_n: v_n}$ syntax to denote the _construction_ of objects, and use
+  $\obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$ syntax to denote actual objects.
+]
+In JSON, object keys are strings.
+
+We write $\err\, ...$ to denote $\err\, e$ where we do not want to specify $e$.
+(In actual jq implementations, $e$ is frequently an error message string.)
+
+The functions to construct arrays and objects, as well as to retrieve the _boolean value_, are as follows:
+\begin{alignat*}{3}
+\arr _0:{}&             &&            && \valt \coloneqq [] \\
+\arr _1:{}&             &&\valt \to{} && \valt \coloneqq \lambda v. [v] \\
+\objf_0:{}&             &&            && \valt \coloneqq \obj{} \\
+\objf_1:{}& \valt \to{} &&\valt \to{} && \resultt \coloneqq \lambda k\, v. \begin{cases}
+  \ok \obj{k \mapsto v} & \text{if $k$ is a string} \\
+  \err ... & \text{otherwise}
+\end{cases} \\
+\bool:{}& && \valt \to{} && \boolt \coloneqq \lambda v. \begin{cases}
+  \false & \text{if $v = \nullf$ or $v = \false$} \\
+  \true & \text{otherwise}
+\end{cases}
+\end{alignat*}

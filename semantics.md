@@ -147,7 +147,7 @@ Let us discuss its different cases:
   That means that $\eval \sem \varphi$ for a wellformed filter $\varphi$ can only yield
   values and errors, but never a break result.
 - $\jqite{\$x}{f}{g}$: Returns the output of $f$ if $\$x$ is bound to
-  a "true" value (neither null nor false for JSON, see @sec:simple-fns), else returns the output of $g$.
+  a "true" value (neither null nor false for JSON, see @sec:json), else returns the output of $g$.
 - $.[p]^?$: Accesses parts of the input value;
   see @sec:value-ops for the definitions of the operators.
   When evaluating this, the indices contained in $p$ have been substituted by values.
@@ -174,11 +174,11 @@ Let us discuss its different cases:
 <!-- TODO: explain how to handle builtin filters implemented by definition and as native function -->
 An implementation may also define semantics for builtin named filters.
 For example, an implementation may define
-$\run\, \sem{\jqf{error}}\, v \coloneqq \stream{\err\, v}$ and
+$\run\, \sem{\jqf{error}}\, v \coloneqq \stream{\err\, v}$<!-- and
 $\run\, \sem{\jqf{keys }}\, v \coloneqq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
 In the case of $\jqf{keys}$, for example, there is no obvious way to implement it by definition,
 in particular because there is no simple way to obtain the domain of an object $\{...\}$
-using only the filters for which we gave semantics in @tab:eval-semantics.
+using only the filters for which we gave semantics in @tab:eval-semantics-->.
 
 ::: {.example #ex:recursion name="Recursion"}
   Consider the following IR filter $\varphi$: $$\jqdef{\jqf{repeat}}{., \jqf{repeat}} \jqf{repeat}$$
@@ -420,7 +420,7 @@ Let us discuss these for the different filters $\varphi$:
 - $f, g$: Applies the update of $\sigma$ at $g$ to the output of the update of $\sigma$ at $f$.
   We have already seen this at the end of @sec:jq-updates.
 - $\jqite{\$x}{f}{g}$: Applies $\sigma$ at $f$ if $\$x$ holds, else at $g$.
-- $f \alt g$: Applies $\sigma$ at $f$ if $f$ yields some output whose boolean value (see @sec:simple-fns) is not false, else applies $\sigma$ at $g$.
+- $f \alt g$: Applies $\sigma$ at $f$ if $f$ yields some output whose boolean value (see @sec:value-ops) is not false, else applies $\sigma$ at $g$.
   Here, $\jqf{first}(f)$ is a filter that returns
   the first output of its argument $f$ if there is one, else the empty list.
 
