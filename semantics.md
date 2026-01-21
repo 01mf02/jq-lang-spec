@@ -483,12 +483,12 @@ Table: Update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \lis
 | $f, g$ | $\upd\, \sem f\, \sigma\, v \bind \upd\, \sem g\, \sigma$ |
 | $f \alt g$ | $\upd\, ((\run\, \sem f\, v \bind \trues)\, (\lambda \_\, \_. \sem f)\, \sem g)\, \sigma\, v$ |
 | $.[p]^?$ | $\stream{v[p]^? \update \sigma}$ |
-| $f \jqas \$x | g$ | $\reducef\, (\lambda \$x. \upd\, \sem g\, \sigma)\, (\run\, \sem f\, v)\, v$ |
+| $f \jqas \$x | g$ | $\reducef\, (\lambda x. (\lambda \$x. \upd\, \sem g)\, x\, \sigma)\, (\run\, \sem f\, v)\, v$ |
 | $\jqite{\$x}{f}{g}$ | $\upd\, ((\bool\, \$x)\, \sem f\, \sem g)\, \sigma\, v$ |
 | $\jqlb{break}{x}$ | $\stream{\breakf\, \$x}$ |
 | $\jqfold{reduce}{x}{\$x}{(.; f)}$ | $\reducef_{\update}\, (\lambda \$x. \upd\, \sem f)\, \sigma\, (\run\, \sem x\, v)\, v$ |
 | $\jqfold{foreach}{x}{\$x}{(.; f; g)}$ | $\foreachf_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem x\, v)\, v$ |
-| $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \upd\, \sem g\, \sigma\, v)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
+| $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \upd\, \sem g)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))\, \sigma\, v$ |
 | $x(f_1; ...; f_n)$ | $\upd\, (x\, \sem{f_1}\, ...\, \sem{f_n})\, \sigma\, v$ |
 
 @tab:update-semantics shows the definition of $\upd\, \sem \varphi\, \sigma\, v$.
@@ -512,6 +512,7 @@ We discuss the remaining cases for $\varphi$:
   updating the accumulator by $g \update \sigma$, where
   $\$x$ is bound to the current output of $f$.
   The definition of $\reducef$ is given in @sec:folding.
+  <!-- TODO: explain that $x should not be bound in \sigma -->
 - $\jqfold{\fold}{x}{\$x}{(.; f)}$: Folds $f$ over the values returned by $\$x$.
   We will discuss this in @sec:folding-update.
 - $\jqdef{x(x_1; ...; x_n)}{f} g$: Defines a filter.
