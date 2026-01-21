@@ -1,25 +1,25 @@
 # Evaluation Semantics {#sec:semantics}
 
-In this section, we will show how to transform --- or compile --- a filter $\varphi$ to a lambda term $\sem \varphi$,
-such that $\eval \varphi$ is a function that takes an input value $v$ and returns
-the list of values that the filter $\varphi$ outputs when given the input $v$.
+In this section, we will show how to transform --- or compile ---
+an IR filter $\varphi$ to a lambda term $\sem \varphi$ of type $\filtert$.
+We will then define a function $\eval \varphi\, v$ that
+returns the list of value-path results that
+the filter $\varphi: \filtert$ outputs when given
+the value-path $v: \valpatht$ as input.
 The evaluation strategy is call-by-name.
 
 ## Compilation
 
-
-We will use pairs to store two functions
---- a run and an update function --- that characterise each filter $\filtert$.
-\begin{alignat*}{4}
-  \pair&{}:                &(\valt \to \listt) &\to ((\valt \to \listt) \to \valt \to \listt) \to \filtert &&\coloneqq \lambda x\, y\, f. f\, x\, y  \\
-   \run&{}: \filtert \to{} &(\valt \to \listt) &                                                           &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
-   \upd&{}: \filtert       &                   &\to ((\valt \to \listt) \to \valt \to \listt)              &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
+A compiled filter $\filtert$ is
+a pair of a _run_ and an _update_ function.
+We can obtain the run and update functions from a compiled filter as follows:
+\begin{alignat*}{3}
+\run&{}: \filtert \to (\valpatht \to \stream{\resultt\, \valpatht}) &&\coloneqq \fst \\
+\upd&{}: \filtert \to (\valt \to \stream{\resultt\, \valt}) \to \valt \to \stream {\resultt\, \valt} &&\coloneqq \snd
 \end{alignat*}
-The lambda term $\sem \varphi$ corresponding to a filter $\varphi$ that we will define
-will always be a pair of two functions, namely a run and an update function.
-It has the shape $$\sem \varphi = \pair\, (\lambda v. t_r)\, (\lambda \sigma\, v. t_u)$$
+The lambda term $\sem \varphi : \filtert$ corresponding to an IR filter $\varphi$ has the shape
+$$\sem \varphi = \pair\, (\lambda v. t_r)\, (\lambda \sigma\, v. t_u)$$
 for some terms $t_r$ (run function) and $t_u$ (update function).
-We retrieve the two functions from a pair with the functions $\run$ and $\upd$.
 For a given $\varphi$, we can obtain
 $t_r$ by $\run\, \sem \varphi\, v$ and
 $t_u$ by $\upd\, \sem \varphi\, \sigma\, v$.
@@ -43,7 +43,7 @@ This variable is used to generate fresh labels for the execution of
 $\jqlb{label}{x} | f$, see @ex:labels.
 In order to create a closed term, we initially bind $\fresh$ to zero.
 We can then run a filter using the following function:
-$$\eval: \filtert \to \valt \to \listt \coloneqq \lambda \varphi. (\lambda \fresh. \run\, \varphi)\, \zero$$
+$$\eval: \filtert \to \valt \to \stream{\resultt\, \valt} \coloneqq \lambda \varphi. (\lambda \fresh. \run\, \varphi)\, \zero$$
 
 \newcommand{\reducef }{\operatorname{reduce }}
 \newcommand{\foreachf}{\operatorname{foreach}}
@@ -98,7 +98,7 @@ Let us discuss its different cases:
   (any of $\stackrel{?}{=}$, $\neq$, $<$, $\leq$, $>$, $\geq$, as given in @tab:op-correspondence)
   on the values bound to $\$x$ and $\$y$.
   Because we assumed that Boolean operations return $\valt$ and are thus infallible
-  (unlike the arithmetic operations $\arith$, which return $\resultt$),
+  (unlike the arithmetic operations $\arith$, which return $\resultt\, \valt$),
   we have to wrap their outputs with an $\ok$.
 - $f, g$: Concatenates the outputs of $f$ and $g$, both applied to the same input.
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
@@ -106,7 +106,7 @@ Let us discuss its different cases:
   This filter returns $l$ if $l$ is not empty, else the outputs of $g$.
   Here, we use a function $\trues\, x$ that
   returns its input $x$ if its boolean value is true.
-  $$\trues: \valt \to \listt \coloneqq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
+  $$\trues: \valpatht \to \stream{\resultt\, \valpatht} \coloneqq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
 - $f \jqas \$x | g$: For every output of $f$, binds it to the variable $\$x$ and
   returns the output of $g$, where $g$ may reference $\$x$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
@@ -171,6 +171,7 @@ Let us discuss its different cases:
 - $f \update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @sec:updates.
 
+<!-- TODO: explain how to handle builtin filters implemented by definition and as native function -->
 An implementation may also define semantics for builtin named filters.
 For example, an implementation may define
 $\run\, \sem{\jqf{error}}\, v \coloneqq \stream{\err\, v}$ and
@@ -237,15 +238,24 @@ $\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$.
 \newcommand{\foldf}{\operatorname{fold}}
 Let us start by defining a general folding function $\foldf$:
 \begin{align*}
-\foldf&{}: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
+\foldf&{}: (T \to U \to \stream{\resultt\, U}) \to (T \to U \to \stream{\resultt\, U}) \to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
 &\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, v \bind (\lambda y. g\, h\, y + F\, t\, y))\, (n\, v))
 \end{align*}
+Here,
+$T$ is the type of list elements that the fold iterates over, and
+$U$ is the type of the accumulator.
+When we use this function later,
+both $T$ and $U$ will be instantiated with $\valpatht$ ---
+we distinguish between $T$ and $U$ here to clarify
+the difference between list elements and the accumulator.
+
 This function takes
-two functions $f$ and $g$ that both take two values --- a list element and an accumulator --- and return a list of value results, and
-a function $n$ (for the nil case) from a value $x$ to a list of value results.
+two functions $f$ and $g$ that both
+take a list element and an accumulator and return a list of accumulator results, and
+a function $n$ (for the nil case) from a final accumulator $x$ to a list of accumulator results.
 From that, it creates a recursive function that
-takes a list of value results $l$ and an accumulator value $v$ and
-returns a list of value results.
+takes a list of results $l$ and an initial accumulator $v$ and
+returns a list of accumulator results.
 This function folds over the elements in $l$, starting from the accumulator value $v$.
 For every element $h$ in $l$,
 $f$ is evaluated with $h$ and the current accumulator value $v$ as input.
@@ -264,8 +274,8 @@ Instantiating $\foldf$ with these two functions, we obtain the following:
 Here, $\reducef$ and $\foreachf$ are the functions used in @tab:eval-semantics.
 Their types are:
 \begin{alignat*}{2}
-\reducef &{}: (\valt \to \valt \to \listt)                                  &&\to \listt \to \valt \to \listt \\
-\foreachf&{}: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) &&\to \listt \to \valt \to \listt
+\reducef &{}: (T \to U \to \stream{\resultt\, U}) &&\to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
+\foreachf&{}: (T \to U \to \stream{\resultt\, U}) \to (T \to U \to \stream{\resultt\, U}) &&\to \stream{\resultt\, T} \to U \to \stream{\resultt\, U}
 \end{alignat*}
 We will now look at what the evaluation of the various folding filters expands to.
 Assuming that the filter $f_x$ evaluates to $\stream{x_0, ..., x_n}$,
@@ -287,6 +297,7 @@ $\jqfold{reduce}{f_x}{\$x}{(.;            f )}$ is equivalent to
 $\jqfold{reduce}{f_x}{\$x}{(.; \jqf{last}(f))}$.
 Here, we assume that the filter $\jqf{last}(f)$
 returns the last output of $f$ if $f$ yields any output, else nothing.
+<!-- TODO: write about jq limitation of recording paths with folding operators -->
 
 
 # Update Semantics {#sec:updates}

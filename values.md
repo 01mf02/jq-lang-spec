@@ -57,8 +57,6 @@ The optional list is called the _path_ of the value.
 The idea behind it is that if the path is present,
 it represents the location of the value in input data.
 
-Filters return lists of value-path results, i.e. $\stream{\resultt\, \valpatht}$.
-
 We assume the existence of a set of Y combinators $Y_n$ that we will use to
 define recursive functions of arity $n$.
 For each $n$, we have that $Y_n f = f (Y_n f)$ holds.
@@ -87,6 +85,8 @@ $l \bind f$ applies OK values in $l$ to $f$ and returns exception values in $l$.
 &\bindl&&{}: \stream T &&\to (T &&\to \stream U&&) &&\to \stream U &&\coloneqq \lambda l\, f. l\, (\lambda h\, t. f\, h + (t \bindl f))\, \nil \\
 &\bind &&{}: \stream{\resultt\, T} &&\to (T &&\to \stream{\resultt\, U}&&) &&\to \stream{\resultt\, U} &&\coloneqq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
 \end{alignat*}
+
+<!-- TODO: implicit conversion between values and value-paths -->
 
 
 ## Value operations {#sec:value-ops}
