@@ -58,7 +58,7 @@ fold f g n xs acc = case xs of
   Right x : tl -> app (\y -> g x y ++ fold f g n tl y) $ f x acc
   Left e : _ -> [Left e]
 
-type Update e x y = (x -> (y -> [Either e y]) -> y -> [Either e y])
+type Update e x y = x -> (y -> [Either e y]) -> y -> [Either e y]
 
 foldUpd :: Update e x y -> (x -> y -> [Either e y]) -> (y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
 foldUpd f g n l v = case l of

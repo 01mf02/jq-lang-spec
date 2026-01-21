@@ -431,6 +431,7 @@ We will therefore give the actual update semantics of $\varphi \update \sigma$ i
 by defining $\upd\, \sem \varphi\, \sigma\, v$, not
 by translating $\varphi \update \sigma$ to equivalent filters.
 
+<!--
 ## Limiting interactions {#sec:limiting-interactions}
 
 To define $\upd\, \sem \varphi\, \sigma\, v$, we first have to understand
@@ -463,17 +464,15 @@ $\upd\, \sem \varphi\, \sigma\, v$ not for a _filter_ $\sigma$,
 but for a _function_ $\sigma': \valt \to \listt$, where
 $\sigma'\, x$ returns the output of the filter $\run\, \sigma\, x$.
 This allows us to bind variables in $\varphi$ without impacting $\sigma$.
+-->
 
 ## New semantics {#sec:new-semantics}
 
 We will now give semantics that define the output of
 $\run\, \sem{f \update g}\, v$ as referred to in @sec:semantics.
-
-We will first combine the techniques in @sec:limiting-interactions to define
+We will first define
 $$\run\, \sem{f \update g}\, v \coloneqq \upd\, \sem f\, \sigma\, v, \text{where }
-  \sigma: \valt \to \listt \coloneqq \run\, \sem g$$
-We use the function $\sigma$ instead of a filter on the right-hand side to
-limit the scope of variable bindings as explained in @sec:limiting-interactions.
+  \sigma: \valt \to \stream{\resultt\, \valt} \coloneqq \run\, \sem g$$
 
 Table: Update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \listt$ is a function from a value to a list of value results. {#tab:update-semantics}
 
@@ -499,7 +498,7 @@ are simply relatively straightforward consequences of the properties in @tab:upd
 We discuss the remaining cases for $\varphi$:
 
 - $f \alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
-  Here, $f$ is called as a "probe" first.
+  Here, we first call $f$ as a "probe".
   If it yields at least one output that is considered "true"
   (see @sec:semantics for the definition of $\trues$),
   then we update at $f$, else at $g$.
@@ -520,6 +519,7 @@ We discuss the remaining cases for $\varphi$:
 - $x(f_1; ...; f_n)$, $x$: Calls a filter.
   This is defined analogously to @tab:eval-semantics.
 
+<!-- TODO: make undefined filters explicit -->
 There are many filters $\varphi$ for which
 $\upd\, \sem \varphi\, \sigma\, v$ is not defined,
 for example $\$x$, $[f]$, and $\{\}$.
@@ -672,9 +672,9 @@ This yields
 We will now formally define the functions used in @tab:update-semantics.
 For this, we first introduce a function $\foldf_{\update}$,
 as counterpart to the function $\foldf$ in @sec:folding.
-Its first argument is of type $\valt \to (\valt \to \listt) \to \valt \to \listt$, which we abbreviate as $\mathcal U$:
 \begin{align*}
-\foldf_{\update}&{}: \mathcal U \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
+\mathcal U\, T\, U&\coloneqq T \to (U \to \stream{\resultt\, U}) \to U \to \stream{\resultt\, U} \\
+\foldf_{\update}&{}: \mathcal U\, T\, U \to (T \to U \to \stream{\resultt\, U}) \to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
 &\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, (\lambda x. g\, h\, x \bind F\, t)\, v)\, (n\, v))
 \end{align*}
 Using this function, we can now define
@@ -684,6 +684,6 @@ Using this function, we can now define
 \end{alignat*}
 The types of the functions are:
 \begin{alignat*}{2}
-\reducef _{\update}&{}: \mathcal U                &&\to (\valt \to \listt) \to \listt \to \valt \to \listt \\
-\foreachf_{\update}&{}: \mathcal U \to \mathcal U &&\to (\valt \to \listt) \to \listt \to \valt \to \listt
+\reducef _{\update}&{}: \mathcal U\, T\, U                        &&\to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
+\foreachf_{\update}&{}: \mathcal U\, T\, U \to \mathcal U\, T\, U &&\to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U}
 \end{alignat*}
