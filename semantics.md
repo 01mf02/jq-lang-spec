@@ -1,25 +1,25 @@
 # Evaluation Semantics {#sec:semantics}
 
-In this section, we will show how to transform --- or compile --- a filter $\varphi$ to a lambda term $\sem \varphi$,
-such that $\eval \varphi$ is a function that takes an input value $v$ and returns
-the list of values that the filter $\varphi$ outputs when given the input $v$.
+In this section, we will show how to transform --- or compile ---
+an IR filter $\varphi$ to a lambda term $\sem \varphi$ of type $\filtert$.
+We will then define a function $\eval \varphi\, v$ that
+returns the list of value-path results that
+the filter $\varphi: \filtert$ outputs when given
+the value-path $v: \valpatht$ as input.
 The evaluation strategy is call-by-name.
 
 ## Compilation
 
-
-We will use pairs to store two functions
---- a run and an update function --- that characterise each filter $\filtert$.
-\begin{alignat*}{4}
-  \pair&{}:                &(\valt \to \listt) &\to ((\valt \to \listt) \to \valt \to \listt) \to \filtert &&\coloneqq \lambda x\, y\, f. f\, x\, y  \\
-   \run&{}: \filtert \to{} &(\valt \to \listt) &                                                           &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
-   \upd&{}: \filtert       &                   &\to ((\valt \to \listt) \to \valt \to \listt)              &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
+A compiled filter $\filtert$ is
+a pair of a _run_ and an _update_ function.
+We can obtain the run and update functions from a compiled filter as follows:
+\begin{alignat*}{3}
+\run&{}: \filtert \to (\valpatht \to \stream{\resultt\, \valpatht}) &&\coloneqq \fst \\
+\upd&{}: \filtert \to (\valt \to \stream{\resultt\, \valt}) \to \valt \to \stream {\resultt\, \valt} &&\coloneqq \snd
 \end{alignat*}
-The lambda term $\sem \varphi$ corresponding to a filter $\varphi$ that we will define
-will always be a pair of two functions, namely a run and an update function.
-It has the shape $$\sem \varphi = \pair\, (\lambda v. t_r)\, (\lambda \sigma\, v. t_u)$$
+The lambda term $\sem \varphi : \filtert$ corresponding to an IR filter $\varphi$ has the shape
+$$\sem \varphi = \pair\, (\lambda v. t_r)\, (\lambda \sigma\, v. t_u)$$
 for some terms $t_r$ (run function) and $t_u$ (update function).
-We retrieve the two functions from a pair with the functions $\run$ and $\upd$.
 For a given $\varphi$, we can obtain
 $t_r$ by $\run\, \sem \varphi\, v$ and
 $t_u$ by $\upd\, \sem \varphi\, \sigma\, v$.
@@ -43,7 +43,7 @@ This variable is used to generate fresh labels for the execution of
 $\jqlb{label}{x} | f$, see @ex:labels.
 In order to create a closed term, we initially bind $\fresh$ to zero.
 We can then run a filter using the following function:
-$$\eval: \filtert \to \valt \to \listt \coloneqq \lambda \varphi. (\lambda \fresh. \run\, \varphi)\, \zero$$
+$$\eval: \filtert \to \valt \to \stream{\resultt\, \valt} \coloneqq \lambda \varphi. (\lambda \fresh. \run\, \varphi)\, \zero$$
 
 \newcommand{\reducef }{\operatorname{reduce }}
 \newcommand{\foreachf}{\operatorname{foreach}}
@@ -98,7 +98,7 @@ Let us discuss its different cases:
   (any of $\stackrel{?}{=}$, $\neq$, $<$, $\leq$, $>$, $\geq$, as given in @tab:op-correspondence)
   on the values bound to $\$x$ and $\$y$.
   Because we assumed that Boolean operations return $\valt$ and are thus infallible
-  (unlike the arithmetic operations $\arith$, which return $\resultt$),
+  (unlike the arithmetic operations $\arith$, which return $\resultt\, \valt$),
   we have to wrap their outputs with an $\ok$.
 - $f, g$: Concatenates the outputs of $f$ and $g$, both applied to the same input.
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
@@ -106,7 +106,7 @@ Let us discuss its different cases:
   This filter returns $l$ if $l$ is not empty, else the outputs of $g$.
   Here, we use a function $\trues\, x$ that
   returns its input $x$ if its boolean value is true.
-  $$\trues: \valt \to \listt \coloneqq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
+  $$\trues: \valpatht \to \stream{\resultt\, \valpatht} \coloneqq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
 - $f \jqas \$x | g$: For every output of $f$, binds it to the variable $\$x$ and
   returns the output of $g$, where $g$ may reference $\$x$.
   Unlike $f | g$, this runs $g$ with the original input value instead of an output of $f$.
@@ -171,6 +171,7 @@ Let us discuss its different cases:
 - $f \update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @sec:updates.
 
+<!-- TODO: explain how to handle builtin filters implemented by definition and as native function -->
 An implementation may also define semantics for builtin named filters.
 For example, an implementation may define
 $\run\, \sem{\jqf{error}}\, v \coloneqq \stream{\err\, v}$ and
@@ -237,15 +238,24 @@ $\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$.
 \newcommand{\foldf}{\operatorname{fold}}
 Let us start by defining a general folding function $\foldf$:
 \begin{align*}
-\foldf&{}: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
+\foldf&{}: (T \to U \to \stream{\resultt\, U}) \to (T \to U \to \stream{\resultt\, U}) \to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
 &\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, v \bind (\lambda y. g\, h\, y + F\, t\, y))\, (n\, v))
 \end{align*}
+Here,
+$T$ is the type of list elements that the fold iterates over, and
+$U$ is the type of the accumulator.
+When we use this function later,
+both $T$ and $U$ will be instantiated with $\valpatht$ ---
+we distinguish between $T$ and $U$ here to clarify
+the difference between list elements and the accumulator.
+
 This function takes
-two functions $f$ and $g$ that both take two values --- a list element and an accumulator --- and return a list of value results, and
-a function $n$ (for the nil case) from a value $x$ to a list of value results.
+two functions $f$ and $g$ that both
+take a list element and an accumulator and return a list of accumulator results, and
+a function $n$ (for the nil case) from a final accumulator $x$ to a list of accumulator results.
 From that, it creates a recursive function that
-takes a list of value results $l$ and an accumulator value $v$ and
-returns a list of value results.
+takes a list of results $l$ and an initial accumulator $v$ and
+returns a list of accumulator results.
 This function folds over the elements in $l$, starting from the accumulator value $v$.
 For every element $h$ in $l$,
 $f$ is evaluated with $h$ and the current accumulator value $v$ as input.
@@ -264,8 +274,8 @@ Instantiating $\foldf$ with these two functions, we obtain the following:
 Here, $\reducef$ and $\foreachf$ are the functions used in @tab:eval-semantics.
 Their types are:
 \begin{alignat*}{2}
-\reducef &{}: (\valt \to \valt \to \listt)                                  &&\to \listt \to \valt \to \listt \\
-\foreachf&{}: (\valt \to \valt \to \listt) \to (\valt \to \valt \to \listt) &&\to \listt \to \valt \to \listt
+\reducef &{}: (T \to U \to \stream{\resultt\, U}) &&\to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
+\foreachf&{}: (T \to U \to \stream{\resultt\, U}) \to (T \to U \to \stream{\resultt\, U}) &&\to \stream{\resultt\, T} \to U \to \stream{\resultt\, U}
 \end{alignat*}
 We will now look at what the evaluation of the various folding filters expands to.
 Assuming that the filter $f_x$ evaluates to $\stream{x_0, ..., x_n}$,
@@ -287,6 +297,7 @@ $\jqfold{reduce}{f_x}{\$x}{(.;            f )}$ is equivalent to
 $\jqfold{reduce}{f_x}{\$x}{(.; \jqf{last}(f))}$.
 Here, we assume that the filter $\jqf{last}(f)$
 returns the last output of $f$ if $f$ yields any output, else nothing.
+<!-- TODO: write about jq limitation of recording paths with folding operators -->
 
 
 # Update Semantics {#sec:updates}
@@ -420,6 +431,7 @@ We will therefore give the actual update semantics of $\varphi \update \sigma$ i
 by defining $\upd\, \sem \varphi\, \sigma\, v$, not
 by translating $\varphi \update \sigma$ to equivalent filters.
 
+<!--
 ## Limiting interactions {#sec:limiting-interactions}
 
 To define $\upd\, \sem \varphi\, \sigma\, v$, we first have to understand
@@ -452,17 +464,15 @@ $\upd\, \sem \varphi\, \sigma\, v$ not for a _filter_ $\sigma$,
 but for a _function_ $\sigma': \valt \to \listt$, where
 $\sigma'\, x$ returns the output of the filter $\run\, \sigma\, x$.
 This allows us to bind variables in $\varphi$ without impacting $\sigma$.
+-->
 
 ## New semantics {#sec:new-semantics}
 
 We will now give semantics that define the output of
 $\run\, \sem{f \update g}\, v$ as referred to in @sec:semantics.
-
-We will first combine the techniques in @sec:limiting-interactions to define
+We will first define
 $$\run\, \sem{f \update g}\, v \coloneqq \upd\, \sem f\, \sigma\, v, \text{where }
-  \sigma: \valt \to \listt \coloneqq \run\, \sem g$$
-We use the function $\sigma$ instead of a filter on the right-hand side to
-limit the scope of variable bindings as explained in @sec:limiting-interactions.
+  \sigma: \valt \to \stream{\resultt\, \valt} \coloneqq \run\, \sem g$$
 
 Table: Update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \listt$ is a function from a value to a list of value results. {#tab:update-semantics}
 
@@ -473,12 +483,12 @@ Table: Update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \lis
 | $f, g$ | $\upd\, \sem f\, \sigma\, v \bind \upd\, \sem g\, \sigma$ |
 | $f \alt g$ | $\upd\, ((\run\, \sem f\, v \bind \trues)\, (\lambda \_\, \_. \sem f)\, \sem g)\, \sigma\, v$ |
 | $.[p]^?$ | $\stream{v[p]^? \update \sigma}$ |
-| $f \jqas \$x | g$ | $\reducef\, (\lambda \$x. \upd\, \sem g\, \sigma)\, (\run\, \sem f\, v)\, v$ |
+| $f \jqas \$x | g$ | $\reducef\, (\lambda x. (\lambda \$x. \upd\, \sem g)\, x\, \sigma)\, (\run\, \sem f\, v)\, v$ |
 | $\jqite{\$x}{f}{g}$ | $\upd\, ((\bool\, \$x)\, \sem f\, \sem g)\, \sigma\, v$ |
 | $\jqlb{break}{x}$ | $\stream{\breakf\, \$x}$ |
 | $\jqfold{reduce}{x}{\$x}{(.; f)}$ | $\reducef_{\update}\, (\lambda \$x. \upd\, \sem f)\, \sigma\, (\run\, \sem x\, v)\, v$ |
 | $\jqfold{foreach}{x}{\$x}{(.; f; g)}$ | $\foreachf_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem x\, v)\, v$ |
-| $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \upd\, \sem g\, \sigma\, v)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
+| $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \upd\, \sem g)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))\, \sigma\, v$ |
 | $x(f_1; ...; f_n)$ | $\upd\, (x\, \sem{f_1}\, ...\, \sem{f_n})\, \sigma\, v$ |
 
 @tab:update-semantics shows the definition of $\upd\, \sem \varphi\, \sigma\, v$.
@@ -488,7 +498,7 @@ are simply relatively straightforward consequences of the properties in @tab:upd
 We discuss the remaining cases for $\varphi$:
 
 - $f \alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
-  Here, $f$ is called as a "probe" first.
+  Here, we first call $f$ as a "probe".
   If it yields at least one output that is considered "true"
   (see @sec:semantics for the definition of $\trues$),
   then we update at $f$, else at $g$.
@@ -502,6 +512,7 @@ We discuss the remaining cases for $\varphi$:
   updating the accumulator by $g \update \sigma$, where
   $\$x$ is bound to the current output of $f$.
   The definition of $\reducef$ is given in @sec:folding.
+  <!-- TODO: explain that $x should not be bound in \sigma -->
 - $\jqfold{\fold}{x}{\$x}{(.; f)}$: Folds $f$ over the values returned by $\$x$.
   We will discuss this in @sec:folding-update.
 - $\jqdef{x(x_1; ...; x_n)}{f} g$: Defines a filter.
@@ -509,6 +520,7 @@ We discuss the remaining cases for $\varphi$:
 - $x(f_1; ...; f_n)$, $x$: Calls a filter.
   This is defined analogously to @tab:eval-semantics.
 
+<!-- TODO: make undefined filters explicit -->
 There are many filters $\varphi$ for which
 $\upd\, \sem \varphi\, \sigma\, v$ is not defined,
 for example $\$x$, $[f]$, and $\{\}$.
@@ -661,9 +673,9 @@ This yields
 We will now formally define the functions used in @tab:update-semantics.
 For this, we first introduce a function $\foldf_{\update}$,
 as counterpart to the function $\foldf$ in @sec:folding.
-Its first argument is of type $\valt \to (\valt \to \listt) \to \valt \to \listt$, which we abbreviate as $\mathcal U$:
 \begin{align*}
-\foldf_{\update}&{}: \mathcal U \to (\valt \to \valt \to \listt) \to (\valt \to \listt) \to \listt \to \valt \to \listt \\
+\mathcal U\, T\, U&\coloneqq T \to (U \to \stream{\resultt\, U}) \to U \to \stream{\resultt\, U} \\
+\foldf_{\update}&{}: \mathcal U\, T\, U \to (T \to U \to \stream{\resultt\, U}) \to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
 &\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, (\lambda x. g\, h\, x \bind F\, t)\, v)\, (n\, v))
 \end{align*}
 Using this function, we can now define
@@ -673,6 +685,6 @@ Using this function, we can now define
 \end{alignat*}
 The types of the functions are:
 \begin{alignat*}{2}
-\reducef _{\update}&{}: \mathcal U                &&\to (\valt \to \listt) \to \listt \to \valt \to \listt \\
-\foreachf_{\update}&{}: \mathcal U \to \mathcal U &&\to (\valt \to \listt) \to \listt \to \valt \to \listt
+\reducef _{\update}&{}: \mathcal U\, T\, U                        &&\to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
+\foreachf_{\update}&{}: \mathcal U\, T\, U \to \mathcal U\, T\, U &&\to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U}
 \end{alignat*}

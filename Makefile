@@ -1,4 +1,4 @@
-COMMON=defs.tex tour.md syntax.md values.md semantics.md
+COMMON=defs.tex tour.md values.md syntax.md semantics.md
 ICFP=icfp-intro.md $(COMMON) impl.md icfp-concl.md json.md
 SPEC=spec-intro.md $(COMMON) json.md
 DEPS=filter.lua literature.bib template.tex header.tex Makefile

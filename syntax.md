@@ -93,7 +93,7 @@ in a much less verbose way than for actual jq syntax.
 
 An IR filter $f$ is defined by the grammar
 \begin{align*}
-f &\coloneqq \quad n \gror s \gror . \\
+f &\coloneqq \quad n \gror s \gror . \gror .. \\
   &\gror [] \gror [f] \gror {} \gror \{\$x: \$x\} \gror .[p]^? \\
   &\gror f \star f \gror \$x \cartesian \$x \\
   &\gror f \jqas \$x | f \gror \jqfold{reduce}{f}{\$x}{(.; f)} \gror \jqfold{foreach}{f}{\$x}{(.; f; f)} \gror \$x \\
@@ -115,18 +115,17 @@ jq `|` `,` `|=`      `//`   `==`    `!=`   `<` `<=`   `>` `>=`   `+` `-` `*`    
 IR $|$ $,$ $\update$ $\alt$ $\iseq$ $\neq$ $<$ $\leq$ $>$ $\geq$ $+$ $-$ $\times$ $\div$ $\%$
 -- --- --- --------- ------ ------- ------ --- ------ --- ------ --- --- -------- ------ ----
 
-Table: Operators in concrete jq syntax and their corresponding IR operators. {#tab:op-correspondence}
+Table: Binary operators in concrete jq syntax and their corresponding IR operators. {#tab:op-correspondence}
 
 Compared to actual jq syntax, IR filters
-have significantly simpler path operations
+have simpler path operations
 (such as $.[p]^?$ versus $f [p]^? \dots [p]^?$) and
 replace certain occurrences of filters by variables
 (e.g. $\$x \cartesian \$x$ versus $f \cartesian f$).
 
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |
-| $n$, $s$, $.$, $\$x$, or $\jqlb{break}{x}$ | $\varphi$ |
-| $..$ | $\jqdef{\jqf{recurse}}{., (.[]? | \jqf{recurse})} \jqf{recurse}$ |
+| $n$, $s$, $.$, $..$, $\$x$, or $\jqlb{break}{x}$ | $\varphi$ |
 | $(f)$ | $\floor f$ |
 | $f?$ | $\jqlb{label}{x'} | \jqtc{\floor f}{(\jqlb{break}{x'})}$ |
 | $[]$ or $\{\}$ | $\varphi$ |
@@ -210,7 +209,7 @@ Here, we first used $\beta P$ as filter
 
 | $[p]  ^?$ | $\floor{[p]^?}_{\$x}$ |
 | --------- | ---------------------- |
-| $[   ]^?$ | $.[]^?$,
+| $[   ]^?$ | $.[]^?$
 | $[f  ]^?$ | $(\$x | \floor f) \jqas \$y' | .[\$y']^?$ |
 | $[f: ]^?$ | $(\$x | \floor f) \jqas \$y' | .[\$y':]^?$ |
 | $[ :f]^?$ | $(\$x | \floor f) \jqas \$y' | .[:\$y']^?$ |
@@ -281,7 +280,7 @@ $\wf(\varphi, c)$ is true.
 
 | $\varphi$ | $\wf(\varphi, c)$ |
 | --------- | ----------------- |
-| $n$, $s$, $.$, $.[p]^?$, $\{\}$ | $\top$ |
+| $n$, $s$, $.$, $..$, $.[p]^?$, $\{\}$ | $\top$ |
 | $\$x$ | $\$x \in v$ |
 | $\jqlb{break}{x}$ | $\$x \in l$ |
 | $[f]$ | $\wf(f, c)$ |
