@@ -118,7 +118,7 @@ $v_p$ is implicitly substituted by
 $\fromvp \v_p$.
 
 If we have a result $r: \resultt\, \valt$ and
-apply it to a function that expects a $\valpatht$, then
+apply it to a function that expects a $\resultt\, \valpatht$, then
 $r$ is implicitly substituted by
 $r \bindr (\lambda v. \ok\, (\tovp v))$.
 
