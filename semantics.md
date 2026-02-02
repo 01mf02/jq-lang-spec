@@ -54,8 +54,9 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 
 | $\varphi$ | $\run\, \sem \varphi\, v$ |
 | --------- | ------------------------- |
-| $.$ | $\stream{\ok v}$ |
 | $n$ or $s$ | $\stream{\ok \varphi}$ |
+| $.$ | $\stream{\ok v}$ |
+| $..$ | $\run\, \sem{\jqdef{r}{., (.[]? | r)} r}\, v$ |
 | $\$x$ | $\stream{\ok \$x}$ |
 | $[  ]$ | $\stream{\ok \arr_0}$ |
 | $\{\}$ | $\stream{\ok \objf_0}$ |
@@ -81,8 +82,9 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 The evaluation semantics are given in @tab:eval-semantics.
 Let us discuss its different cases:
 
-- "$.$": Returns its input value. This is the identity filter.
 - $n$ or $s$: Returns the value corresponding to the number $n$ or string $s$.
+- "$.$": Returns the input value. This is the identity filter.
+- "$..$": Returns the input value and all values recursively contained within it.
 - $\$x$: Returns the value currently bound to the variable $\$x$.
   Wellformedness of the filter (as defined in @sec:ir) ensures that
   whenever we evaluate $\$x$, it must have been substituted,
@@ -479,6 +481,7 @@ Table: Update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \lis
 | $\varphi$ | $\upd\, \sem \varphi\, \sigma\, v$ |
 | --------- | ------------------------- |
 | $.$ | $\sigma\, v$ |
+| $..$ | $\upd \sem{\jqdef{r}{(.[]? | r), .} r}\, \sigma\, v$ |
 | $f | g$ | $\upd\, \sem f\, (\upd\, \sem g\, \sigma)\, v$ |
 | $f, g$ | $\upd\, \sem f\, \sigma\, v \bind \upd\, \sem g\, \sigma$ |
 | $f \alt g$ | $\upd\, ((\run\, \sem f\, v \bind \trues)\, (\lambda \_\, \_. \sem f)\, \sem g)\, \sigma\, v$ |
@@ -497,6 +500,7 @@ Several of the cases for $\varphi$, like
 are simply relatively straightforward consequences of the properties in @tab:update-props.
 We discuss the remaining cases for $\varphi$:
 
+- "$..$": TODO!
 - $f \alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
   Here, we first call $f$ as a "probe".
   If it yields at least one output that is considered "true"
