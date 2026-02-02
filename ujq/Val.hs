@@ -38,8 +38,8 @@ data ValP v = ValP {
 newVal :: v -> ValP v
 newVal val = ValP {val, path = Nothing}
 
-type ValueR v = Either (Exn v) v
-type ValPE v = Either (Exn v) (ValP v)
+type ValR v = Either (Exn v) v
+type ValPR v = Either (Exn v) (ValP v)
 
 ok :: v -> Either e v
 ok = Right
@@ -61,19 +61,19 @@ class (Eq a, Ord a, Show a) => Value a where
   fromNum :: String -> a
   fromStr :: String -> a
 
-  arr :: [ValueR a] -> ValueR a
+  arr :: [ValR a] -> ValR a
   obj0 :: a
-  obj1 :: a -> a -> ValueR a
+  obj1 :: a -> a -> ValR a
 
-  idx :: ValP a -> Index a -> Opt -> [ValPE a]
-  upd ::      a -> Index a -> Opt -> (a -> [ValueR a]) -> ValueR a
+  idx :: ValP a -> Index a -> Opt -> [ValPR a]
+  upd ::      a -> Index a -> Opt -> (a -> [ValR a]) -> ValR a
 
-  add :: a -> a -> ValueR a
-  sub :: a -> a -> ValueR a
-  mul :: a -> a -> ValueR a
-  div :: a -> a -> ValueR a
-  rem :: a -> a -> ValueR a
-  neg :: a -> ValueR a
+  add :: a -> a -> ValR a
+  sub :: a -> a -> ValR a
+  mul :: a -> a -> ValR a
+  div :: a -> a -> ValR a
+  rem :: a -> a -> ValR a
+  neg :: a -> ValR a
 
 instance Value Val where
   arr = fmap (Arr . Seq.fromList) . sequence
