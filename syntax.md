@@ -19,12 +19,12 @@ $l$ is of shape $r_i$ for some $i \leq n$.
 
 A _filter_ $f$ is defined by the grammar
 \begin{align*}
-f &\coloneqq \quad n \gror s \gror . \gror .. \\
-  &\gror (f) \gror f? \gror [] \gror [f] \gror \{f: f, \dots, f: f\} \gror f [p]^? \dots [p]^? \\
-  &\gror f \star f \gror f \cartesian f \\
-  &\gror f \jqas P | f \gror \jqfold{reduce}{f}{P}{(f; f)} \gror \jqfold{foreach}{f}{P}{(f; f; f)} \gror \$x \\
+f &\coloneqq \quad n \gror s \gror . \gror .. \gror \$x \gror (f) \\
+  &\gror [] \gror [f] \gror \{f: f, \dots, f: f\} \\
+  &\gror f \star f \gror f \cartesian f \gror f [p]^? \dots [p]^? \\
+  &\gror f \jqas P | f \gror \jqfold{reduce}{f}{P}{(f; f)} \gror \jqfold{foreach}{f}{P}{(f; f; f)} \\
   &\gror {\jqlb{label}{x}} | f \gror {\jqlb{break}{x}} \\
-  &\gror {\jqite{f}{f}{f}} \gror \jqkw{try} f \gror \jqtc{f}{f} \\
+  &\gror {\jqite{f}{f}{f}} \gror f? \gror \jqkw{try} f \gror \jqtc{f}{f} \\
   &\gror {\jqdef{x}{f} f} \gror \jqdef{x(x; \dots; x)}{f} f \\
   &\gror x \gror x(f; \dots; f)
 \end{align*}
@@ -93,10 +93,10 @@ in a much less verbose way than for actual jq syntax.
 
 An IR filter $f$ is defined by the grammar
 \begin{align*}
-f &\coloneqq \quad n \gror s \gror . \gror .. \\
-  &\gror [] \gror [f] \gror {} \gror \{\$x: \$x\} \gror .[p]^? \\
-  &\gror f \star f \gror \$x \cartesian \$x \\
-  &\gror f \jqas \$x | f \gror \jqfold{reduce}{f}{\$x}{(.; f)} \gror \jqfold{foreach}{f}{\$x}{(.; f; f)} \gror \$x \\
+f &\coloneqq \quad n \gror s \gror . \gror .. \gror \$x \\
+  &\gror [] \gror [f] \gror \{\} \gror \{\$x: \$x\} \\
+  &\gror f \star f \gror \$x \cartesian \$x \gror .[p]^? \\
+  &\gror f \jqas \$x | f \gror \jqfold{reduce}{f}{\$x}{(.; f)} \gror \jqfold{foreach}{f}{\$x}{(.; f; f)} \\
   &\gror {\jqite{\$x}{f}{f}} \gror \jqtc{f}{f} \\
   &\gror {\jqlb{label}{x}} | f \gror \jqlb{break}{x} \\
   &\gror {\jqdef{x(x; \dots; x)}{f} f} \\
@@ -125,14 +125,12 @@ replace certain occurrences of filters by variables
 
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |
-| $n$, $s$, $.$, $..$, $\$x$, or $\jqlb{break}{x}$ | $\varphi$ |
+| $n$, $s$, $.$, $..$, $[]$, or $\{\}$ | $\varphi$ |
+| $\$x$ or $\jqlb{break}{x}$ | $\varphi$ |
 | $(f)$ | $\floor f$ |
-| $f?$ | $\jqlb{label}{x'} | \jqtc{\floor f}{(\jqlb{break}{x'})}$ |
-| $[]$ or $\{\}$ | $\varphi$ |
 | $[f]$ | $[\floor f]$ |
 | $\{f: g\}$ | $\floor f \jqas \$x' | \floor g \jqas \$y' | \{\$x': \$y'\}$ |
 | $\{f_1: g_1, \dots, f_n: g_n\}$ | $\floor{\{f_1: g_1\} + \dots + \{f_n: g_n\}}$ |
-| $f [p_1]^? \dots [p_n]^?$ | $. \jqas \$x' | \floor f | \floor{[p_1]^?}_{\$x'} | \dots | \floor{[p_n]^?}_{\$x'}$ |
 | $f$ `=` $g$ | $\floor g \jqas \$x' | \floor{f \update \$x'}$ |
 | $f$ $\arith$`=` $g$ | $\floor g \jqas \$x' | \floor{f \update (. \arith \$x')}$ |
 | $f$ `//=` $g$ | $\floor{f \update . \alt g}$ |
@@ -140,6 +138,7 @@ replace certain occurrences of filters by variables
 | $f \jqkw{or}  g$ | $\floor{\jqite{f}{\jqf{true}}{(g | \jqf{bool})}}$ |
 | $f \star g$ | $\floor f \star \floor g$ |
 | $f \cartesian g$ | $\floor f \jqas \$x' | \floor g \jqas \$y' | \$x' \cartesian \$y'$ |
+| $f [p_1]^? \dots [p_n]^?$ | $. \jqas \$x' | \floor f | \floor{[p_1]^?}_{\$x'} | \dots | \floor{[p_n]^?}_{\$x'}$ |
 | $f \jqas \$x | g$ | $\floor f \jqas \$x | \floor g$ |
 | $f \jqas P | g$ | $\floor f \jqas \$x' | \floor{\$x' \jqas P | g}$,
 | $\$x \jqas [P_1, \dots, P_n] | g$ | $\floor{\$x \jqas \obj{(0): P_1, \dots, (n-1): P_n} | g}$ |
@@ -148,6 +147,7 @@ replace certain occurrences of filters by variables
 | $\jqfold{\fold}{f_x}{\$x}{(f_y; f; g)}$ | $. \jqas \$x' | \floor{f_y} | \jqfold{\fold}{(\floor{\$x'} | f_x)}{\$x}{(.; \floor f; \floor g)}$ |
 | $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$ | $\floor{\jqfold{\fold}{(f_x \jqas P | \beta P)}{\$x'}{(f_y; \$x' \jqas \beta P | f; \$x' \jqas \beta P | g)}}$ |
 | $\jqite{f_x}{f}{g}$ | $\floor{f_x} \jqas \$x' | \jqite{\$x'}{\floor f}{\floor g}$ |
+| $f?$ | $\jqlb{label}{x'} | \jqtc{\floor f}{(\jqlb{break}{x'})}$ |
 | $\jqtc{f}{g}$ | $\jqlb{label}{x'} | \jqtc{\floor f}{(\floor g, \jqlb{break}{x'})}$ |
 | $\jqlb{label}{x} | f$ | $\jqlb{label}{x} | \floor f$ |
 | $\jqdef{x}{f} g$ | $\jqdef{x}{\floor f} \floor g$ |
@@ -280,12 +280,13 @@ $\wf(\varphi, c)$ is true.
 
 | $\varphi$ | $\wf(\varphi, c)$ |
 | --------- | ----------------- |
-| $n$, $s$, $.$, $..$, $.[p]^?$, $\{\}$ | $\top$ |
+| $n$, $s$, $.$, $..$, $[]$, or $\{\}$ | $\top$ |
 | $\$x$ | $\$x \in v$ |
 | $\jqlb{break}{x}$ | $\$x \in l$ |
 | $[f]$ | $\wf(f, c)$ |
-| $\{\$x: \$y\}$, $\$x \cartesian \$y$ | $\$x \in v$ and $\$y \in v$,
-| $f \star g$, $\jqtc{f}{g}$ | $\wf(f, c)$ and $\wf(g, c)$ |
+| $\{\$x: \$y\}$ or $\$x \cartesian \$y$ | $\$x \in v$ and $\$y \in v$,
+| $f \star g$ or $\jqtc{f}{g}$ | $\wf(f, c)$ and $\wf(g, c)$ |
+| $.[p]^?$ | TODO |
 | $f \jqas \$x | g$ | $\wf(f)$ and $\wf(g, (d, v \cup \{\$x\}, l))$ |
 | $\jqlb{label}{x} | f$ | $\wf(f, (d, v, l \cup \{\$x\}))$ |
 | $\jqite{\$x}{f}{g}$ | $\$x \in v$ and $\wf(f, c)$ and $\wf(g, c)$ |
