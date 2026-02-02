@@ -93,7 +93,7 @@ $l \bind f$ applies OK values in $l$ to $f$ and returns exception values in $l$.
 &\bind &&{}: \stream{\resultt\, T} &&\to (T &&\to \stream{\resultt\, U}&&) &&\to \stream{\resultt\, U} &&\coloneqq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
 \end{alignat*}
 
-## Implicit conversion
+## Implicit conversion {#sec:implicit-conversion}
 
 \newcommand{\fromvp}{\operatorname{from\_vp}}
 \newcommand{\tovp}{\operatorname{to\_vp}}
