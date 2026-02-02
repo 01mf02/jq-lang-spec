@@ -174,6 +174,7 @@ Let us discuss its different cases:
   We will discuss this in @sec:updates.
 
 <!-- TODO: explain how to handle builtin filters implemented by definition and as native function -->
+<!-- TODO: show implementation for `path` -->
 An implementation may also define semantics for builtin named filters.
 For example, an implementation may define
 $\run\, \sem{\jqf{error}}\, v \coloneqq \stream{\err\, v}$<!-- and

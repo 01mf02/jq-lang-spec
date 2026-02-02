@@ -287,11 +287,11 @@ $\wf(\varphi, c)$ is true.
 | $\{\$x: \$y\}$ or $\$x \cartesian \$y$ | $\$x \in v$ and $\$y \in v$ |
 | $f \star g$ or $\jqtc{f}{g}$ | $\wf(f, c)$ and $\wf(g, c)$ |
 | $.[p]^?$ | $\forall \$x \in p.\ \$x \in v$ |
-| $f \jqas \$x | g$ | $\wf(f)$ and $\wf(g, (d, v \cup \{\$x\}, l))$ |
+| $f \jqas \$x | g$ | $\wf(f, c)$ and $\wf(g, (d, v \cup \{\$x\}, l))$ |
 | $\jqlb{label}{x} | f$ | $\wf(f, (d, v, l \cup \{\$x\}))$ |
 | $\jqite{\$x}{f}{g}$ | $\$x \in v$ and $\wf(f, c)$ and $\wf(g, c)$ |
 | $\jqfold{\fold}{f_x}{\$x}{(.; f; g)}$ | $\wf(f_x, c)$ and $\wf((f | g), (d, v \cup \{\$x\}, l))$ |
-| $\jqdef{x(x_1; \dots; x_n)}{f} g$ | $\wf(f, (d \cup \bigcup_i \{(x_i, 0)\}, v, l))$ and $\wf(g, (d \cup \{(x, n)\}, v, l))$ |
+| $\jqdef{x(x_1; \dots; x_n)}{f} g$ | $\wf(f, (d \cup \{(x, n)\} \cup \bigcup_i \{(x_i, 0)\}, v, l))$ and $\wf(g, (d \cup \{(x, n)\}, v, l))$ |
 | $x(f_1; \dots; f_n)$ | $(x, n) \in d$ and $\forall i. \wf(f_i, c)$ |
 
 Table: Wellformedness of an IR filter $\varphi$ with respect to a context $c = (d, v, l)$. {#tab:wf}
