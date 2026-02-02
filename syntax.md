@@ -284,9 +284,9 @@ $\wf(\varphi, c)$ is true.
 | $\$x$ | $\$x \in v$ |
 | $\jqlb{break}{x}$ | $\$x \in l$ |
 | $[f]$ | $\wf(f, c)$ |
-| $\{\$x: \$y\}$ or $\$x \cartesian \$y$ | $\$x \in v$ and $\$y \in v$,
+| $\{\$x: \$y\}$ or $\$x \cartesian \$y$ | $\$x \in v$ and $\$y \in v$ |
 | $f \star g$ or $\jqtc{f}{g}$ | $\wf(f, c)$ and $\wf(g, c)$ |
-| $.[p]^?$ | TODO |
+| $.[p]^?$ | $\forall \$x \in p.\ \$x \in v$ |
 | $f \jqas \$x | g$ | $\wf(f)$ and $\wf(g, (d, v \cup \{\$x\}, l))$ |
 | $\jqlb{label}{x} | f$ | $\wf(f, (d, v, l \cup \{\$x\}))$ |
 | $\jqite{\$x}{f}{g}$ | $\$x \in v$ and $\wf(f, c)$ and $\wf(g, c)$ |
