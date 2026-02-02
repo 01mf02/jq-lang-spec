@@ -189,7 +189,7 @@ wf f c@Ctx{vars, funs, lbls} = case f of
   Bind f x g -> wf f c && wf g (c { vars = Set.insert x vars })
   Label x f -> wf f (c { lbls = Set.insert x lbls })
   Ite x f g -> Set.member x vars && wf f c && wf g c
-  Reduce fx x f -> wf fx c && wf f (c { vars = Set.insert x vars })
+  Reduce  fx x f   -> wf fx c && wf f             (c { vars = Set.insert x vars })
   Foreach fx x f g -> wf fx c && wf (Compose f g) (c { vars = Set.insert x vars })
   Def x xs f g ->
     wf f (c { funs = Set.insert (x, length xs) $ foldr (\xi -> Set.insert (xi, 0)) funs xs }) &&
