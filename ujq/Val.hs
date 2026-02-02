@@ -50,6 +50,10 @@ err = Left . Error . fromStr
 data Index i = Index i | Range (Maybe i) (Maybe i)
   deriving Show
 
+instance Foldable Index where
+  foldMap f (Index i)   = f i
+  foldMap f (Range l h) = foldMap f l <> foldMap f h
+
 instance Functor Index where
   fmap f (Index i)   = Index (f i)
   fmap f (Range l h) = Range (fmap f l) (fmap f h)

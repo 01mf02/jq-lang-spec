@@ -4,10 +4,13 @@ import qualified Syn
 import qualified Def
 import Def (Option(None, Some), Part(Range), Opt(Optional), toMaybe)
 import qualified Val
+import qualified Data.Set as Set
+import Data.Foldable (toList)
 
 type Var = String
 
-data Filter = Id
+data Filter =
+    Id
   | Recurse
   | ToString
   | Num String
@@ -148,3 +151,47 @@ compile vs f' = case f' of
     \x' vs -> foldl (\acc -> Compose acc . compilePath x' vs) (compile vs head) path
   Syn.Def(defs, t) -> foldr (\ (name, args, rhs) -> Def name args (compile vs rhs)) (compile vs t) defs
   Syn.Call(name, args) -> App name $ map (compile vs) args
+
+data Ctx = Ctx {
+  vars :: Set.Set Var,
+  funs :: Set.Set (String, Int),
+  lbls :: Set.Set String
+}
+
+emptyCtx = Ctx {
+  vars = Set.empty,
+  funs = Set.empty,
+  lbls = Set.empty
+}
+
+wf :: Filter -> Ctx -> Bool
+wf f c@Ctx{vars, funs, lbls} = case f of
+  Id       -> True
+  Recurse  -> True
+  Num _    -> True
+  Str _    -> True
+  ToString -> True
+  Arr0     -> True
+  Obj0     -> True
+  Neg   x -> Set.member x vars
+  Var   x -> Set.member x vars
+  Break x -> Set.member x lbls
+  Obj1   x   y -> Set.member x vars && Set.member y vars
+  MathOp x _ y -> Set.member x vars && Set.member y vars
+  BoolOp x _ y -> Set.member x vars && Set.member y vars
+  ArrN     f   -> wf f c
+  Concat   f g -> wf f c && wf g c
+  Compose  f g -> wf f c && wf g c
+  Alt      f g -> wf f c && wf g c
+  Update   f g -> wf f c && wf g c
+  TryCatch f g -> wf f c && wf g c
+  Path idx _opt -> all (\x -> Set.member x vars) $ toList idx
+  Bind f x g -> wf f c && wf g (c { vars = Set.insert x vars })
+  Label x f -> wf f (c { lbls = Set.insert x lbls })
+  Ite x f g -> Set.member x vars && wf f c && wf g c
+  Reduce fx x f -> wf fx c && wf f (c { vars = Set.insert x vars })
+  Foreach fx x f g -> wf fx c && wf (Compose f g) (c { vars = Set.insert x vars })
+  Def x xs f g ->
+    wf f (c { funs = Set.insert (x, length xs) $ foldr (\xi -> Set.insert (xi, 0)) funs xs }) &&
+    wf g (c { funs = Set.insert (x, length xs) funs })
+  App x fs -> Set.member (x, length fs) funs && all (\f -> wf f c) fs
