@@ -1,17 +1,75 @@
 # Implementation {#sec:impl}
 
-We have created an interpreter for the jq language called `jaq`
-based on the semantics in @sec:semantics.
-`jaq` is written in Rust and can execute sufficiently large and complex jq programs such as
-a Brainfuck interpreter and
-a jq interpreter written in the jq language itself [@jqjq].
-In practice,
-the differences between our new semantics and the semantics implemented by `jq`
-can often be neglected.
+We implemented two interpreters for the jq language, namely ujq and jaq.
+ujq is a minimalistic research interpreter that
+demonstrates that our semantics can be implemented _compactly_.
+jaq is a full-featured interpreter that
+demonstrates that our semantics can also be implemented _efficiently_.
+jaq's user base allows us to estimate whether
+users are impacted by differences between our semantics and actual `jq` behaviour.
+This is particularly interesting for the update semantics,
+where our semantics diverge most notably from `jq`.
 
-The other main implementations of the jq language, namely `jq` and `gojq`,
+
+## ujq
+
+ujq is a translation of this paper's contents to Haskell,
+aiming to provide an minimal executable version of this paper.
+In particular, ujq implements
+lowering of a jq filter to IR (@sec:ir) and
+execution of an IR filter (@sec:semantics).
+
+ujq implements a value type that is quite close to JSON, as well as
+the operations given in @sec:value-ops.
+However, the operations implemented in ujq are quite simplified and
+do not support all functionalities of their counterparts in `jq`;
+for example,
+`jq` supports the division of two strings, whereas
+ujq yields a runtime error in that case.
+Implementing all value operations like in `jq` would add a lot of code to ujq,
+without deepening our understanding of the core semantics.
+The feasibility of implementing more complete value operations
+within the framework established in @sec:value-ops is demonstrated by jaq.
+
+There is one main difference between ujq and the semantics in this paper:
+In our semantics, compilation transforms an IR filter into
+a lambda term that can be readily executed.
+This compilation involves the construction of lambda terms with unbound variables,
+which relies on wellformedness (@sec:ir) to ensure that
+the final result is a closed term.
+However, in Haskell, we cannot construct functions with unbound variables.
+Therefore, ujq carries along a _context_ that
+holds the currently assigned values to variables, filters, and break labels.^[
+  We have also considered using an explicit context in this paper instead, but
+  we found that this complicates presentation, while adding little to comprehension.
+]
+Furthermore, ujq _interprets_ IR filters, which is equivalent to
+performing the compilation step in this paper
+whenever a part of a filter is executed.
+
+ujq implements the built-in filter `path/1`, to allow evaluating the paths returned by a filter.
+
+
+## jaq
+
+jaq is a full-featured jq interpreter written in Rust.
+Like ujq, jaq implements the semantics in @sec:semantics, however,
+it adds a number of optimisation techniques, such as tail-call optimisation (TCO).
+That makes it more difficult to establish by looking at the code that jaq implements our semantics,
+however, this can be tested experimentally by comparing outputs of ujq and jaq.
+Furthermore, jaq not only implements the core jq language,
+but also a substantial part of jq's standard library.
+It demonstrates that the semantics can be implemented efficiently.
+
+jaq can execute sufficiently large and complex jq programs such as
+interpreters written in jq for various programming languages, including
+Whitespace (`wsjq`),
+Brainfuck, and
+jq (`jqjq`) [@jqjq].
+
+The other main implementations of the jq language, namely `jq` and gojq,
 both compile jq programs to a list of imperative instructions and execute it, whereas
-`jaq` compiles jq programs to an abstract syntax tree and interprets it.
+jaq compiles jq programs to an abstract syntax tree and interprets it.
 
 Table: Runtime for various benchmarks, in milliseconds. Lower is better. "N/A" if error or more than 10 seconds. {#tab:benchmark}
 
@@ -47,9 +105,9 @@ Table: Runtime for various benchmarks, in milliseconds. Lower is better. "N/A" i
 | `cumsum`        | **280** |      380 |          450 |
 | `cumsum-xy`     | **430** |      470 |          710 |
 
-@tab:benchmark measures the runtime of `jaq`, `jq`, and `gojq`
+@tab:benchmark measures the runtime of jaq, `jq`, and gojq
 on a set of 29 benchmarks.^[
-  Instructions on how to evaluate the benchmarks are given in `jaq`'s `README.md`.
+  Instructions on how to evaluate the benchmarks are given in jaq's `README.md`.
 ]
 The benchmarks were run on a Linux system with an AMD Ryzen 5 5500U.
 The number for the best performance (lowest runtime) is marked as bold.
@@ -61,52 +119,8 @@ gojq-0.12.16 is fastest on 3 benchmarks.
 Several of the benchmarks measure the performance of update operations,
 as explained in @sec:updates.
 The names of these benchmarks end with `-update`.
-We can see that `jaq` is the fastest implementation for all update benchmarks.
-Let us have a look at a simple update benchmark that is not part of @tab:benchmark.
-
-Table: Filter runtime in milliseconds with input 1000000. Lower is better. {#tab:update-bench}
-
-| Filter | jaq-2.0 | jq-1.7.1 | gojq-0.12.16 |
-| ------ | ------- | -------- | ------------ |
-| `[range(.)]`              | **44** | 159 | 178 |
-| `[range(.)] |  .[] += 1`  | **97** |1873 |1030 |
-| `[range(.)] | [.[] +  1]` |**196** | 307 | 401 |
-
-::: {.example name="Update performance"}
-  Given an input number `n`, the filter
-  `[range(.)]` constructs an array `[0, 1, ..., n-1]`.
-  We can benchmark a jq implementation `$JQ`
-  (where `$JQ` is either `jaq`, `jq`, or `gojq`) by
-  `time $JQ '[range(.)] | length' <<< 1000000`.
-  Here, we pipe the array output through `length` such that
-  only the length of the output array is printed,
-  in order not to measure the runtime for printing the whole array.
-  The results are given in @tab:update-bench and shall serve as baseline.
-
-  Next, we consider the filter `[range(.)] | .[] += 1`, where
-  `.[] += 1` increments all elements of its input array by one.
-  By subtracting
-  the time needed to run `[range(.)]` from
-  the time needed to run `[range(.)] | .[] += 1`,
-  we can infer the time spent to perform the update operation `.[] += 1`, namely
-  55ms (= 97ms - 44ms) for jaq,
-  1714ms for jq, and
-  852ms for gojq.
-  Here, jaq is
-  about 15 times faster than gojq and
-  about 31 times faster than jq!
-
-  Another program that performs the same task as the previous one can be obtained by
-  replacing `.[] += 1` with `[.[] + 1]`:
-  The latter iterates over all values of the array with `.[]`,
-  adds one to all values, then creates a new array from the resulting values.
-  We now have much closer results for the different implementations.
-  Here, jq and gojq are faster than before because
-  they  do not generate paths corresponding to `.[]` for `[.[] + 1]`, whereas
-  they _do_    generate paths corresponding to `.[]` for `.[] += 1`.
-  This shows the high cost of path-based updates, which
-  our new update semantics --- and thus jaq --- avoid.
-:::
+We can see that jaq is the fastest implementation for all update benchmarks.
+The next section shows a more detailed updated benchmark that is not part of @tab:benchmark.
 
 ## Update performance
 
@@ -152,8 +166,8 @@ Table: Evaluated filter `f` depending on input and action. \label{tab:update-eva
 We evaluate the runtime of input construction `i` and action `f` by
 running `$JQ -n 'i | f | empty`.[^empty-avoid]
 For example, to evaluate jaq's native update performance on array input,
-we measure the time of
-`jaq -n '[range(1000000)] | .[] |= . | empty`.
+we measure the time taken by
+`jaq -n '[range(1000000)] | .[] |= . | empty'`.
 
 [^empty-avoid]:
   The usage of `empty` is necessary to avoid printing the output,
@@ -164,8 +178,9 @@ Let us first look at the results for array input `[range(1000000)]`.
 We can see that native update performance differs enormously between
 jq and jaq:
 When subtracting the time for input construction,
-<!-- (2043−107)÷(113−74) = 49.64 -->
-jq takes about fifty times (!) as long for the update as jaq.
+jq takes about fifty times (!) as long for the update as jaq.^[
+$(2043 - 107) \div (113 - 74) = 49.64$
+]
 We can also see that in jq,
 (path-based) native updates are significantly _slower_ than manual updates, whereas in jaq,
 (path-less)  native updates are _faster_ than manual updates.
@@ -184,7 +199,7 @@ Now, let us look at the results for object input `{"a": [range(1000000)]}`,
 in order to study the performance of nested updates, namely
 updating all values of an array inside an object.
 First, we can observe that the performance of manual updates in both jq and jaq,
-as well as the performance of native update in jaq, remains stable.
+as well as native update performance in jaq, remain stable.
 That means that these kinds of updates are not impacted by nesting.
 On the other hand, the performance of path-based updates clearly decreases.
 
@@ -194,3 +209,19 @@ manually updating data without the `|=` operator.
 Furthermore, path-based update performance is impacted negatively by nesting.
 However, updates can be made to achieve higher performance than manual updates,
 by using our path-less update semantics.
+
+## Compatibility
+
+Via jaq's issue tracker, we can estimate the impact of incompatibility.
+This is particularly useful for new update semantics.
+<!-- https://github.com/01mf02/jaq/pull/285 -->
+Users reported three issues caused by the update semantics described in this paper;
+these were all duplicates about the semantics of `.. |= g`.
+We have since adjusted our semantics to address this issue.
+The fact that there were three independent reports of
+the same issue related to update semantics shows that users
+extensively use update semantics in jaq and
+report issues they have with it.
+The fact that no other issues with update semantics were opened so far
+indicates that our new update semantics do not cause
+incompatibility concerns for a vast majority of users.
