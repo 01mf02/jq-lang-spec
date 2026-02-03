@@ -307,12 +307,13 @@ returns the last output of $f$ if $f$ yields any output, else nothing.
 # Update Semantics {#sec:updates}
 
 In this section, we will discuss how to evaluate updates $f \update g$.
-First, we will show how the original jq implementation executes such updates,
+First, we show the path-based update semantics used in most jq implementations,
 and show which problems this approach entails.
-Then, we will give alternative semantics for updates that avoids these problems,
-while enabling faster performance by forgoing the construction of temporary path data.
+Then, we introduce our alternative, path-less update semantics, which
+avoid many problems of path-based updates, while
+enabling higher performance by forgoing the construction of temporary path data.
 
-## jq updates via paths {#sec:jq-updates}
+## Path-based updates {#sec:jq-updates}
 
 jq's update mechanism works with _paths_.
 A path is a sequence of indices $i_j$ that can be written as $.[i_1]...[i_n]$.
@@ -392,14 +393,14 @@ The resulting update semantics can be understood to _interleave_ calls to $f$ an
 By doing so, these semantics can abandon the construction of paths altogether,
 which results in higher performance when evaluating updates.
 
-## Properties of new semantics {#sec:update-props}
+## Properties of path-less updates {#sec:update-props}
 
 <!--
 μονοπάτι = path
 συνάρτηση = function
 -->
 
-Table: Update semantics properties. {#tab:update-props}
+Table: Properties of path-less update semantics. {#tab:update-props}
 
 | $\varphi$ | $\varphi \update \sigma$ |
 | --------- | ------------------------ |
@@ -470,15 +471,15 @@ $\sigma'\, x$ returns the output of the filter $\run\, \sigma\, x$.
 This allows us to bind variables in $\varphi$ without impacting $\sigma$.
 -->
 
-## New semantics {#sec:new-semantics}
+## Path-less updates {#sec:new-semantics}
 
-We will now give semantics that define the output of
+We will now give update semantics that define the output of
 $\run\, \sem{f \update g}\, v$ as referred to in @sec:semantics.
 We will first define
 $$\run\, \sem{f \update g}\, v \coloneqq \upd\, \sem f\, \sigma\, v, \text{where }
   \sigma: \valt \to \stream{\resultt\, \valt} \coloneqq \run\, \sem g$$
 
-Table: Update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \listt$ is a function from a value to a list of value results. {#tab:update-semantics}
+Table: Path-less update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \listt$ is a function from a value to a list of value results. {#tab:update-semantics}
 
 | $\varphi$ | $\upd\, \sem \varphi\, \sigma\, v$ |
 | --------- | ------------------------- |
@@ -503,12 +504,12 @@ are simply relatively straightforward consequences of the properties in @tab:upd
 We discuss the remaining cases for $\varphi$:
 
 - "$..$": Update the input value and all recursively contained values.
-  This is very similar to "$..$" in @tab:eval-semantics,
+  This is very similar to the evaluation of "$..$" in @tab:eval-semantics,
   but there, $r$ is defined as
   "$., (.[]? | r)$", whereas here, it is
   "$(.[]? | r), .$" --- the arguments of the concatenation are swapped.
   This leads values to be updated before the values that contain them.
-  We will see the effect of this in @ex:rec-update.
+  We discuss the effect of this in @ex:rec-update.
 - $f \alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
   Here, we first call $f$ as a "probe".
   If it yields at least one output that is considered "true"
@@ -655,8 +656,8 @@ this is why path-less updates use a different definition of $r$ than @tab:eval-s
 In @sec:folding, we have seen how to evaluate folding filters of the shape
 $\jqfold{reduce }{x}{\$x}{(.; f)}$ and
 $\jqfold{foreach}{x}{\$x}{(.; f; g)}$.
-Here, we will define update semantics for these filters.
-These update operations are _not_ supported in jq 1.7; however,
+Here, we will define path-less update semantics for these filters.
+These update operations are _not_ supported in jq 1.8; however,
 we will show that they arise quite naturally from previous definitions.
 
 Let us start with an example to understand folding on the left-hand side of an update.
