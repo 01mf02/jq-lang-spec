@@ -255,11 +255,12 @@ by using our path-less update semantics.
 ## Compatibility
 
 Via jaq's issue tracker, we can estimate the impact of incompatibility.
-This is particularly useful for new update semantics.
+This is particularly useful for our path-less update semantics.
 <!-- https://github.com/01mf02/jaq/pull/285 -->
 Users reported three issues caused by the update semantics described in this paper;
 these were all duplicates about the semantics of `.. |= g`.
-We have since adjusted our semantics to address this issue.
+As explained in @ex:rec-update, our original semantics caused infinite loops,
+and we have since adjusted our semantics to address this issue.
 The fact that there were three independent reports of
 the same issue related to update semantics shows that users
 extensively use update semantics in jaq and

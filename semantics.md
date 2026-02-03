@@ -589,9 +589,11 @@ because in our definition of $r$, $(.[]? | r)$ comes before "$.$".
 That means that first, the $1$ in the array is updated, yielding $[\{a: 1\}]$.
 Next, the result is updated, yielding $\{a: [\{a: 1\}]\}$.
 
-Finally, let us consider what would happen if path-less update semantics would
-update "larger" values before "smaller" values?
-We can see this by running $([1] | \jqdef{r}{., (.[]? | r)} r \update \{a: .\})$;
+In a previous version of these semantics, we used the same definition of $r$
+in both @tab:eval-semantics and @tab:update-semantics.
+This made path-less update semantics update "larger" values before "smaller" values.
+To see why we changed this behaviour, let us replicate the old behaviour
+by running $([1] | \jqdef{r}{., (.[]? | r)} r \update \{a: .\})$;
 that is, we use the same definition for $r$ as in @tab:eval-semantics.
 Here, path-less update semantics first update the whole input value,
 because in this definition of $r$, "$.$" comes before $(.[]? | r)$.
