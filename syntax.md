@@ -21,7 +21,7 @@ A _filter_ $f$ is defined by the grammar
 \begin{align*}
 f &\coloneqq \quad n \gror s \gror . \gror .. \gror \$x \gror (f) \\
   &\gror [] \gror [f] \gror \{f: f, \dots, f: f\} \\
-  &\gror f \star f \gror f \cartesian f \gror f [p]^? \dots [p]^? \\
+  &\gror f \star f \gror f \cartesian f \gror -f \gror f [p]^? \dots [p]^? \\
   &\gror f \jqas P | f \gror \jqfold{reduce}{f}{P}{(f; f)} \gror \jqfold{foreach}{f}{P}{(f; f; f)} \\
   &\gror {\jqlb{label}{x}} | f \gror {\jqlb{break}{x}} \\
   &\gror {\jqite{f}{f}{f}} \gror f? \gror \jqkw{try} f \gror \jqtc{f}{f} \\
@@ -95,7 +95,7 @@ An IR filter $f$ is defined by the grammar
 \begin{align*}
 f &\coloneqq \quad n \gror s \gror . \gror .. \gror \$x \\
   &\gror [] \gror [f] \gror \{\} \gror \{\$x: \$x\} \\
-  &\gror f \star f \gror \$x \cartesian \$x \gror .[p]^? \\
+  &\gror f \star f \gror \$x \cartesian \$x \gror -\$x \gror .[p]^? \\
   &\gror f \jqas \$x | f \gror \jqfold{reduce}{f}{\$x}{(.; f)} \gror \jqfold{foreach}{f}{\$x}{(.; f; f)} \\
   &\gror {\jqite{\$x}{f}{f}} \gror \jqtc{f}{f} \\
   &\gror {\jqlb{label}{x}} | f \gror \jqlb{break}{x} \\
@@ -138,6 +138,7 @@ replace certain occurrences of filters by variables
 | $f \jqkw{or}  g$ | $\floor{\jqite{f}{\jqf{true}}{(g | \jqf{bool})}}$ |
 | $f \star g$ | $\floor f \star \floor g$ |
 | $f \cartesian g$ | $\floor f \jqas \$x' | \floor g \jqas \$y' | \$x' \cartesian \$y'$ |
+| $-f$ | $\floor f \jqas \$x' | -\$x'$ |
 | $f [p_1]^? \dots [p_n]^?$ | $. \jqas \$x' | \floor f | \floor{[p_1]^?}_{\$x'} | \dots | \floor{[p_n]^?}_{\$x'}$ |
 | $f \jqas \$x | g$ | $\floor f \jqas \$x | \floor g$ |
 | $f \jqas P | g$ | $\floor f \jqas \$x' | \floor{\$x' \jqas P | g}$,
@@ -281,7 +282,7 @@ $\wf(\varphi, c)$ is true.
 | $\varphi$ | $\wf(\varphi, c)$ |
 | --------- | ----------------- |
 | $n$, $s$, $.$, $..$, $[]$, or $\{\}$ | $\top$ |
-| $\$x$ | $\$x \in v$ |
+| $\$x$ or $-\$x$   | $\$x \in v$ |
 | $\jqlb{break}{x}$ | $\$x \in l$ |
 | $[f]$ | $\wf(f, c)$ |
 | $\{\$x: \$y\}$ or $\$x \cartesian \$y$ | $\$x \in v$ and $\$y \in v$ |

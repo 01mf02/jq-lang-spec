@@ -64,6 +64,7 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $\{\$x: \$y\}$ | $\stream{\objf_1\, \$x\, \$y}$ |
 | $\$x \arith \$y$ | $\stream{\$x \arith \$y}$ |
 | $\$x \cartesian \$y$ | $\stream{\ok{(\$x \cartesian \$y)}}$ |
+| $-\$x$ | $\stream{- \$x}$ |
 | $f, g$ | $\run\, \sem f\, v + \run\, \sem g\, v$ |
 | $f | g$ | $\run\, \sem f\, v \bind \run\, \sem g$ |
 | $f \alt g$ | $(\run\, \sem f\, v \bind \trues)\, (\lambda h\, t. \stream h + t)\, (\run\, \sem g\, v)$ |
