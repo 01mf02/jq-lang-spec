@@ -502,7 +502,13 @@ Several of the cases for $\varphi$, like
 are simply relatively straightforward consequences of the properties in @tab:update-props.
 We discuss the remaining cases for $\varphi$:
 
-- "$..$": TODO!
+- "$..$": Update the input value and all recursively contained values.
+  This is very similar to "$..$" in @tab:eval-semantics,
+  but there, $r$ is defined as
+  "$., (.[]? | r)$", whereas here, it is
+  "$(.[]? | r), .$" --- the arguments of the concatenation are swapped.
+  This leads values to be updated before the values that contain them.
+  We will see the effect of this in @ex:rec-update.
 - $f \alt g$: Updates using $f$ if $f$ yields some non-false value, else updates using $g$.
   Here, we first call $f$ as a "probe".
   If it yields at least one output that is considered "true"
@@ -561,6 +567,46 @@ $\jqlb{label}{x} | g$ and $\jqtc{f}{g}$.
   &= \lambda v. \stream{v + v}
   \end{align*}
   In summary, $\eval \sem \varphi v = (v[] \update (\lambda v. \stream{v + v}))$.
+:::
+
+::: {.example #ex:rec-update name="Recursive update"}
+Consider the filter $([1] | .. \update \{a: .\})$:
+Its intent is to replace all values $v$ recursively contained in the array $[1]$
+by the object $\{a: v\}$.
+
+First, let us consider how *path-based* updates handle this.
+The filter "$..$" returns the paths
+"$.$" (pointing to $[1]$) and
+"$.[0]$" (pointing to $1$).
+The path-based update thus first updates "$.$", then "$.[0]$".
+However, the result of updating "$.$" is $\{a: [1]\}$,
+for which the path "$.[0]$" is invalid --- the path-based update fails with an error.
+The problem here is that the update treats "larger" values before "smaller" ones.
+
+Now, let us consider how *path-less* update semantics handle this.
+The filter "$..$" updates "smaller" values before "larger" ones,
+because in our definition of $r$, $(.[]? | r)$ comes before "$.$".
+That means that first, the $1$ in the array is updated, yielding $[\{a: 1\}]$.
+Next, the result is updated, yielding $\{a: [\{a: 1\}]\}$.
+
+Finally, let us consider what would happen if path-less update semantics would
+update "larger" values before "smaller" values?
+We can see this by running $([1] | \jqdef{r}{., (.[]? | r)} r \update \{a: .\})$;
+that is, we use the same definition for $r$ as in @tab:eval-semantics.
+Here, path-less update semantics first update the whole input value,
+because in this definition of $r$, "$.$" comes before $(.[]? | r)$.
+The first result is therefore $\{a: [1]\}$.
+So far, this is the same as what first happened in the path-based update.
+However, now the update considers $(.[]? | r)$:
+Unlike the path-based update, which considered the paths in the *original* value
+(that became invalid),
+the path-less update now considers the values corresponding to "$.[]?$" in the *updated* value.
+Because we created a new object $\{a: [1]\}$,
+this updates all values corresponding to "$.[]?$" in this new object, namely $[1]$.
+The result is $\{a: \{a: [1]\}\}$, at which point the update again considers $[1]$.
+This repeats indefinitely and results in an infinite loop that never yields a result.
+Given that this is a relatively common scenario,
+this is why path-less updates use a different definition of $r$ than @tab:eval-semantics.
 :::
 
 ::: {.example name="The Curious Case of Alternation"}
