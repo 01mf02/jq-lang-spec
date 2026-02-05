@@ -225,6 +225,23 @@ The functions to construct arrays and objects, as well as to retrieve the _boole
 \end{cases}
 \end{alignat*}
 
+We are now going to define
+the access operators $v[p]$ and
+the update operators $v[p] \update f$.
+For all these operators, it holds that
+if $v$ is a boolean or a number,
+then the operator yields an error.
+Given that the definition of these operators
+differs greatly between different jq implementations,
+we are only going to cover a few basic cases for these operators
+that all jq implementations agree on.
+We omit all remaining cases, such as
+indexing with non-integer numbers,
+indexing with non-existing keys, and
+slicing ($v[l:h]$).
+
+<!-- TODO: explain sum -->
+
 The access operator $v[p]$ of a value $v$ at path $p$ is defined as follows:
 
 $$v[] \coloneqq \begin{cases}
@@ -239,16 +256,31 @@ $$v[i] \coloneqq \begin{cases}
 The update operator $v[p] \update f$ is defined as follows:
 
 $$v[] \update f \coloneqq \begin{cases}
-  \arr\, (\sum_i f(v_i)) & \text{if } v = [v_0, ..., v_n] \\
-  \sumf (\sum_i \stream{\objf_?\, k_0\, (f\, v_0)}) \objf_0 & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
+  \arr\, (\sum_i f(v_i))
+  & \text{if } v = [v_0, ..., v_n] \\
+  \sumf (\sum_i \stream{\objf_?\, k_0\, (f\, v_0)}) \objf_0
+  & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
 \end{cases}$$
 $$v[i] \update f \coloneqq \begin{cases}
-  \arr\, (\sum_{j=0}^{i-1} \stream{\ok\, v_j} + f(v_i) + \sum_{j=i+1}^n \stream{\ok v_j}) & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i \leq n$} \\
+  \begin{alignedat}{3}
+  \arr\, (&\textstyle\sum_{j=0}^{i-1}&&\stream{\ok\, v_j} + f(v_i) \\
+  +{} &\textstyle\sum_{j=i+1}^n&&\stream{\ok\, v_j})
+  \end{alignedat}
+  &
+  \begin{aligned}
+  & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb N$,} \\
+  & \quad \text{and } i \leq n
+  \end{aligned}
+  \\
   \begin{alignedat}{3}
   \sumf (&\textstyle\sum_{j=0}^{i-1}&&\stream{\objf_1\, k_j\, v_j} + \stream{\objf_?\, k\, (f\, v_i)} \\
   +{} &\textstyle\sum_{j=i+1}^n &&\stream{\objf_1\, k_j\, v_j}) \objf_0
   \end{alignedat}
-  & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$ and $k_j = i$}
+  &
+  \begin{aligned}
+  & \text{if } v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n} \\
+  & \quad \text{and } k_j = i
+  \end{aligned}
 \end{cases}$$
 
 Here, we use a helper function for the case that $v$ is an object.
