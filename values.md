@@ -228,8 +228,8 @@ The functions to construct arrays and objects, as well as to retrieve the _boole
 The access operator $v[p]$ of a value $v$ at path $p$ is defined as follows:
 
 $$v[] \coloneqq \begin{cases}
-  v[0] + \dots + v[n] & \text{if $v = [v_0, ..., v_n]$} \\
-  v[k_0] + \dots + v[k_n] & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
+  \sum_i v[i] & \text{if $v = [v_0, ..., v_n]$} \\
+  \sum_i v[k_i] & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
 \end{cases}$$
 $$v[i] \coloneqq \begin{cases}
   \stream{\ok\, (\pair\, v_i\, (\some\, \stream i))} & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i \leq n$} \\
@@ -239,8 +239,16 @@ $$v[i] \coloneqq \begin{cases}
 The update operator $v[p] \update f$ is defined as follows:
 
 $$v[] \update f \coloneqq \begin{cases}
-  \arr\, (f(v_0) + \dots + f(v_n)) & \text{if } v = [v_0, ..., v_n] \\
-  \sumf (\stream{\objf_?\, k_0\, (f\, v_0)} + \dots + \stream{\objf_?\, k_n\, (f\, v_n)}) \objf_0 & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
+  \arr\, (\sum_i f(v_i)) & \text{if } v = [v_0, ..., v_n] \\
+  \sumf (\sum_i \stream{\objf_?\, k_0\, (f\, v_0)}) \objf_0 & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
+\end{cases}$$
+$$v[i] \update f \coloneqq \begin{cases}
+  \arr\, (\sum_{j=0}^{i-1} \stream{\ok\, v_j} + f(v_i) + \sum_{j=i+1}^n \stream{\ok v_j}) & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i \leq n$} \\
+  \begin{alignedat}{3}
+  \sumf (&\textstyle\sum_{j=0}^{i-1}&&\stream{\objf_1\, k_j\, v_j} + \stream{\objf_?\, k\, (f\, v_i)} \\
+  +{} &\textstyle\sum_{j=i+1}^n &&\stream{\objf_1\, k_j\, v_j}) \objf_0
+  \end{alignedat}
+  & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$ and $k_j = i$}
 \end{cases}$$
 
 Here, we use a helper function for the case that $v$ is an object.
