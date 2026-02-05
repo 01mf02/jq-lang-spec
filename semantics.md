@@ -76,7 +76,7 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $.[p]^?$ | $v[p]^?$ |
 | $\jqfold{reduce }{f_x}{\$x}{(.; f   )}$ | $\reducef \, (\lambda \$x. \run\, \sem f)\, (\run\, \sem{f_x}\, v)\, v$ |
 | $\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$ | $\foreachf\, (\lambda \$x. \run\, \sem f)\, (\lambda \$x. \run\, \sem g)\, (\run\, \sem{f_x}\, v)\, v$ |
-| $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \run\, \sem g\, v) (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
+| $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \run\, \sem g\, v) (Y\, (\lambda x\, x_1\, ...\, x_n. \sem f))$ |
 | $x(f_1; ...; f_n)$ | $\run\, (x\, \sem{f_1}\, ...\, \sem{f_n})\, v$ |
 | $f \update g$ | $\upd\, \sem f\, (\run\, \sem g)\, v$ |
 
@@ -167,7 +167,7 @@ Let us discuss its different cases:
   The definition of $x$, namely $f$, may refer to
   any of the arguments $x_i$ as well as to $x$ itself.
   In other words, filters can be defined recursively,
-  which is why we use the Y combinator $Y_{n+1}$ here.
+  which is why we use the $Y$ combinator here.
   @ex:recursion shows how a recursive call is evaluated.
 - $x(f_1; ...; f_n)$: Calls an $n$-ary filter $x$.
   This also handles the case of calling nullary filters such as $\jqf{empty}$.
@@ -200,13 +200,13 @@ using only the filters for which we gave semantics in @tab:eval-semantics-->.
   $\eval\, \sem \varphi\, v$ is equivalent to:
   \begin{align*}
   \run\, \sem \varphi\, v
-  &= (\lambda \jqf{repeat}. \run\, \sem{\jqf{repeat}}\, v)\, (Y_1\, (\lambda \jqf{repeat}. \rho)) \\
-  &=^{\sem \cdot} (\lambda \jqf{repeat}. \run\, \jqf{repeat}\, v)\, (Y_1\, (\lambda \jqf{repeat}. \rho)) \\
-  &=^\beta \run\, (Y_1\, (\lambda \jqf{repeat}. \rho))\, v \\
-  &=^{Y_1} \run\, ((\lambda \jqf{repeat}. \rho)\, (Y_1\, (\lambda \jqf{repeat}. \rho)))\, v \\
-  &=^\rho \run\, ((\lambda \jqf{repeat}. \pair\, (\lambda v. \stream{\ok v} + \run\, \jqf{repeat}\, v)\, (...))\, (Y_1\, (\lambda \jqf{repeat}. \rho)))\, v \\
-  &=^\beta \run\, (\pair\, (\lambda v. \stream{\ok v} + \run\, (Y_1\, (\lambda \jqf{repeat}. \rho))\, v)\, (...))\, v \\
-  &=^\beta \stream{\ok v} + \run\, (Y_1\, (\lambda \jqf{repeat}. \rho))\, v \\
+  &= (\lambda \jqf{repeat}. \run\, \sem{\jqf{repeat}}\, v)\, (Y\, (\lambda \jqf{repeat}. \rho)) \\
+  &=^{\sem \cdot} (\lambda \jqf{repeat}. \run\, \jqf{repeat}\, v)\, (Y\, (\lambda \jqf{repeat}. \rho)) \\
+  &=^\beta \run\, (Y\, (\lambda \jqf{repeat}. \rho))\, v \\
+  &=^Y \run\, ((\lambda \jqf{repeat}. \rho)\, (Y\, (\lambda \jqf{repeat}. \rho)))\, v \\
+  &=^\rho \run\, ((\lambda \jqf{repeat}. \pair\, (\lambda v. \stream{\ok v} + \run\, \jqf{repeat}\, v)\, (...))\, (Y\, (\lambda \jqf{repeat}. \rho)))\, v \\
+  &=^\beta \run\, (\pair\, (\lambda v. \stream{\ok v} + \run\, (Y\, (\lambda \jqf{repeat}. \rho))\, v)\, (...))\, v \\
+  &=^\beta \stream{\ok v} + \run\, (Y\, (\lambda \jqf{repeat}. \rho))\, v \\
   &= \stream{\ok v} + \run\, \sem \varphi\, v.
   \end{align*}
   This shows that the evaluation of $\varphi$ on any input $v$ yields

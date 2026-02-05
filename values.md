@@ -10,7 +10,7 @@ values, results, and lists, in simply typed lambda calculus.
 \newcommand{\fst}{\operatorname{fst}}
 \newcommand{\snd}{\operatorname{snd}}
 
-We use letters such as $T$, $U$, $X$, and $Y$ for type variables.
+We use letters such as $T$ and $U$ for type variables.
 Let us fix some standard encodings for
 boolean values $\boolt$,
 natural numbers $\mathbb N$,
@@ -40,23 +40,17 @@ $\nil$ as $\stream{}$ and
 $\cons\, r_1\, (\cons\, r_2\, ...)$ as $\stream{r_1, r_2, ...}$.
 Because the jq language is evaluated lazily, lists can be infinite.
 
-## Y combinators
+## Y combinator
 
-We assume the existence of a set of Y combinators $Y_n$ that we will use to
-define recursive functions of arity $n$.
-For each $n$, we have that $Y_n f = f (Y_n f)$ holds.
-Furthermore, the types of $Y_n$ are:
-\begin{alignat*}{4}
-Y_1:{}& ((T_1 &&\to U) \to T_1 &&\to U) \to T_1 &&\to U \\
-... \\
-Y_n:{}& ((T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U) \to T_1 \to ... \to T_n &&\to U
-\end{alignat*}
-For example, these combinators allow us to define the concatenation of two lists $l$ and $r$ as
-$$l + r \coloneqq Y_1\, (\lambda f\, l. l\, (\lambda h\, t. \cons\, h\, (f\, t))\, r)\, l,$$
+We assume the existence of a combinator $Y: (T \to T) \to T$ for which
+$Y\, f = f\, (Y\, f)$ holds.
+We will use this to define recursive functions;
+for example, the concatenation of two lists $l$ and $r$ is
+$$l + r \coloneqq Y\, (\lambda f\, l. l\, (\lambda h\, t. \cons\, h\, (f\, t))\, r)\, l,$$
 which satisfies the property
 $$l + r = l\, (\lambda h\, t. \cons\, h\, (t + r))\, r.$$
 For simplicity, we will define recursive functions from here on mostly by equational properties,
-from which we could easily derive proper definitions using the $Y_n$ combinators.
+from which we could easily derive proper definitions using the $Y$ combinator.
 
 ## Values and results
 
