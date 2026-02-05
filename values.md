@@ -224,3 +224,26 @@ The functions to construct arrays and objects, as well as to retrieve the _boole
   \true & \text{otherwise}
 \end{cases}
 \end{alignat*}
+
+The access operator $v[p]$ of a value $v$ at path $p$ is defined as follows:
+
+$$v[] \coloneqq \begin{cases}
+  v[0] + \dots + v[n] & \text{if $v = [v_0, ..., v_n]$} \\
+  v[k_0] + \dots + v[k_n] & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
+\end{cases}$$
+$$v[i] \coloneqq \begin{cases}
+  \stream{\ok\, (\pair\, v_i\, (\some\, \stream i))} & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i \leq n$} \\
+  \stream{\ok\, (\pair\, v_j\, (\some\, \stream i))} & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$ and $k_j = i$}
+\end{cases}$$
+
+The update operator $v[p] \update f$ is defined as follows:
+
+$$v[] \update f \coloneqq \begin{cases}
+  \arr\, (f(v_0) + \dots + f(v_n)) & \text{if } v = [v_0, ..., v_n] \\
+  \sumf (\stream{\objf_?\, k_0\, (f\, v_0)} + \dots + \stream{\objf_?\, k_n\, (f\, v_n)}) \objf_0 & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
+\end{cases}$$
+
+Here, we use a helper function for the case that $v$ is an object.
+This function attempts to construct an object from
+a key and (the first element of) a list:
+$$\objf_?: \valt \to \stream{\resultt \valt} \to \resultt \valt \coloneqq \lambda k\, l. l\, (\lambda h\, t. h \bindr \lambda o. \objf_1\, k\, o)\, (\ok \objf_0)$$
