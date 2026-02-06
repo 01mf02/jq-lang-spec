@@ -240,8 +240,6 @@ indexing with non-integer numbers,
 indexing with non-existing keys, and
 slicing ($v[l:h]$).
 
-<!-- TODO: explain sum -->
-
 \newcommand{\appvp}{\operatorname{app\_vp}}
 The access operator $v[p]$ of a value-path $v$ at path $p$ is defined as follows:
 $$v[] \coloneqq \begin{cases}
@@ -252,8 +250,14 @@ $$v[i] \coloneqq \begin{cases}
   \stream{\ok\, (\appvp\, v\, v_i\, i)} & \text{if $\fst v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i \leq n$} \\
   \stream{\ok\, (\appvp\, v\, v_j\, i)} & \text{if $\fst v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$ and $k_j = i$}
 \end{cases}$$
-This uses a helper function $\appvp$ that takes a value-path $v_p$,
-replaces its value by $v$ and appends $i$ to its path if present:
+Here, we use $\sum_i v[i]$ to abbreviate $v[0] + \dots + v[n]$.
+If there are no elements $i$ to iterate over
+(i.e. because the input value is an empty array or object),
+the sum returns the empty list $\stream{}$.
+Furthermore, we use a helper function $\appvp$ that
+takes a value-path $v_p$,
+replaces its value by $v$, and
+appends $i$ to its path if present:
 $$\appvp: \valpatht \to \valt \to \valt \to \valpatht \coloneqq \lambda v_p\, v\, i.
 \pair\, v\, (\snd\, v_p\, (\lambda p. \some\, (p + \stream i))\, \none)$$
 
