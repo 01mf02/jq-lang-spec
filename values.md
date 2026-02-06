@@ -256,14 +256,14 @@ $$v[i] \coloneqq \begin{cases}
 The update operator $v[p] \update f$ is defined as follows:
 
 $$v[] \update f \coloneqq \begin{cases}
-  \arr\, (\sum_i f(v_i))
+  \arr\, (\sum_i (f\, v_i))
   & \text{if } v = [v_0, ..., v_n] \\
-  \sumf (\sum_i \stream{\objf_?\, k_0\, (f\, v_0)}) \objf_0
+  \sumf (\sum_i \stream{\objf_?\, k_i\, (f\, v_i)}) \objf_0
   & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
 \end{cases}$$
 $$v[i] \update f \coloneqq \begin{cases}
   \begin{alignedat}{3}
-  \arr\, (&\textstyle\sum_{j=0}^{i-1}&&\stream{\ok\, v_j} + f(v_i) \\
+  \arr\, (&\textstyle\sum_{j=0}^{i-1}&&\stream{\ok\, v_j} + (f\, v_i\, (\lambda h\, t. \stream{h})\, \stream{}) \\
   +{} &\textstyle\sum_{j=i+1}^n&&\stream{\ok\, v_j})
   \end{alignedat}
   &
