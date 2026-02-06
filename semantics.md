@@ -141,6 +141,9 @@ Let us discuss its different cases:
   \labelf&{}: \mathbb N &\to{}& \listt \to \listt \coloneqq
   \lambda \fresh. \untilf\, (\lambda r. r\, (\lambda o. \false)\, (\lambda e. \false)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b))
   \end{alignat*}
+  Here,
+  $\nateq: \mathbb N \to \mathbb N \to \boolt$ returns
+  $\true$ if two natural numbers are equal, else $\false$.
 - $\jqlb{break}{x}$: Returns a value result $\breakf\, \$x$.
   Similarly to the evaluation of variables $\$x$ described above,
   wellformedness of the filter (as defined in @sec:hir) ensures that

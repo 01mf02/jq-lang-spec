@@ -17,32 +17,31 @@ natural numbers $\mathbb N$,
 optional values $\optt\, T$,
 lists $\stream T$, and
 pairs $(T, U)$:
-\begin{alignat*}{2}
+$$
+\begin{alignedat}{4}
 \true &: \boolt &&\coloneqq \lambda t\, f. t \\
 \false&: \boolt &&\coloneqq \lambda t\, f. f \\
 \succf&: \mathbb N \to \mathbb N &&\coloneqq \lambda n\, s\, z. s\, n \\
 \zero&: \mathbb N &&\coloneqq \lambda s\, z. z \\
+\fst&{}: (T, U) \to T &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
+\snd&{}: (T, U) \to T &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
+\end{alignedat}
+\qquad
+\begin{alignedat}{4}
 \some&: T \to \optt\,T &&\coloneqq \lambda x\, s\, n. s\, x \\
 \none&: \optt\,T &&\coloneqq \lambda s\, n. n \\
 \cons&: T \to \stream T \to \stream T &&\coloneqq \lambda h\, t. \lambda c\, n. c\, h\, t \\
 \nil&: \stream T &&\coloneqq \lambda c\, n. n \\
-\pair&{}: T \to U \to (T, U) &&\coloneqq \lambda x\, y\, p. p\, x\, y  \\
-\fst&{}: (T, U) \to T &&\coloneqq \lambda p. p\, (\lambda x\, y. x) \\
-\snd&{}: (T, U) \to T &&\coloneqq \lambda p. p\, (\lambda x\, y. y)
-\end{alignat*}
-
-We can construct a function
-$\nateq: \mathbb N \to \mathbb N \to \boolt$ that returns
-$\true$ if two natural numbers are equal, else $\false$.
-
+\pair&{}: T \to U \to (T, U) &&\coloneqq \lambda x\, y\, p. p\, x\, y \\
+\quad
+\end{alignedat}
+$$
 We write the empty list
 $\nil$ as $\stream{}$ and
 $\cons\, r_1\, (\cons\, r_2\, ...)$ as $\stream{r_1, r_2, ...}$.
 Because the jq language is evaluated lazily, lists can be infinite.
 
-## Y combinator
-
-We assume the existence of a combinator $Y: (T \to T) \to T$ for which
+We assume a combinator $Y: (T \to T) \to T$ for which
 $Y\, f = f\, (Y\, f)$ holds.
 We will use this to define recursive functions;
 for example, the concatenation of two lists $l$ and $r$ is
