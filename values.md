@@ -242,19 +242,22 @@ slicing ($v[l:h]$).
 
 <!-- TODO: explain sum -->
 
-The access operator $v[p]$ of a value $v$ at path $p$ is defined as follows:
-
+\newcommand{\appvp}{\operatorname{app\_vp}}
+The access operator $v[p]$ of a value-path $v$ at path $p$ is defined as follows:
 $$v[] \coloneqq \begin{cases}
-  \sum_i v[i] & \text{if $v = [v_0, ..., v_n]$} \\
-  \sum_i v[k_i] & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
+  \sum_i v[i] & \text{if $\fst v = [v_0, ..., v_n]$} \\
+  \sum_i v[k_i] & \text{if $\fst v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
 \end{cases}$$
 $$v[i] \coloneqq \begin{cases}
-  \stream{\ok\, (\pair\, v_i\, (\some\, \stream i))} & \text{if $v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i \leq n$} \\
-  \stream{\ok\, (\pair\, v_j\, (\some\, \stream i))} & \text{if $v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$ and $k_j = i$}
+  \stream{\ok\, (\appvp\, v\, v_i\, i)} & \text{if $\fst v = [v_0, ..., v_n]$, $i \in \mathbb N$, and $i \leq n$} \\
+  \stream{\ok\, (\appvp\, v\, v_j\, i)} & \text{if $\fst v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$ and $k_j = i$}
 \end{cases}$$
+This uses a helper function $\appvp$ that takes a value-path $v_p$,
+replaces its value by $v$ and appends $i$ to its path if present:
+$$\appvp: \valpatht \to \valt \to \valt \to \valpatht \coloneqq \lambda v_p\, v\, i.
+\pair\, v\, (\snd\, v_p\, (\lambda p. \some\, (p + \stream i))\, \none)$$
 
 The update operator $v[p] \update f$ is defined as follows:
-
 $$v[] \update f \coloneqq \begin{cases}
   \arr\, (\sum_i (f\, v_i))
   & \text{if } v = [v_0, ..., v_n] \\
@@ -282,7 +285,6 @@ $$v[i] \update f \coloneqq \begin{cases}
   & \quad \text{and } k_j = i
   \end{aligned}
 \end{cases}$$
-
 Here, we use a helper function for the case that $v$ is an object.
 This function attempts to construct an object from
 a key and (the first element of) a list:
