@@ -51,35 +51,79 @@ $$l + r = l\, (\lambda h\, t. \cons\, h\, (t + r))\, r.$$
 For simplicity, we will define recursive functions from here on mostly by equational properties,
 from which we could easily derive proper definitions using the $Y$ combinator.
 
-## Values and results
+## Values {#sec:value-ops}
 
 While jq operates uniquely on JSON values,
 we define the jq semantics for a general value type $\valt$.
-This value type must satisfy several properties that will be given in @sec:value-ops.
+Let us start by defining a few types related to values.
 
-The elements returned by jq filters are _value results_ $\resultt\, T$, which are
-either OK, an error, or a break.
+A _value result_ $\resultt\, T$ is either OK, an error, or a break:
 \begin{align*}
 \ok    &{}: T \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. o\, x \\
 \err   &{}: \valt \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. e\, x \\
 \breakf&{}: \mathbb N \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. b\, x
 \end{align*}
-
 A _value-path_ $\valpatht = (\valt,\, \optt\, \stream \valt)$ is
 a pair of a value and an optional list of values.
 The optional list is called the _path_ of the value.
 The idea behind it is that if the path is present,
 it represents the location of the value in input data.
 
+We now specify conditions for $\valt$.
+Concrete definitions for JSON values are given in @sec:json.
+
+For the value type $\valt$, there must be a type of numbers and a type of strings, such that
+for any number $n$, $n$ is a value, and
+for any string $s$, $s$ is a value.
+Furthermore, for any boolean $b$, $b$ is a value.
+By convention, we will write
+$v$ for values,
+$n$ for numbers, and
+$s$ for strings
+in the remainder.
+
+The value type must provide arithmetic operations
+$\{+, -, \times, \div, \modulo\}$
+of type $\valt \to \valt \to \resultt\, \valt$.
+That means that every arithmetic operation can fail.
+The value type must also provide Boolean operations
+$\{<, \leq, >, \geq, \iseq, \neq\}$
+of type $\valt \to \valt \to \valt$.
+Here,
+$l \iseq r$ returns whether $l$ equals $r$, and
+$l \neq r$ returns its negation.
+
+We assume the existence of several functions:
+
+- $\arr: \stream{\resultt\, \valt} \to \resultt\, \valt$ yields an array result from a list of value results.
+- $\objf_0: \valt$ yields an empty object.
+- $\objf_1: \valt \to \valt \to \resultt\, \valt$ constructs a singleton object from a key and value.
+  (It returns a value result instead of a value because it
+  may fail in case that the provided value is not a valid key.)
+- $\bool: \valt \to \boolt$ takes a value and returns a boolean.
+
+<!-- TODO: path part definition in syntax section, but used already here -->
+Let $p$ a path part (as defined in @sec:syntax) containing values as indices.
+We assume two operators:
+
+- The _access operator_ $v[p]$ extracts values contained within $v$
+  at positions given by $p$, yielding a list of value-path results $\stream{\resultt\, \valpatht}$.
+  This operator will be used in @sec:semantics.
+- The _update operator_ $v[p]^? \update f$ replaces
+  those elements $v' = v[p]$ in $v$ by
+  the output of $f\, v'$, where $f: \valt \to \stream{\resultt\, \valt}$.
+  The update operator yields a single value result.
+  This operator will be used in @sec:updates.
+
+If $v[p]$ returns an error, then
+$v[p] \update f$ should yield an error and
+$v[p]? \update f$ should yield $v$.
+We define $v[p]? = v[p] \bindl \lambda r. r\, (\lambda o. \stream r)\, (\lambda e. \stream{})\, (\lambda b. \stream{})$.
+This simply discards any error yielded by $v[p]$.
+
 ## Composition
 
 We define three monadic bind operators to describe composition.
-For a result $r$ and a function $f$ from a value to a result,
-$l \bindr f$ applies $f$ to $r$ if it is OK, else returns $r$ unchanged.
-For a list $l$ and a function $f$ from a _value result_ to a list,
-$l \bindl f$ applies $f$ to all elements of $l$ and concatenates the outputs.
-For a list $l$ and a function $f$ from a _value_ to a list,
-$l \bind f$ applies OK values in $l$ to $f$ and returns exception values in $l$.
 \begin{alignat*}{7}
 &\bindr&&{}: \resultt\, T &&\to (T &&\to \resultt\, U&&) &&\to \resultt\, U &&\coloneqq \lambda r\, f. r\, (\lambda o. f\, o)\, (\lambda e. r)\, (\lambda b. r) \\
 &\bindl&&{}: \stream T &&\to (T &&\to \stream U&&) &&\to \stream U &&\coloneqq \lambda l\, f. l\, (\lambda h\, t. f\, h + (t \bindl f))\, \nil \\
@@ -119,61 +163,6 @@ apply it to a function that expects a $\stream{\resultt\, \valpatht}$, then
 $l$ is implicitly substituted by
 $l \bindl (\lambda r. \stream{r \bindr (\lambda v. \ok\, (\tovp v))})$.
 :::
-
-## Value operations {#sec:value-ops}
-
-In this subsection, we specify the functions and operations
-that a value type must implement.
-Their concrete definitions for JSON values are given in @sec:json.
-
-For the value type $\valt$, there must be a type of numbers and a type of strings, such that
-for any number $n$, $n$ is a value, and
-for any string $s$, $s$ is a value.
-Furthermore, for any boolean $b$, $b$ is a value.
-By convention, we will write
-$v$ for values,
-$n$ for numbers, and
-$s$ for strings
-in the remainder of this text.
-
-The value type must provide arithmetic operations $\{+, -, \times, \div, \modulo\}$
-such that every arithmetic operation $\arith$ returns a value result, i.e.
-$\arith: \valt \to \valt \to \resultt\, \valt$.
-That means that every arithmetic operation can fail.
-
-The value type must also provide Boolean operations
-$\{<, \leq, >, \geq, \iseq, \neq\}$, where
-$l \iseq r$ returns whether $l$ equals $r$, and
-$l \neq r$ returns its negation.
-Each of these Boolean operations is of type $\valt \to \valt \to \valt$.
-
-We assume the existence of several functions:
-
-- $\arr: \stream{\resultt\, \valt} \to \resultt\, \valt$ yields an array result from a list of value results.
-- $\objf_0: \valt$ yields an empty object.
-- $\objf_1: \valt \to \valt \to \resultt\, \valt$ constructs a singleton object from a key and value.
-  (It returns a value result instead of a value because it
-  may fail in case that the provided value is not a valid key.)
-- $\bool: \valt \to \boolt$ takes a value and returns a boolean.
-
-<!-- TODO: path part definition in syntax section, but used already here -->
-Let $p$ a path part (as defined in @sec:syntax) containing values as indices.
-We assume two operators:
-
-- The _access operator_ $v[p]$ extracts values contained within $v$
-  at positions given by $p$, yielding a list of value-path results $\stream{\resultt\, \valpatht}$.
-  This operator will be used in @sec:semantics.
-- The _update operator_ $v[p]^? \update f$ replaces
-  those elements $v' = v[p]$ in $v$ by
-  the output of $f\, v'$, where $f: \valt \to \stream{\resultt\, \valt}$.
-  The update operator yields a single value result.
-  This operator will be used in @sec:updates.
-
-If $v[p]$ returns an error, then
-$v[p] \update f$ should yield an error and
-$v[p]? \update f$ should yield $v$.
-We define $v[p]? = v[p] \bindl \lambda r. r\, (\lambda o. \stream r)\, (\lambda e. \stream{})\, (\lambda b. \stream r)$.
-This simply discards any error yielded by $v[p]$.
 
 ## JSON values {#sec:json}
 
