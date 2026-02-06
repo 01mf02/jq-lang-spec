@@ -58,7 +58,7 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $.$ | $\stream{\ok v}$ |
 | $..$ | $\run\, \sem{\jqdef{r}{., (.[]? | r)} r}\, v$ |
 | $\$x$ | $\stream{\ok \$x}$ |
-| $[  ]$ | $\stream{\ok \arr_0}$ |
+| $[  ]$ | $\stream{\arr\, \stream{}}$ |
 | $\{\}$ | $\stream{\ok \objf_0}$ |
 | $[f ]$ | $\stream{\arr\, (\run\, \sem f\, v)}$ |
 | $\{\$x: \$y\}$ | $\stream{\objf_1\, \$x\, \$y}$ |

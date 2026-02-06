@@ -149,26 +149,12 @@ Each of these Boolean operations is of type $\valt \to \valt \to \valt$.
 
 We assume the existence of several functions:
 
-- $\arr_0: \valt$ yields an empty array.
-- $\arr_1: \valt \to \valt$ constructs a singleton array from a value.
+- $\arr: \stream{\resultt\, \valt} \to \resultt\, \valt$ yields an array result from a list of value results.
 - $\objf_0: \valt$ yields an empty object.
 - $\objf_1: \valt \to \valt \to \resultt\, \valt$ constructs a singleton object from a key and value.
   (It returns a value result instead of a value because it
   may fail in case that the provided value is not a valid key.)
 - $\bool: \valt \to \boolt$ takes a value and returns a boolean.
-
-We use $\arr_0$ and $\arr_1$ to define a convenience function $\arr$
-that transforms a list into a value result:
-It returns an array if all list elements are values, or into
-the first exception in the list otherwise:
-\begin{alignat*}{2}
-\sumf&{}: \stream{\resultt\, \valt} \to \valt &&\to \resultt\, \valt \coloneqq \lambda l\, v. l\, (\lambda h\, t. h \bindr (\lambda o. (v + o \bindr \sumf\, t)))\, (\ok\, v) \\
-\arr &{}: \stream{\resultt\, \valt} &&\to \resultt\, \valt \coloneqq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok\, (\arr_1\, v)}))\, \arr_0
-\end{alignat*}
-Here, the function $\sumf$ takes a list $l$ and a zero value $n$ and
-returns the sum of the zero value and the list elements if they are all OK,
-otherwise it returns the first exception in the list.
-This uses the addition operator $+: \valt \to \valt \to \resultt\, \valt$.
 
 <!-- TODO: path part definition in syntax section, but used already here -->
 Let $p$ a path part (as defined in @sec:syntax) containing values as indices.
@@ -211,18 +197,25 @@ We write $\err\, ...$ to denote $\err\, e$ where we do not want to specify $e$.
 
 The functions to construct arrays and objects, as well as to retrieve the _boolean value_, are as follows:
 \begin{alignat*}{3}
-\arr _0:{}&             &&            && \valt \coloneqq [] \\
-\arr _1:{}&             &&\valt \to{} && \valt \coloneqq \lambda v. [v] \\
-\objf_0:{}&             &&            && \valt \coloneqq \obj{} \\
-\objf_1:{}& \valt \to{} &&\valt \to{} && \resultt \coloneqq \lambda k\, v. \begin{cases}
+& \arr  &:{}& \stream{\resultt\, \valt} \to \resultt\, \valt && \coloneqq \lambda l. \sumf\, (l \bind (\lambda v. \stream{\ok\, [v])}))\, [] \\
+& \objf_0&:{}& \valt && \coloneqq \obj{} \\
+& \objf_1&:{}& \valt \to \valt \to \resultt\, \valt && \coloneqq \lambda k\, v. \begin{cases}
   \ok \obj{k \mapsto v} & \text{if $k$ is a string} \\
   \err ... & \text{otherwise}
 \end{cases} \\
-\bool:{}& && \valt \to{} && \boolt \coloneqq \lambda v. \begin{cases}
+& \bool&:{}& \valt \to \boolt && \coloneqq \lambda v. \begin{cases}
   \false & \text{if $v = \nullf$ or $v = \false$} \\
   \true & \text{otherwise}
 \end{cases}
 \end{alignat*}
+The function $\arr$ transforms a list of value results into a single value result:
+It returns an array if all list elements are values, and
+the first exception in the list otherwise.
+It uses a helper function $\sumf$ that takes a list $l$ and an accumulator $v$.
+It returns the sum of the accumulator and the list elements if they are all OK,
+otherwise it returns the first exception in the list.
+This uses the addition operator $+: \valt \to \valt \to \resultt\, \valt$.
+$$\sumf: \stream{\resultt\, \valt} \to \valt \to \resultt\, \valt \coloneqq \lambda l\, v. l\, (\lambda h\, t. h \bindr (\lambda o. (v + o \bindr \sumf\, t)))\, (\ok\, v)$$
 
 We are now going to define
 the access operators $v[p]$ and
