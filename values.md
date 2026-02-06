@@ -106,13 +106,14 @@ We assume the existence of several functions:
 Let $p$ a path part (as defined in @sec:syntax) containing values as indices.
 We assume two operators:
 
-- The _access operator_ $v[p]$ extracts values contained within $v$
+- The _access operator_ $v[p]$ extracts values contained within the value-path $v$
   at positions given by $p$, yielding a list of value-path results $\stream{\resultt\, \valpatht}$.
   This operator will be used in @sec:semantics.
 - The _update operator_ $v[p]^? \update f$ replaces
-  those elements $v' = v[p]$ in $v$ by
+  those elements $v' = v[p]$ in the value $v$ by
   the output of $f\, v'$, where $f: \valt \to \stream{\resultt\, \valt}$.
-  The update operator yields a single value result.
+  The update operator yields a single value result
+  $\resultt\, \valt$.
   This operator will be used in @sec:updates.
 
 If $v[p]$ returns an error, then
