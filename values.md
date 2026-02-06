@@ -293,3 +293,32 @@ Here, we use a helper function for the case that $v$ is an object.
 This function attempts to construct an object from
 a key and (the first element of) a list:
 $$\objf_?: \valt \to \stream{\resultt \valt} \to \resultt \valt \coloneqq \lambda k\, l. l\, (\lambda h\, t. h \bindr \lambda o. \objf_1\, k\, o)\, (\ok \objf_0)$$
+
+::: {.example}
+Let $v = \pair\, [1, 2]\, \none$, i.e. a value-path of an array without a path.
+That means that we do not know where the value comes from.
+Then we have that
+$v[0] = \stream{\ok\, (\pair\, 1\, \none)}$,
+$v[1] = \stream{\ok\, (\pair\, 2\, \none)}$, and
+$v[] = v[0] + v[1]$.
+
+We can update the value e.g. with $f \coloneqq \lambda x. \stream{x + 1}$.
+Then we have that
+$v[0] \update f = \ok\, [2, 2]$,
+$v[1] \update f = \ok\, [1, 3]$, and
+$v[] \update f = \ok\, [2, 3]$.
+Note that here, implicit conversion (@sec:implicit-conversion)
+casts the value-path $v$ to a value, allowing us to perform the update.
+:::
+
+::: {.example}
+Let $v = \pair\, \obj{\jqstr{a} \mapsto [1, 2]}\, (\some\, \stream{})$,
+i.e. a value-path with an empty path.
+We have that
+$v[\jqstr{a}] = \stream{\ok\, v'}$, where
+$v' = \pair\, [1, 2]\, (\some\, \stream{\jqstr{a}})$.
+This value-path $v'$ records where its value $[1, 2]$ came from, namely from $\jqstr{a}$.
+
+Accessing $v'$ appends to its path, i.e.
+$v'[0] = \stream{\ok\, (\pair\, 1\, (\some\, \stream{\jqstr{a}, 0}))}$.
+:::
