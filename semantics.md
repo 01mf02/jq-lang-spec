@@ -412,7 +412,7 @@ Table: Properties of path-less update semantics. {#tab:update-props}
 | $f | g$ | $f \update (g \update \sigma)$ |
 | $f, g$ | $(f \update \sigma) | (g \update \sigma)$ |
 | $\jqite{\$x}{f}{g}$ | $\jqite{\$x}{f \update \sigma}{g \update \sigma}$ |
-| $f \alt g$ | $\jqite{\jqf{first}(f \alt \jqf{null})}{f \update \sigma}{g \update \sigma}$ |
+| $f \alt g$ | $\jqite{\jqf{first}(f \alt \jqf{false})}{f \update \sigma}{g \update \sigma}$ |
 
 @tab:update-props gives a few properties that we want to hold for updates $\varphi \update \sigma$.
 Let us discuss these for the different filters $\varphi$:
@@ -574,45 +574,42 @@ $\jqlb{label}{x} | g$ and $\jqtc{f}{g}$.
 :::
 
 ::: {.example #ex:rec-update name="Recursive update"}
-Consider the filter $([1] | .. \update \{a: .\})$:
-Its intent is to replace all values $v$ recursively contained in the array $[1]$
+Consider the input $[1]$ and the filter $.. \update f$, where $f$ is $\{a: .\}$.
+This filter is supposed to
+replace all values $v$ recursively contained in the input
 by the object $\{a: v\}$.
 
 First, let us consider how *path-based* updates handle this.
-The filter "$..$" returns the paths
+The filter "$..$" is equivalent to $(\jqdef{r}{., (.[]? | r)} r)$ and
+yields the paths
 "$.$" (pointing to $[1]$) and
 "$.[0]$" (pointing to $1$).
-The path-based update thus first updates "$.$", then "$.[0]$".
-However, the result of updating "$.$" is $\{a: [1]\}$,
+The path-based update thus returns the same as $(. \update f) | (.[0] \update f)$.
+However, the result of "$. \update f$" is $\{a: [1]\}$,
 for which the path "$.[0]$" is invalid --- the path-based update fails with an error.
-The problem here is that the update treats "larger" values before "smaller" ones.
+The problem here is that "$..$" yields values closer to the root before values closer to the leaves.
+We call this strategy "root-first", as opposed to "leaf-first".
 
-Now, let us consider how *path-less* update semantics handle this.
-The filter "$..$" updates "smaller" values before "larger" ones,
-because in our definition of $r$, $(.[]? | r)$ comes before "$.$".
-That means that first, the $1$ in the array is updated, yielding $[\{a: 1\}]$.
-Next, the result is updated, yielding $\{a: [\{a: 1\}]\}$.
+Next, let us consider how path-less updates would evaluate
+$.. \update f$ if "$..$" was interpreted like above.
+This, again, performs updates root-first.
+Using @tab:update-props, we can show that this is equivalent to
+$\jqdef{r}{f | (.[]? \update r)} r$.
+In this filter, it depends on the outputs of $f$ how often the update $r$ is performed;
+for example, if $f$ always yields a non-empty array or object
+(as is the case for our given $f$), then $r$ does not terminate.
+This significantly diverges from the behaviour of path-based updates.
 
-In a previous version of these semantics, we used the same definition of $r$
-in both @tab:eval-semantics and @tab:update-semantics.
-This made path-less update semantics update "larger" values before "smaller" values.
-To see why we changed this behaviour, let us replicate the old behaviour
-by running $([1] | \jqdef{r}{., (.[]? | r)} r \update \{a: .\})$;
-that is, we use the same definition for $r$ as in @tab:eval-semantics.
-Here, path-less update semantics first update the whole input value,
-because in this definition of $r$, "$.$" comes before $(.[]? | r)$.
-The first result is therefore $\{a: [1]\}$.
-So far, this is the same as what first happened in the path-based update.
-However, now the update considers $(.[]? | r)$:
-Unlike the path-based update, which considered the paths in the *original* value
-(that became invalid),
-the path-less update now considers the values corresponding to "$.[]?$" in the *updated* value.
-Because we created a new object $\{a: [1]\}$,
-this updates all values corresponding to "$.[]?$" in this new object, namely $[1]$.
-The result is $\{a: \{a: [1]\}\}$, at which point the update again considers $[1]$.
-This repeats indefinitely and results in an infinite loop that never yields a result.
-Given that this is a relatively common scenario,
-this is why path-less updates use a different definition of $r$ than @tab:eval-semantics.
+This is why we use a different way to interpret "$..$" on the left-hand side of updates, namely as
+$\jqdef{r}{(.[]? | r), .} r$.
+This performs updates leaf-first.
+We can show that using this, $.. \update f$ is equivalent to
+$\jqdef{r}{(.[]? \update r) | f} r$.
+Here, the number of times $r$ calls $f$
+does _not_ depend on the output of $f$, but only on the
+original input given to $r$.
+This matches the behaviour of path-based updates much more closely,
+yet it terminates with a valid result, namely $\{a: [\{a: 1\}]\}$.
 :::
 
 ::: {.example name="The Curious Case of Alternation"}
