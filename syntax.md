@@ -247,7 +247,7 @@ consistent with that of other operators, such as $\{f: g\}$, where
 the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
 That also makes it easier to describe other filters, such as
 $\{f_1: g_1, \dots, f_n: g_n\}$, which we can lower to
-$\floor{\{f_1: g_1\} + \dots + \{f_n: g_n\}}$, whereas its lowering assuming the jq lowering of Cartesian operations would be
+$\floor{\{f_1: g_1\} + \dots + \{f_n: g_n\}}$, whereas its lowering assuming `jq`'s lowering of Cartesian operations would be
 $$\floor{\{f_1: g_1\}} \jqas \$x'_1 | \dots | \floor{\{f_n: g_n\}} \jqas \$x'_n | \$x'_1 + \dots + \$x'_n.$$
 
 ::: {.example}
