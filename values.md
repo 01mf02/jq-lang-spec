@@ -53,8 +53,8 @@ from which we could easily derive proper definitions using the $Y$ combinator.
 
 ## Values {#sec:value-ops}
 
-While jq operates uniquely on JSON values,
-we define the jq semantics for a general value type $\valt$.
+While `jq` operates uniquely on JSON values,
+we define jq semantics for a general value type $\valt$.
 Let us start by defining a few types related to values.
 
 A _result_ $\resultt\, T$ is either OK, an error, or a break.
@@ -85,9 +85,10 @@ in the remainder.
 We write $l \coloneqq \quad r_1 \gror \dots \gror r_n$ to say that
 $l$ is of shape $r_i$ for some $i \leq n$.
 
-The value type must provide arithmetic operations
+The value type must provide the binary arithmetic operations
 $\{+, -, \times, \div, \modulo\}$
-of type $\valt \to \valt \to \resultt\, \valt$.
+of type $\valt \to \valt \to \resultt\, \valt$, as well as
+a unary negation operation "$-$" of type $\valt \to \resultt\, \valt$.
 That means that every arithmetic operation can fail.
 The value type must also provide Boolean operations
 $\{<, \leq, >, \geq, \iseq, \neq\}$
@@ -134,11 +135,16 @@ Otherwise, $v[p]? = v[p]$ and $(v[p]? \update f) = (v[p] \update f)$.
 
 ## Composition
 
-We define three monadic bind operators to describe composition.
+We define three monadic bind operators to describe composition:
 \begin{alignat*}{7}
 &\bindr&&{}: \resultt\, T &&\to (T &&\to \resultt\, U&&) &&\to \resultt\, U &&\coloneqq \lambda r\, f. r\, (\lambda o. f\, o)\, (\lambda e. r)\, (\lambda b. r) \\
 &\bindl&&{}: \stream T &&\to (T &&\to \stream U&&) &&\to \stream U &&\coloneqq \lambda l\, f. l\, (\lambda h\, t. f\, h + (t \bindl f))\, \nil \\
 &\bind &&{}: \stream{\resultt\, T} &&\to (T &&\to \stream{\resultt\, U}&&) &&\to \stream{\resultt\, U} &&\coloneqq \lambda l\, f. l \bindl (\lambda x. x\, (\lambda o. f\, o)\, (\lambda e. \stream x)\, (\lambda b. \stream x))
+\end{alignat*}
+We also define two standard map functions over results and lists:
+\begin{alignat*}{5}
+&\mapr&&{}: (T \to U) &&\to \resultt\, T &&\to \resultt\, U &&\coloneqq \lambda f\, r. r \bindr (\lambda o. \ok\, (f\, o)) \\
+&\mapl&&{}: (T \to U) &&\to \stream{T} &&\to \stream{U} &&\coloneqq \lambda f\, l. l \bindl (\lambda x. \stream{f\, x})
 \end{alignat*}
 
 ## Implicit conversion {#sec:implicit-conversion}
@@ -156,24 +162,20 @@ A value can be converted to and from a value-path with the following functions:
 \tovp   &{}: \valt \to \valpatht \coloneqq \lambda v. \pair\, v\, \none \\
 \fromvp &{}: \valpatht \to \valt \coloneqq \snd
 \end{align*}
-This conversion can also take place inside results and lists, as shown by the next example.
+This conversion can also take place inside results and lists. For example:
 
-::: {.example}
-If we have a value-path $v_p: \valpatht$ and
-apply it to a function that expects a $\valt$, then
-$v_p$ is implicitly substituted by
-$\fromvp\, \v_p$.
-
-If we have a result $r: \resultt\, \valt$ and
-apply it to a function that expects a $\resultt\, \valpatht$, then
-$r$ is implicitly substituted by
-$r \bindr (\lambda v. \ok\, (\tovp\, v))$.
-
-If we have a list $l: \stream{\resultt\, \valt}$ and
-apply it to a function that expects a $\stream{\resultt\, \valpatht}$, then
-$l$ is implicitly substituted by
-$l \bindl (\lambda r. \stream{r \bindr (\lambda v. \ok\, (\tovp\, v))})$.
-:::
+- If we have a value-path $v_p: \valpatht$ and
+  apply it to a function that expects a $\valt$, then
+  $v_p$ is implicitly substituted by
+  $\fromvp\, \v_p$.
+- If we have a result $r: \resultt\, \valt$ and
+  apply it to a function that expects a $\resultt\, \valpatht$, then
+  $r$ is implicitly substituted by
+  $\mapr\, \tovp\, r$.
+- If we have a list $l: \stream{\resultt\, \valt}$ and
+  apply it to a function that expects a $\stream{\resultt\, \valpatht}$, then
+  $l$ is implicitly substituted by
+  $\mapl\, (\mapr\, \tovp)\, l$.
 
 ## JSON values {#sec:json}
 
