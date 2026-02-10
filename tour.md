@@ -1,6 +1,6 @@
 # Tour of jq {#sec:tour}
 
-This goal of this section is to convey an intuition about how jq functions.
+This goal of this section is to convey an intuition about jq.
 The official documentation of jq is its user manual [@jq-manual].
 
 jq programs are called _filters_.
@@ -21,7 +21,7 @@ The identity filter "`.`" returns a stream containing the input.^[
   In case where the input value does not matter,
   we can also use `jq -n $FILTER`,
   which runs the filter with the input value `null`.
-  We use jq 1.7.
+  We use `jq` 1.8.
 ]
 
 Arithmetic operations, such as
@@ -100,6 +100,7 @@ the Cartesian product of the output of `f` and `g`.^[
   "`(+) <$> [0, 2] <*> [1, 2]`", which both return
   `[1, 2, 3, 4]`.
 ]
+<!--
 However, there are cases where variables are indispensable.
 
 ::: {.example name="Variables Are Necessary"}
@@ -117,6 +118,7 @@ However, there are cases where variables are indispensable.
   we also want to pass the input given to `in` as an argument to `has`.
   Without variables, we could not do both.
 :::
+-->
 
 Folding over streams can be done using `reduce` and `foreach`:
 The filter "`reduce xs as $x (init; f)`" keeps
@@ -169,6 +171,7 @@ the filter "`1`" is not a path expression because
 "`1`" does not point to any part of the input value
 but creates a new value.
 
+<!--
 Identities such as
 "`.[] |= f`" being equivalent to "`[.[] | f]`" when the input value is an array, or
 "`. |= f`" being equivalent to `f`,
@@ -184,3 +187,4 @@ This motivates in part the definition of more simple and elegant semantics
 that behave like jq in most typical use cases
 but eliminate corner cases like the ones shown.
 We will show such semantics in @sec:updates.
+-->
