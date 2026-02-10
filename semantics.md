@@ -21,11 +21,11 @@ The lambda term $\sem \varphi : \filtert$ corresponding to an IR filter $\varphi
 $$\sem \varphi = \pair\, (\lambda v. t_r)\, (\lambda \sigma\, v. t_u)$$
 for some terms $t_r$ (run function) and $t_u$ (update function).
 For a given $\varphi$, we can obtain
-$t_r$ by $\run\, \sem \varphi\, v$ and
-$t_u$ by $\upd\, \sem \varphi\, \sigma\, v$.
+$t_r$ by "$\run\, \sem \varphi\, v$" and
+$t_u$ by "$\upd\, \sem \varphi\, \sigma\, v$".
 For conciseness, we write
-$\run\, \sem \varphi\, v$ to define $t_r$ and
-$\upd\, \sem \varphi\, \sigma\, v$ to define $t_u$.
+"$\run\, \sem \varphi\, v$" to define $t_r$ and
+"$\upd\, \sem \varphi\, \sigma\, v$" to define $t_u$.
 
 ::: {.example name="Identity filter compilation"}
 For the identity filter "$.$", we have $$ \sem{.} = \pair\,
@@ -88,7 +88,7 @@ Let us discuss its different cases:
 - "$..$": Returns the input value and all values recursively contained within it.
 - $\$x$: Returns the value currently bound to the variable $\$x$.
   Wellformedness of the filter (as defined in @sec:ir) ensures that
-  whenever we evaluate $\$x$, it must have been substituted,
+  whenever we evaluate a variable, it must have been substituted by a concrete value,
   for example by a surrounding call to $f \jqas \$x | g$.
 - $[]$ or $\{\}$: Creates an empty array or object.
 - $[f]$: Creates an array from the output of $f$, using the function $\arr$ defined in @sec:values.
@@ -107,8 +107,8 @@ Let us discuss its different cases:
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
 - $f \alt g$: Let $l$ be the outputs of $f$ whose boolean values are not false.
   This filter returns $l$ if $l$ is not empty, else the outputs of $g$.
-  Here, we use a function $\trues\, x$ that
-  returns its input $x$ if its boolean value is true.
+  Here, we use a function "$\trues$" that
+  returns its input if its boolean value is true.
   $$\trues: \valpatht \to \stream{\resultt\, \valpatht} \coloneqq \lambda x. (\bool\, x)\, \stream{\ok\, x}\, \stream{}$$
 - $f \jqas \$x | g$: For every output of $f$, binds it to the variable $\$x$ and
   returns the output of $g$, where $g$ may reference $\$x$.
@@ -122,7 +122,7 @@ Let us discuss its different cases:
   this equivalence does _not_ hold for updates; that is,
   $(f | g) \update \sigma$ is _not_ equal to
   $(f \jqas \$x' | \$x' | g) \update \sigma$.
-- $\jqtc{f}{g}$: Replaces all outputs of $f$ that equal $\err\, e$ for some $e$
+- $\jqtc{f}{g}$: Replaces all outputs of $f$ that equal "$\err\, e$" for some $e$
   by the output of $g$ on the input $e$.
   At first sight, this seems to diverge from jq, which
   aborts the evaluation of $f$ after the first error.
@@ -131,8 +131,8 @@ Let us discuss its different cases:
   $\jqlb{label}{x'} | \jqtc{f}{(g, \jqlb{break}{x'})}$ (see @tab:lowering),
   the overall behaviour described here corresponds to jq after all.
 - $\jqlb{label}{x} | f$: Returns all values yielded by $f$ until $f$ yields
-  an exception $\breakf\, \$x$.
-  This uses a function $\labelf$ that
+  an exception "$\breakf\, \$x$".
+  This uses a function "$\labelf$" that
   takes a label $\fresh$ and a list $l$ of value results,
   returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
   \begin{alignat*}{3}
@@ -144,7 +144,7 @@ Let us discuss its different cases:
   Here,
   $\nateq: \mathbb N \to \mathbb N \to \boolt$ returns
   $\true$ if two natural numbers are equal, else $\false$.
-- $\jqlb{break}{x}$: Returns a value result $\breakf\, \$x$.
+- $\jqlb{break}{x}$: Returns a value result "$\breakf\, \$x$".
   Similarly to the evaluation of variables $\$x$ described above,
   wellformedness of the filter (as defined in @sec:hir) ensures that
   the returned value $\breakf\, \$x$ will be
@@ -157,15 +157,15 @@ Let us discuss its different cases:
 - $.[p]^?$: Accesses parts of the input value;
   see @sec:value-ops for the definitions of the operators.
   When evaluating this, the indices contained in $p$ have been substituted by values.
-- $\jqfold{\fold}{f_x}{\$x}{(.; f)}$: Folds $f$ over the values returned by $f_x$,
+- $\jqfold{\fold}{f_x}{\$x}{(.; f; g)}$: Folds $f$ over the values returned by $f_x$,
   starting with the current input as accumulator.
   The current accumulator value is provided to $f$ as input value and
   $f$ can access the current value of $f_x$ by $\$x$.
   If $\fold =  \jqf{reduce}$, this returns only the final        values of the accumulator, whereas
   if $\fold = \jqf{foreach}$, this returns also the intermediate values of the accumulator.
   We will further explain this and define the functions
-  $\reducef  f\,     l\, v$ and
-  $\foreachf f\, g\, l\, v$ in @sec:folding.
+  "$\reducef  f\,     l\, v$" and
+  "$\foreachf f\, g\, l\, v$" in @sec:folding.
 - $\jqdef{x(x_1; ...; x_n)}{f} g$: Binds the $n$-ary filter $x$ in $g$.
   The definition of $x$, namely $f$, may refer to
   any of the arguments $x_i$ as well as to $x$ itself.
@@ -179,13 +179,19 @@ Let us discuss its different cases:
 
 <!-- TODO: explain how to handle builtin filters implemented by definition and as native function -->
 <!-- TODO: show implementation for `path` -->
-An implementation may also define semantics for builtin named filters.
-For example, an implementation may define
-$\run\, \sem{\jqf{error}}\, v \coloneqq \stream{\err\, v}$<!-- and
+An implementation may also define semantics for builtin named filters, for example:
+\begin{align*}
+\run\, \sem{\jqf{error}}\, v &\coloneqq \stream{\err\, v} \\
+\run\, \sem{\jqf{path}(f)}\, v &\coloneqq \run\, \sem{f}\, v \bind \lambda v. \snd\, v\, (\lambda p. \stream{\arr\, (p \bindl \lambda x. \stream{\ok\, x})})\, \stream{\err\, \dots}
+\end{align*}
+In particular, $\jqf{path}(f)$ is an important filter that
+runs $f$ and returns the path of each output as array,
+yielding an error if an output does not have an associated path.
+<!-- and
 $\run\, \sem{\jqf{keys }}\, v \coloneqq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
 In the case of $\jqf{keys}$, for example, there is no obvious way to implement it by definition,
 in particular because there is no simple way to obtain the domain of an object $\{...\}$
-using only the filters for which we gave semantics in @tab:eval-semantics-->.
+using only the filters for which we gave semantics in @tab:eval-semantics-->
 
 ::: {.example #ex:recursion name="Recursion"}
   Consider the following IR filter $\varphi$: $$\jqdef{\jqf{repeat}}{., \jqf{repeat}} \jqf{repeat}$$
@@ -243,7 +249,7 @@ $\jqfold{reduce }{f_x}{\$x}{(.; f)}$ and
 $\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$.
 
 \newcommand{\foldf}{\operatorname{fold}}
-Let us start by defining a general folding function $\foldf$:
+Let us start by defining a general folding function "$\foldf$":
 \begin{align*}
 \foldf&{}: (T \to U \to \stream{\resultt\, U}) \to (T \to U \to \stream{\resultt\, U}) \to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
 &\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, v \bind (\lambda y. g\, h\, y + F\, t\, y))\, (n\, v))
@@ -273,12 +279,12 @@ If $l$ is empty, then $v$ is called a _final_ accumulator value and $n\, v$ is r
 We use two different functions for $n$;
 the first returns just its input, corresponding to $\jqf{reduce}$ which returns a final value, and
 the second returns nothing,  corresponding to $\jqf{foreach}$.
-Instantiating $\foldf$ with these two functions, we obtain the following:
+Instantiating "$\foldf$" with these two functions, we obtain the following:
 \begin{alignat*}{4}
 \reducef &\coloneqq \lambda f.     && \foldf\, f\, (\lambda h\, v. \stream{})\, && (\lambda v. \stream{\ok v &&}) \\
 \foreachf &\coloneqq \lambda f\, g. && \foldf\, f\, g\, && (\lambda v. \stream{&&})
 \end{alignat*}
-Here, $\reducef$ and $\foreachf$ are the functions used in @tab:eval-semantics.
+Here, "$\reducef$" and "$\foreachf$" are the functions used in @tab:eval-semantics.
 Their types are:
 \begin{alignat*}{2}
 \reducef &{}: (T \to U \to \stream{\resultt\, U}) &&\to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
