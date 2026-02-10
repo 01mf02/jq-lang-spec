@@ -2,7 +2,7 @@
 
 In this section, we will show how to transform --- or compile ---
 an IR filter $\varphi$ to a lambda term $\sem \varphi$ of type $\filtert$.
-We will then define a function $\eval \varphi\, v$ that
+We will then define a function "$\eval\, \varphi\, v$" that
 returns the list of value-path results that
 the filter $\varphi: \filtert$ outputs when given
 the value-path $v: \valpatht$ as input.
@@ -178,14 +178,13 @@ Let us discuss its different cases:
   We will discuss this in @sec:updates.
 
 <!-- TODO: explain how to handle builtin filters implemented by definition and as native function -->
-<!-- TODO: show implementation for `path` -->
 An implementation may also define semantics for builtin named filters, for example:
 \begin{align*}
 \run\, \sem{\jqf{error}}\, v &\coloneqq \stream{\err\, v} \\
-\run\, \sem{\jqf{path}(f)}\, v &\coloneqq \run\, \sem{f}\, v \bind \lambda v. \snd\, v\, (\lambda p. \stream{\arr\, (p \bindl \lambda x. \stream{\ok\, x})})\, \stream{\err\, \dots}
+\run\, \sem{\jqf{path}(f)}\, v &\coloneqq \run\, \sem{f}\, v \bind \lambda v. \stream{\snd\, v\, (\lambda p. \arr\, (\mapl\, \ok\, p))\, (\err\, \dots)}
 \end{align*}
 In particular, $\jqf{path}(f)$ is an important filter that
-runs $f$ and returns the path of each output as array,
+runs $f$ and returns the path of each output ($\snd\, v$) as array,
 yielding an error if an output does not have an associated path.
 <!-- and
 $\run\, \sem{\jqf{keys }}\, v \coloneqq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
@@ -207,6 +206,7 @@ using only the filters for which we gave semantics in @tab:eval-semantics-->
   Because $\varphi$ does not contain any labels,
   $\sem \varphi$ does not make any reference to $\fresh$, therefore
   $\eval\, \sem \varphi\, v$ is equivalent to:
+  \allowdisplaybreaks
   \begin{align*}
   \run\, \sem \varphi\, v
   &= (\lambda \jqf{repeat}. \run\, \sem{\jqf{repeat}}\, v)\, (Y\, (\lambda \jqf{repeat}. \rho)) \\
@@ -501,8 +501,8 @@ Table: Path-less update semantics. Here, $\varphi$ is a filter and $\sigma: \val
 | $f \jqas \$x | g$ | $\reducef\, (\lambda x. (\lambda \$x. \upd\, \sem g)\, x\, \sigma)\, (\run\, \sem f\, v)\, v$ |
 | $\jqite{\$x}{f}{g}$ | $\upd\, ((\bool\, \$x)\, \sem f\, \sem g)\, \sigma\, v$ |
 | $\jqlb{break}{x}$ | $\stream{\breakf\, \$x}$ |
-| $\jqfold{reduce}{x}{\$x}{(.; f)}$ | $\reducef_{\update}\, (\lambda \$x. \upd\, \sem f)\, \sigma\, (\run\, \sem x\, v)\, v$ |
-| $\jqfold{foreach}{x}{\$x}{(.; f; g)}$ | $\foreachf_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem x\, v)\, v$ |
+| $\jqfold{reduce}{f_x}{\$x}{(.; f)}$ | $\reducef_{\update}\, (\lambda \$x. \upd\, \sem f)\, \sigma\, (\run\, \sem{f_x}\, v)\, v$ |
+| $\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$ | $\foreachf_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem{f_x}\, v)\, v$ |
 | $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \upd\, \sem g)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))\, \sigma\, v$ |
 | $x(f_1; ...; f_n)$ | $\upd\, (x\, \sem{f_1}\, ...\, \sem{f_n})\, \sigma\, v$ |
 
