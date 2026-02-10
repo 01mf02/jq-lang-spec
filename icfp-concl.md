@@ -1,35 +1,20 @@
 # Conclusion
 
-We have shown formal syntax and semantics of
+We have shown syntax and semantics of
 a large subset of the jq programming language.
 
-On the syntax side, we first defined a subset of jq's filter syntax.
-We then introduced a simpler subset (IR) in order to simplify the semantics later,
-and gave a lowering from concrete jq syntax to IR.
-
-On the semantics side, we gave formal semantics based on IR.
-First, we defined values and basic operations on them.
-Then, we used this to define the semantics of jq programs,
-by specifying how to compile a jq program to a lambda term.
-A large part of this was dedicated to the evaluation of updates:
-In particular, we showed a new approach to evaluate updates.
-This approach, unlike the approach implemented in jq,
-does not depend on separating path building and updating, but interweaves them.
-This allows update operations to cleanly handle multiple output values
-in cases where this was not possible before.
-Furthermore, in practice, this avoids creating temporary data to store paths,
-thus improving performance.
-This approach is also mostly compatible with the original jq behaviour,
-yet it is unavoidable that it diverges in some corner cases.
-
-Finally, we presented our implementation `jaq` of the new semantics and
-showed that its performance is best-in-class for jq implementations.
-Furthermore, we showed that indeed, the new update semantics yield
-particularly large speed-ups, compared to other operations.
+We first defined a subset of jq's filter syntax and
+a simpler subset (IR), and gave a lowering from concrete jq syntax to IR.
+We then gave formal semantics based on IR, by specifying
+how to compile a jq program to a lambda term.
+We discussed two strategies to interpret updates, namely
+path-based and path-less.
+We showed in our evaluation that our semantics can be implemented
+compactly (ujq) and efficiently (jaq), and that
+path-less updates can yield significant performance gains over path-based updates.
 
 We hope that our work is useful in several ways:
-For users of the jq programming language, it provides
-a succinct reference that precisely documents the language.
+For jq users, it provides a succinct reference of the language core.
 Our work should also benefit implementers of tools that process jq programs,
 such as compilers, interpreters, or linters.
 In particular, this specification should be sufficient to
