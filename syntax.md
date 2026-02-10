@@ -14,8 +14,6 @@ We will now present a subset of jq syntax^[
   However, these constructions can be transformed into
   semantically equivalent syntax as treated in this text.
 ] of which we have already seen examples in @sec:tour.
-We write $l \coloneqq \quad r_1 \gror \dots \gror r_n$ to say that
-$l$ is of shape $r_i$ for some $i \leq n$.
 
 A _filter_ $f$ is defined by the grammar
 \begin{align*}
@@ -30,7 +28,7 @@ f &\coloneqq \quad n \gror s \gror . \gror .. \gror \$x \gror (f) \\
 \end{align*}
 where:
 
-- $p$ is a _path part_ defined by the grammar $p \coloneqq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
+- $p$ is a _position_ defined by the grammar $p \coloneqq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
 - $P$ is a _pattern_ defined by the grammar $P \coloneqq \quad \$x \gror [P, \dots, P] \gror \{f: P, \dots, f: P\}$.
 - $x$ is an identifier (such as $\jqf{empty}$).
 - $n$ is a number (such as $42$ or $3.14$).
@@ -41,16 +39,9 @@ $f [p]^? \dots [p]^?$ can be
 $f [p]$, $f [p]?$,
 $f [p] [p]$, $f [p]? [p]$, $f [p] [p]?$, $f [p]? [p]?$,
 $f [p] [p] [p]$, and so on.
-We write $[]$ instead of $[\emptyset]$.
 The potential instances of the operators $\star$ and $\cartesian$ are given in @tab:binops.
 All operators $\star$ and $\cartesian$ are left-associative, except for
-"`|`", "`=`", "`|=`", and "$\arith$`=`".[^update-op]
-
-[^update-op]:
-  Although jq's update operator "`|=`" resembles the semantic entailment relation "$\models$",
-  it has a completely different meaning, deriving from
-  the combination of composition "`|`" and update "`=`".
-  We do not use semantic entailment "$\models$" in this paper.
+"`|`", "`=`", "`|=`", and "$\arith$`=`".
 
 We will handle the operators `reduce` and `foreach` very similarly; therefore,
 we introduce $\fold$ to stand for either `reduce` or `foreach`.
@@ -102,7 +93,7 @@ f &\coloneqq \quad n \gror s \gror . \gror .. \gror \$x \\
   &\gror {\jqdef{x(x; \dots; x)}{f} f} \\
   &\gror x(f; \dots; f)
 \end{align*}
-where $p$ is a path part containing variables instead of filters as indices.
+where $p$ is a position containing variables instead of filters as indices.
 
 The set of complex operators $\star$ in IR is reduced compared to full jq syntax ---
 for example, IR does not include "`=`" and "$\arith$`=`".
@@ -216,9 +207,9 @@ Here, we first used $\beta P$ as filter
 | $[ :f]^?$ | $(\$x | \floor f) \jqas \$y' | .[:\$y']^?$ |
 | $[f:g]^?$ | $(\$x | \floor f) \jqas \$y' | (\$x | \floor g) \jqas \$z' | .[\$y':\$z']^?$ |
 
-Table: Lowering of a path part $[p]^?$ with input $\$x$ to an IR filter. {#tab:lower-path}
+Table: Lowering of a position $[p]^?$ with input $\$x$ to an IR filter. {#tab:lower-path}
 
-@tab:lower-path shows how to lower a path part $p^?$ to IR filters.
+@tab:lower-path shows how to lower a position $[p]^?$ to IR filters.
 Like in @sec:hir, the meaning of superscript "$?$" is an optional presence of "$?$".
 In the lowering of $f [p_1]^? \dots [p_n]^?$ in @tab:lowering,
 if $[p_i]$ in the first column is directly followed by "?", then
@@ -244,14 +235,14 @@ $\floor \varphi \equiv ([3] | (\jqf{length}, 2) \jqas \$z | \floor \mu \update \
 In @sec:semantics, we will see that its output is $\stream{[1], [2]}$.
 :::
 
-The lowering in @tab:lowering is compatible with the semantics of the jq implementation,
+The lowering in @tab:lowering is compatible with the semantics of `jq`,
 with one notable exception:
-In jq, Cartesian operations $f \cartesian g$ would be lowered to
+In `jq`, Cartesian operations $f \cartesian g$ would be lowered to
 $\floor g \jqas \$y' | \floor f \jqas \$x' | \$x \cartesian \$y$, whereas we lower it to
 $\floor f \jqas \$x' | \floor g \jqas \$y' | \$x \cartesian \$y$,
 thus inverting the binding order.
 Note that the difference only shows when both $f$ and $g$ return multiple values.
-We diverge here from jq to make the lowering of Cartesian operations
+We diverge here from `jq` to make the lowering of Cartesian operations
 consistent with that of other operators, such as $\{f: g\}$, where
 the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
 That also makes it easier to describe other filters, such as
@@ -262,15 +253,15 @@ $$\floor{\{f_1: g_1\}} \jqas \$x'_1 | \dots | \floor{\{f_n: g_n\}} \jqas \$x'_n 
 ::: {.example}
 The filter $(0, 2) + (0, 1)$ yields
 $\stream{0, 1, 2, 3}$ using our lowering, and
-$\stream{0, 2, 1, 3}$ in jq.
+$\stream{0, 2, 1, 3}$ in `jq`.
 :::
 
 \newcommand{\wf}{\operatorname{wf}}
 Informally, we say that a filter is _wellformed_ if all references to
 named filters, variables, and labels were previously bound.
-For example, the filter $a, \$x$ is not wellformed because
+For example, the filter "$a, \$x$" is not wellformed because
 neither $a$ nor $\$x$ was previously bound, but the filter
-$\jqdef{a}{1} 2 \jqas \$x | a, \$x$ is wellformed.
+"$\jqdef{a}{1} 2 \jqas \$x | a, \$x$" is wellformed.
 @tab:wf specifies in detail if a filter is wellformed.
 For this, it uses a context $c = (d, v, l)$, consisting of
 a set $d$ of pairs $(x, n)$ storing the name $x$ and the arity $n$ of a filter,

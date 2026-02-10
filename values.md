@@ -57,7 +57,8 @@ While jq operates uniquely on JSON values,
 we define the jq semantics for a general value type $\valt$.
 Let us start by defining a few types related to values.
 
-A _value result_ $\resultt\, T$ is either OK, an error, or a break:
+A _result_ $\resultt\, T$ is either OK, an error, or a break.
+Non-OK results are also called _exceptions_.
 \begin{align*}
 \ok    &{}: T \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. o\, x \\
 \err   &{}: \valt \to \resultt\, T \coloneqq \lambda x\, o\, e\, b. e\, x \\
@@ -76,11 +77,13 @@ For the value type $\valt$, there must be a type of numbers and a type of string
 for any number $n$, $n$ is a value, and
 for any string $s$, $s$ is a value.
 Furthermore, for any boolean $b$, $b$ is a value.
-By convention, we will write
+By convention, we write
 $v$ for values,
 $n$ for numbers, and
 $s$ for strings
 in the remainder.
+We write $l \coloneqq \quad r_1 \gror \dots \gror r_n$ to say that
+$l$ is of shape $r_i$ for some $i \leq n$.
 
 The value type must provide arithmetic operations
 $\{+, -, \times, \div, \modulo\}$
@@ -102,25 +105,32 @@ We assume the existence of several functions:
   may fail in case that the provided value is not a valid key.)
 - $\bool: \valt \to \boolt$ takes a value and returns a boolean.
 
-<!-- TODO: path part definition in syntax section, but used already here -->
-Let $p$ a path part (as defined in @sec:syntax) containing values as indices.
+A _position_ $p$ is defined by the grammar $p \coloneqq \quad \emptyset \gror v \gror v: \gror :v \gror v:v$.
+The values contained in a position are called _indices_.
 We assume two operators:
 
 - The _access operator_ $v[p]$ extracts values contained within the value-path $v$
-  at positions given by $p$, yielding a list of value-path results $\stream{\resultt\, \valpatht}$.
+  at position $p$, yielding a list of value-path results $\stream{\resultt\, \valpatht}$.
   This operator will be used in @sec:semantics.
-- The _update operator_ $v[p]^? \update f$ replaces
+- The _update operator_[^update-op] $v[p] \update f$ replaces
   those elements $v' = v[p]$ in the value $v$ by
   the output of $f\, v'$, where $f: \valt \to \stream{\resultt\, \valt}$.
   The update operator yields a single value result
   $\resultt\, \valt$.
   This operator will be used in @sec:updates.
 
-If $v[p]$ returns an error, then
-$v[p] \update f$ should yield an error and
-$v[p]? \update f$ should yield $v$.
-We define $v[p]? = v[p] \bindl \lambda r. r\, (\lambda o. \stream r)\, (\lambda e. \stream{})\, (\lambda b. \stream{})$.
-This simply discards any error yielded by $v[p]$.
+[^update-op]:
+  Although jq's update operator "`|=`" resembles the semantic entailment relation "$\models$",
+  it has a completely different meaning, deriving from
+  the combination of composition "`|`" and update "`=`".
+  We do not use semantic entailment "$\models$" in this paper.
+
+We write $[]$ instead of $[\emptyset]$ and
+define error-suppressing variants of these operators:
+If $v[p]$ yields an error, then
+$v[p]?$ yields $\stream{}$ and
+$v[p]? \update f$ yields $\ok\, v$.
+Otherwise, $v[p]? = v[p]$ and $(v[p]? \update f) = (v[p] \update f)$.
 
 ## Composition
 
@@ -152,17 +162,17 @@ This conversion can also take place inside results and lists, as shown by the ne
 If we have a value-path $v_p: \valpatht$ and
 apply it to a function that expects a $\valt$, then
 $v_p$ is implicitly substituted by
-$\fromvp \v_p$.
+$\fromvp\, \v_p$.
 
 If we have a result $r: \resultt\, \valt$ and
 apply it to a function that expects a $\resultt\, \valpatht$, then
 $r$ is implicitly substituted by
-$r \bindr (\lambda v. \ok\, (\tovp v))$.
+$r \bindr (\lambda v. \ok\, (\tovp\, v))$.
 
 If we have a list $l: \stream{\resultt\, \valt}$ and
 apply it to a function that expects a $\stream{\resultt\, \valpatht}$, then
 $l$ is implicitly substituted by
-$l \bindl (\lambda r. \stream{r \bindr (\lambda v. \ok\, (\tovp v))})$.
+$l \bindl (\lambda r. \stream{r \bindr (\lambda v. \ok\, (\tovp\, v))})$.
 :::
 
 ## JSON values {#sec:json}
@@ -198,7 +208,7 @@ The functions to construct arrays and objects, as well as to retrieve the _boole
   \true & \text{otherwise}
 \end{cases}
 \end{alignat*}
-The function $\arr$ transforms a list of value results into a single value result:
+The function "$\arr$" transforms a list of value results into a single value result:
 It returns an array if all list elements are values, and
 the first exception in the list otherwise.
 It uses a helper function $\sumf$ that takes a list $l$ and an accumulator $v$.
@@ -223,7 +233,7 @@ indexing with non-existing keys, and
 slicing ($v[l:h]$).
 
 \newcommand{\appvp}{\operatorname{app\_vp}}
-The access operator $v[p]$ of a value-path $v$ at path $p$ is defined as follows:
+The access operator $v[p]$ of a value-path $v$ at position $p$ is defined as follows:
 $$v[] \coloneqq \begin{cases}
   \sum_i v[i] & \text{if $\fst v = [v_0, ..., v_n]$} \\
   \sum_i v[k_i] & \text{if $\fst v = \obj{k_0 \mapsto v_0, ..., k_n \mapsto v_n}$}
