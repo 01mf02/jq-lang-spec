@@ -1,6 +1,7 @@
 COMMON=defs.tex tour.md values.md syntax.md semantics.md impl.md
-ICFP=icfp-intro.md $(COMMON) icfp-concl.md
-SPEC=spec-intro.md $(COMMON)
+APPENDIX=appendix.tex json.md ujq.md
+ICFP=icfp-intro.md $(COMMON) icfp-concl.md $(APPENDIX)
+SPEC=spec-intro.md $(COMMON) $(APPENDIX)
 DEPS=filter.lua literature.bib template.tex header.tex Makefile
 
 PANOPTS= \
