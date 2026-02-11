@@ -1,0 +1,48 @@
+# keep intermediate files
+.SECONDARY:
+
+HF=hyperfine -M 10 --export-json $@ -L jq $(JAQ),$(JQ),$(GOJQ)
+
+JQ=jq
+JAQ=jaq
+GOJQ=gojq
+
+upd: upd-arr.tsv upd-obj.tsv
+bf: bf-fib.json
+wsjq: wsjq-hopper.json
+jqjq: jqjq-implode.json
+
+jqjq:
+	git clone https://github.com/wader/jqjq --revision=431b951a8a361e90bdbda6c5472777869ce4ca69
+
+wsjq:
+	git clone https://github.com/thaliaarchi/wsjq --revision=9ebf3df9748471410a7a75f531d4a7db79c344bb
+
+pik4ez-ascii:
+	git clone https://github.com/wspace/pik4ez-ascii --revision=083059eac4d7287f008811a8a08ec329f9cb2362
+
+wsjq/wsjq: wsjq
+jqjq/jqjq: jqjq
+pik4ez-ascii/hopper.ws: pik4ez-ascii
+
+bf-fib.json:
+	$(HF) "{jq} -sRrf bf.jq -R fib.bf"
+
+wsjq-hopper.json: wsjq/wsjq pik4ez-ascii/hopper.ws 
+	$(HF) "$< --jq={jq} --no-underflow pik4ez-ascii/hopper.ws"
+
+jqjq-implode.json: jqjq/jqjq
+	$(HF) "JQ={jq} $< -n 'def f: 1,8; [f,f] | map(.+105) | implode'"
+
+# does not work ATM: https://github.com/wader/jqjq/issues/41
+jqjq-bf-fib.json: jqjq/jqjq
+	$(HF) 'JQ={jq} $< -n "\"$$(cat fib.bf)\" | $$(cat bf.jq)"'
+
+upd-arr.json:
+	$(HF) -L f '.','[.[] | .]','.[] |= .','getpath(path(.[])) |= .' '{jq} -n "[range(1000000)] | {f} | empty"'
+
+upd-obj.json:
+	$(HF) -L f '.','{a: .a | [.[] | .]}','.a[] |= .','getpath(path(.a[])) |= .' '{jq} -n "{a: [range(1000000)]} | {f} | empty"'
+
+upd-%.tsv: upd-%.json
+	(echo "f	time-jaq	time-jq	time-gojq" && $(JQ) -r -f upd.jq $<) > $@

@@ -6,7 +6,7 @@
 \begin{tikzpicture}
 \begin{groupplot}[
   group style={group size=2 by 1, horizontal sep=0.5cm, yticklabels at=edge left},
-  y=1cm,
+  y=1.5cm,
   xlabel=Runtime,
   x unit=ms,
   axis x line=bottom,
@@ -22,8 +22,8 @@
   nodes near coords,
   yticklabels={
     Construction,
-    Native update,
     Manual update,
+    Native update,
     Path-based update,
   },
   cycle list name=redblue,
@@ -31,14 +31,15 @@
 ]
 
 \nextgroupplot[title={\texttt{[range(1000000)]}}]
-\addplot+ table[y=f, x=time-jq ] {eval/arr.tsv};
-\addplot+ table[y=f, x=time-jaq] {eval/arr.tsv};
-\legend{jq,jaq}
+\addplot+ table[y=f, x=time-gojq] {eval/upd-arr.tsv};
+\addplot+ table[y=f, x=time-jq  ] {eval/upd-arr.tsv};
+\addplot+ table[y=f, x=time-jaq ] {eval/upd-arr.tsv};
+\legend{gojq,jq,jaq}
 
 \nextgroupplot[title={\texttt{\{"a":\ [range(1000000)]\}}}]
-\addplot+ table[y=f, x=time-jq ] {eval/obj.tsv};
-\addplot+ table[y=f, x=time-jaq] {eval/obj.tsv};
+\addplot+ table[y=f, x=time-gojq] {eval/upd-obj.tsv};
+\addplot+ table[y=f, x=time-jq  ] {eval/upd-obj.tsv};
+\addplot+ table[y=f, x=time-jaq ] {eval/upd-obj.tsv};
 
 \end{groupplot}
-
 \end{tikzpicture}
