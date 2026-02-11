@@ -1,0 +1,36 @@
+\pgfplotscreateplotcyclelist{redblue}{
+  {black},
+  {blue,fill=blue!30!white,mark=none},
+  {red,mark=none,pattern=dots,pattern color=red},
+}
+
+\begin{tikzpicture}
+\begin{axis}[
+  x=1.5cm,
+  ylabel=Runtime,
+  y unit=ms,
+  width=6.8cm,
+  ybar,
+  xtick=data,
+  xtick style={draw=none},
+  ymin=0,
+  enlarge y limits={abs=8ex,upper},
+  enlarge x limits=0.2,
+  nodes near coords,
+  every node near coord/.append style={rotate=90, anchor=west},
+  xticklabels={
+    bf-fib,
+    {wsjq-\\hopper},
+    {jqjq-\\implode},
+  },
+  xticklabel style={align=center},
+  cycle list name=redblue,
+]
+
+\addplot+ table[x=f, y=time-jaq ] {eval/interpreters.tsv};
+\addplot+ table[x=f, y=time-jq  ] {eval/interpreters.tsv};
+\addplot+ table[x=f, y=time-gojq] {eval/interpreters.tsv};
+\legend{jaq,jq,gojq}
+
+\end{axis}
+\end{tikzpicture}

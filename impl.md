@@ -44,6 +44,13 @@ The other main implementations of the jq language, namely `jq` and gojq,
 both compile jq programs to a list of imperative instructions and execute it, whereas
 jaq compiles jq programs to an abstract syntax tree and interprets it.
 
+\begin{figure}
+\centering
+\input{eval/interpreters.tex}
+\caption{Runtime to .... Lower is better.}
+\label{fig:interpreters}
+\end{figure}
+
 <!--
 Table: Runtime for various benchmarks, in milliseconds. Lower is better. "N/A" if error or more than 10 seconds. {#tab:benchmark}
 
@@ -133,6 +140,7 @@ Path-based update | `getpath(path(.[])) |= .` | `getpath(path(.a[])) |= .`
 Table: Evaluated filter `f` depending on input and action. \label{tab:update-eval}
 
 \begin{figure}
+\centering
 \input{eval/update.tex}
 \caption{Runtime to construct and process input. Lower is better.}
 \label{fig:update}

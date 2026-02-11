@@ -6,11 +6,11 @@ HF=hyperfine -M 10 --export-json $@ -L jq $(JAQ),$(JQ),$(GOJQ)
 JQ=jq
 JAQ=jaq
 GOJQ=gojq
+HEADER="f	time-jaq	time-jq	time-gojq"
 
 upd: upd-arr.tsv upd-obj.tsv
-bf: bf-fib.json
-wsjq: wsjq-hopper.json
-jqjq: jqjq-implode.json
+interpreters.tsv: bf-fib.json wsjq-hopper.json jqjq-implode.json
+	(echo $(HEADER) && cat $^ | $(JQ) -srf interpreters.jq) > $@
 
 jqjq:
 	git clone https://github.com/wader/jqjq --revision=431b951a8a361e90bdbda6c5472777869ce4ca69
@@ -45,4 +45,4 @@ upd-obj.json:
 	$(HF) -L f '.','{a: .a | [.[] | .]}','.a[] |= .','getpath(path(.a[])) |= .' '{jq} -n "{a: [range(1000000)]} | {f} | empty"'
 
 upd-%.tsv: upd-%.json
-	(echo "f	time-jaq	time-jq	time-gojq" && $(JQ) -r -f upd.jq $<) > $@
+	(echo $(HEADER) && $(JQ) -r -f upd.jq $<) > $@
