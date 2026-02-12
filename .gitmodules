@@ -1,0 +1,12 @@
+[submodule "eval/jqjq"]
+	path = eval/jqjq
+	url = https://github.com/wader/jqjq
+[submodule "eval/wsjq"]
+	path = eval/wsjq
+	url = https://github.com/thaliaarchi/wsjq
+[submodule "eval/pik4ez-ascii"]
+	path = eval/pik4ez-ascii
+	url = https://github.com/wspace/pik4ez-ascii
+[submodule "ujq/jaq"]
+	path = ujq/jaq
+	url = https://github.com/01mf02/jaq

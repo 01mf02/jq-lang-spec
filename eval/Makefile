@@ -12,19 +12,6 @@ upd: upd-arr.tsv upd-obj.tsv
 interpreters.tsv: bf-fib.json wsjq-hopper.json jqjq-implode.json jqjq-test.json
 	(echo $(HEADER) && cat $^ | $(JQ) -srf interpreters.jq) > $@
 
-jqjq:
-	git clone https://github.com/wader/jqjq --revision=431b951a8a361e90bdbda6c5472777869ce4ca69
-
-wsjq:
-	git clone https://github.com/thaliaarchi/wsjq --revision=9ebf3df9748471410a7a75f531d4a7db79c344bb
-
-pik4ez-ascii:
-	git clone https://github.com/wspace/pik4ez-ascii --revision=083059eac4d7287f008811a8a08ec329f9cb2362
-
-wsjq/wsjq: wsjq
-jqjq/jqjq: jqjq
-pik4ez-ascii/hopper.ws: pik4ez-ascii
-
 bf-fib.json:
 	$(HF) "{jq} -sRrf bf.jq -R fib.bf"
 
