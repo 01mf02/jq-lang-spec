@@ -9,7 +9,7 @@ GOJQ=gojq
 HEADER="f	time-jaq	time-jq	time-gojq"
 
 upd: upd-arr.tsv upd-obj.tsv
-interpreters.tsv: bf-fib.json wsjq-hopper.json jqjq-implode.json
+interpreters.tsv: bf-fib.json wsjq-hopper.json jqjq-implode.json jqjq-test.json
 	(echo $(HEADER) && cat $^ | $(JQ) -srf interpreters.jq) > $@
 
 jqjq:
@@ -33,6 +33,9 @@ wsjq-hopper.json: wsjq/wsjq pik4ez-ascii/hopper.ws
 
 jqjq-implode.json: jqjq/jqjq
 	$(HF) "JQ={jq} $< -n 'def f: 1,8; [f,f] | map(.+105) | implode'"
+
+jqjq-test.json: jqjq
+	$(HF) "make -C $< JQ={jq} test-jqjq"
 
 # does not work ATM: https://github.com/wader/jqjq/issues/41
 jqjq-bf-fib.json: jqjq/jqjq

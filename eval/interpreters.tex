@@ -7,29 +7,49 @@
 \begin{tikzpicture}
 \begin{axis}[
   x=1.5cm,
-  ylabel=Runtime,
-  y unit=ms,
+  ylabel=Normalised time,
   width=6.8cm,
   ybar,
   xtick=data,
   xtick style={draw=none},
   ymin=0,
+  legend style={
+    at={(0.5,1.05)},
+    anchor=south,
+    legend columns=-1,
+  },
   enlarge y limits={abs=8ex,upper},
   enlarge x limits=0.2,
   nodes near coords,
   every node near coord/.append style={rotate=90, anchor=west},
+  point meta=explicit,
   xticklabels={
     bf-fib,
     {wsjq-\\hopper},
     {jqjq-\\implode},
+    {jqjq-\\test},
   },
   xticklabel style={align=center},
   cycle list name=redblue,
 ]
 
-\addplot+ table[x=f, y=time-jaq ] {eval/interpreters.tsv};
-\addplot+ table[x=f, y=time-jq  ] {eval/interpreters.tsv};
-\addplot+ table[x=f, y=time-gojq] {eval/interpreters.tsv};
+\def\rowmax{max(
+  \thisrow{time-jaq}, max(
+  \thisrow{time-jq},
+  \thisrow{time-gojq}))
+}
+
+\newcommand{\normplot}[1]{%
+  \addplot table[
+    x=f,
+    y    expr=\thisrow{#1} / \rowmax,
+    meta expr=\thisrow{#1}
+  ] {eval/interpreters.tsv};
+}
+
+\normplot{time-jaq}
+\normplot{time-jq}
+\normplot{time-gojq}
 \legend{jaq,jq,gojq}
 
 \end{axis}
