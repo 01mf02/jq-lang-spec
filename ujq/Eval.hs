@@ -164,6 +164,7 @@ upd phi c@Ctx{vars, lbls} sigma v = case phi of
 builtins :: Value v => Map.Map (String, Int) (Named v)
 builtins = Map.fromList $ map (\ (sig, f) -> (sig, Fun f)) $
   [ (("path", 1), \args c vp -> map getPath $ run (args !! 0) c (ValP {val = val vp, path = Just []}))
+  , (("error_empty", 0), \_ _ (ValP {val}) -> [Left $ Val.Error val])
   ]
 
 getPath :: Value v => ValPR v -> ValPR v
