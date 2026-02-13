@@ -158,12 +158,6 @@ data Ctx = Ctx {
   lbls :: Set.Set String
 }
 
-emptyCtx = Ctx {
-  vars = Set.empty,
-  funs = Set.empty,
-  lbls = Set.empty
-}
-
 wf :: Filter -> Ctx -> Bool
 wf f c@Ctx{vars, funs, lbls} = case f of
   Id       -> True
