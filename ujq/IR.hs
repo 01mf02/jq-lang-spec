@@ -59,7 +59,7 @@ compilePath x vs (part, opt) = case part of
 
 -- `def rec: ., (.[]? | rec); rec`.
 recRun :: Filter
-recRun = Def "rec" [] ((iter `Compose` App "rec" []) `Concat` Id) $ App "rec" []
+recRun = Def "rec" [] (Id `Concat` (iter `Compose` App "rec" [])) $ App "rec" []
 
 -- `.[]?`
 iter :: Filter
@@ -67,7 +67,7 @@ iter = Path (Val.Range Nothing Nothing) Optional
 
 -- `def rec: (.[]? | rec), .; rec`.
 recUpd :: Filter
-recUpd = Def "rec" [] (Id `Concat` (iter `Compose` App "rec" [])) $ App "rec" []
+recUpd = Def "rec" [] ((iter `Compose` App "rec" []) `Concat` Id) $ App "rec" []
 
 compile :: Int -> Syn.Term -> Filter
 compile vs f' = case f' of
