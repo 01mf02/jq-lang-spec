@@ -28,6 +28,13 @@ data Ctx v = Ctx {
   lbls :: Map.Map String Int
 }
 
+toIRCtx :: Ctx v -> IR.Ctx
+toIRCtx (Ctx {vars, funs, lbls}) = IR.Ctx {
+  IR.vars = Map.keysSet vars,
+  IR.funs = Map.keysSet funs,
+  IR.lbls = Map.keysSet lbls
+}
+
 mathOp :: Value a => Syn.MathOp -> a -> a -> ValR a
 mathOp op = case op of
   Syn.Add -> Val.add

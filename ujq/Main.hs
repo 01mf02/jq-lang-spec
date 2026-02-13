@@ -1,7 +1,7 @@
 import qualified Data.Map as Map
 import qualified Val
 import qualified IR
-import Eval (Ctx(..), run, builtins)
+import Eval (Ctx(..), run, builtins, toIRCtx)
 import Control.Monad (when)
 import System.Exit (exitFailure)
 
@@ -13,11 +13,11 @@ main = do
   --print tm
   let f = IR.compile 0 tm
 
-  when (not $ IR.wf f IR.emptyCtx) $ do
+  let c = Ctx {vars = Map.empty, funs = builtins, lbls = Map.empty}
+  when (not $ IR.wf f $ toIRCtx c) $ do
     putStrLn $ "Filter is not well-formed (unknown function or variable)"
     exitFailure
 
-  let c = Ctx {vars = Map.empty, funs = builtins, lbls = Map.empty}
   let v = Val.newVal Val.Null
   --print f
   err <- printUntilError $ map (fmap Val.val) $ run f c v
