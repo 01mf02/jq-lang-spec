@@ -158,6 +158,10 @@ data Ctx = Ctx {
   lbls :: Set.Set String
 }
 
+-- | Is the filter wellformed with respect to the context?
+--
+-- Return true iff all functions, variables, and labels referenced in the filter
+-- were previously defined.
 wf :: Filter -> Ctx -> Bool
 wf f c@Ctx{vars, funs, lbls} = case f of
   Id       -> True
