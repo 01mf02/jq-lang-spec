@@ -6,6 +6,7 @@ import Def (Option(None, Some), Part(Range), Opt(Optional), toMaybe)
 import qualified Val
 import qualified Data.Set as Set
 import Data.Foldable (toList)
+import Data.List (isPrefixOf)
 
 type Var = String
 
@@ -149,7 +150,11 @@ compile vs f' = case f' of
   Syn.Fold(_, _, _, _) -> error "unknown folding operation"
   Syn.Path(head, Def.Path(path)) -> fresh vs Syn.Id $
     \x' vs -> foldl (\acc -> Compose acc . compilePath x' vs) (compile vs head) path
-  Syn.Def(defs, t) -> foldr (\ (name, args, rhs) -> Def name args (compile vs rhs)) (compile vs t) defs
+  Syn.Def(defs, t) ->
+    foldr (\ (name, args, rhs) ->
+      let bind t = foldr (\v -> Bind (App v []) v) t $ filter (isPrefixOf "$") args in
+      Def name args (bind $ compile vs rhs)
+    ) (compile vs t) defs
   Syn.Call(name, args) -> App name $ map (compile vs) args
 
 data Ctx = Ctx {
