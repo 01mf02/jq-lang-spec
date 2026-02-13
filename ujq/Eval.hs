@@ -77,7 +77,7 @@ foldUpd f g n l v = case l of
   Left e : _ -> [Left e]
 
 reduceUpd :: Update e x y -> (y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
-reduceUpd f sigma = foldUpd f (\h v -> [ok v]) sigma
+reduceUpd f sigma = foldUpd f (\_h v -> [ok v]) sigma
 
 foreachUpd :: Update e x y -> Update e x y -> (y -> [Either e y]) -> [Either e x] -> y -> [Either e y]
 foreachUpd f g sigma = foldUpd f (\h v -> g h sigma v) (\v -> [ok v])
