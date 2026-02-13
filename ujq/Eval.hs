@@ -156,9 +156,23 @@ upd phi c@Ctx{vars, lbls} sigma v = case phi of
   Foreach fx x f g -> foreachUpd (\xv -> upd f (bindVar x xv c)) (\xv -> upd g (bindVar x xv c)) sigma (map (fmap val) $ run fx c $ newVal v) v
   IR.Def f_name arg_names rhs g -> upd g (bindDef f_name arg_names rhs c) sigma v
   App f_name args -> case getNamed f_name args c of
-    Left f -> error $ "todo"
+    Left _f -> fail
     Right (rhs, c) -> upd rhs c sigma v
-  _ -> error "todo"
+  ToString -> fail
+  Num _ -> fail
+  Str _ -> fail
+  Arr0 -> fail
+  Obj0 -> fail
+  ArrN _ -> fail
+  Obj1 _ _ -> fail
+  Neg _ -> fail
+  BoolOp _ _ _ -> fail
+  MathOp _ _ _ -> fail
+  Update _ _ -> fail
+  Label _ _ -> fail
+  TryCatch _ _ -> fail
+  Var _ -> fail
+  where fail = [err "invalid path expression"]
 
 -- Builtin functions.
 builtins :: Value v => Map.Map (String, Int) (Named v)
