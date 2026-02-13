@@ -53,7 +53,7 @@ compilePath x vs (part, opt) = case part of
     (Nothing, Nothing) -> range Nothing Nothing
     (Just l, Nothing) -> fresh vs l $ \l _vs -> range (Just l) Nothing
     (Nothing, Just r) -> fresh vs r $ \r _vs -> range Nothing (Just r)
-    (Just l, Just r) -> fresh vs l $ \l vs -> fresh vs r $ \r _vs -> range (Just l) (Just r)
+    (Just l, Just r) -> freshBin vs l r $ \l r -> range (Just l) (Just r)
   where
     app tm = Syn.pipe (Syn.Var(x)) tm
     range l r = Path (Val.Range l r) opt
