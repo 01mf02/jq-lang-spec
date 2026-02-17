@@ -30,15 +30,12 @@ are available in jq.
 For example, "`. + 1`" returns a stream containing the successor of the input.
 Here, "`1`" is a filter that returns the value `1` for any input.
 
-Concatenation is an important operator in jq:
 The filter "`f, g`" concatenates the outputs of the filters `f` and `g`.
 For example, the filter "`., .`" returns a stream containing the input value twice.
-
-Composition is one of the most important operators in jq:
 The filter "`f | g`" maps the filter `g` over all outputs of the filter `f`.
 For example, "`(1, 2, 3) | (. + 1)`" returns `2, 3, 4`.
 
-Arrays are created from a stream produced by `f` using the filter "`[f]`".
+The filter "`[f]`" creates an array from a stream produced by `f`.
 For example, the filter "`[1, 2, 3]`"
 concatenates the output of the filters "`1`", "`2`", and "`3`" and puts it into an array,
 yielding the value `[1, 2, 3]`.
@@ -140,34 +137,35 @@ yields the cumulative sum over all array elements.
 Wherever we can use `as $x` to bind values to a variable,
 we can also destructure values using a _pattern_.
 For example, given the input value `[1, [2], 3]`, the filter
-`. as [$x, [$y], $z] | $y` yields `2`.
+"`. as [$x, [$y], $z] | $y`" yields `2`.
 
 We can halt filter evaluation with `label`-`break`:
-The filter `label $x | f` yields all outputs of `f`
-until `f` invokes `break $x`, at which point `f` is not evaluated further.
+The filter "`label $x | f`" yields all outputs of `f`
+until `f` invokes "`break $x`", at which point `f` is not evaluated further.
 For example, the filter
-`(label $x | 1, break $x, 2), 3` yields the stream `1, 3`.
+"`(label $x | 1, break $x, 2), 3`" yields the stream `1, 3`.
 It is possible to break out from arguments passed to filters;
-for example, the filter `label $x | recurse(break $x)` returns its input.
+for example, the filter "`label $x | recurse(break $x)`" returns its input.
 We can also nest labels; for example, the filter
-`label $x | 1, (label $y | 2, break $x, 3), 4` yields `1, 2`.
+"`label $x | 1, (label $y | 2, break $x, 3), 4`" yields `1, 2`.
 If we replace `break $x` by `break $y`, then it yields `1, 2, 4`.
 If we replace `break $x` by `empty`, then it yields `1, 2, 3, 4`.
 
-Updating values can be done with the operator "`|=`",
-which has a similar function as lens setters in languages such as Haskell
+The operator "`|=`" updates values.
+It has a similar function as lens setters in languages such as Haskell
 [@FosterPP08; @FosterGMPS05; @PickeringGW17]:
-Intuitively, the filter "`p |= f`" considers any value `v` returned by `p` and
+Intuitively, the filter "`p |= f`" considers
+any part `v` of the input value returned by `p` and
 replaces it by the output of `f` applied to `v`.
-We call a filter on the left-hand side of "`|=`" a _path expression_.
 For example, when given the input `[1, 2, 3]`,
 the filter  "`.[] |= (. + 1)`" yields `[2, 3, 4]`, and
 the filter "`.[1] |= (. + 1)`" yields `[1, 3, 3]`.
 We can also nest these filters;
 for example, when given the input `[[1, 2], [3, 4]]`,
 the filter "`(.[] | .[]) |= (. + 1)`" yields `[[2, 3], [4, 5]]`.
-However, not every filter is a path expression; for example,
-the filter "`1`" is not a path expression because
+However, not every filter can be used on the left-hand side of an update;
+for example,
+"`1 |= f`" yields an error because
 "`1`" does not point to any part of the input value
 but creates a new value.
 

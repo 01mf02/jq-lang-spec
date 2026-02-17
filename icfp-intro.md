@@ -34,6 +34,7 @@ jq provides a Turing-complete language that is interesting on its own; for examp
 -->
 We refer to the program as "`jq`" and to
 its language as "the jq language" or "jq".
+A "jq interpreter" is a program that executes jq programs.
 
 The jq language is a dynamically typed, lazily evaluated
 functional programming language with
@@ -43,17 +44,27 @@ informally specified, for example in the jq manual [@jq-manual].
 This leaves a lot of space for interpretation and makes it difficult to find out
 whether certain behaviour of a jq implementation is accidental or intended.
 
-We have striven to create denotational semantics (@sec:semantics) such that in most common use cases,
-the semantics and `jq`'s behaviour coincide.
+We have created denotational semantics (@sec:semantics) such that
+in most common use cases, the semantics and `jq`'s behaviour coincide.
+This makes it possible to verify
+the correctness of jq programs and implementations.
+For example, our semantics could be used to prove that
+an optimisation technique in a jq interpreter preserves correctness.
+Furthermore, our semantics are abstract over the type of values.
+This addresses the fact that the type of values differs between
+different jq implementations and different versions of `jq`.
+It also makes it possible to describe jq implementations that
+process other kinds of values than JSON.
+
 <!--
 The goals for creating these semantics were, in descending order of importance:
 
 - Simplicity: The semantics should be easy to describe, understand, and implement.
 - Performance: The semantics should allow for performant execution.
 - Compatibility: The semantics should be consistent with jq.
--->
 We created these semantics experimentally, by coming up with
 jq filters and observing `jq`'s behaviour.
+-->
 
 One of the least specified, yet most fascinating features of jq
 are _updates_:
@@ -66,6 +77,12 @@ eliminates many potential errors, and
 allows for more performant execution.
 We compare this with jq's traditional path-based updates.
 
+We have created two jq interpreters:
+_ujq_ is a direct translation of our semantics to Haskell, and
+_jaq_ is an optimised version written in Rust.
+To test whether a jq implementation (such as jaq) confirms to our semantics,
+we can compare its behaviour to ujq.
+
 @sec:tour introduces jq by a series of examples that
 give a glimpse of actual jq syntax and behaviour.
 @sec:values defines several data types and corresponding lambda terms, such as
@@ -74,5 +91,6 @@ values, results, and lists.
 how to transform jq syntax to an intermediate representation (IR).
 @sec:semantics shows how to evaluate jq filters on a given input value.
 @sec:updates presents the traditional path-based and our new path-less approach to executing updates.
-@sec:impl describes and evaluates two jq interpreters based on our proposed semantics,
-showing that our semantics enable performant execution of three large programs written in jq.
+@sec:impl describes and evaluates our two jq interpreters.
+It shows that our semantics enable performant and correct execution of
+several large programs written in jq.

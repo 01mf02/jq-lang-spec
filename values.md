@@ -167,12 +167,12 @@ This conversion can also take place inside results and lists. For example:
 - If we have a value-path $v_p: \valpatht$ and
   apply it to a function that expects a $\valt$, then
   $v_p$ is implicitly substituted by
-  $\fromvp\, \v_p$.
+  "$\fromvp\, \v_p$".
 - If we have a result $r: \resultt\, \valt$ and
   apply it to a function that expects a $\resultt\, \valpatht$, then
   $r$ is implicitly substituted by
-  $\mapr\, \tovp\, r$.
+  "$\mapr\, \tovp\, r$".
 - If we have a list $l: \stream{\resultt\, \valt}$ and
   apply it to a function that expects a $\stream{\resultt\, \valpatht}$, then
   $l$ is implicitly substituted by
-  $\mapl\, (\mapr\, \tovp)\, l$.
+  "$\mapl\, (\mapr\, \tovp)\, l$".
