@@ -42,18 +42,17 @@ second-class higher-order functions [@jq-description].
 The semantics of the jq language are only
 informally specified, for example in the jq manual [@jq-manual].
 This leaves a lot of space for interpretation and makes it difficult to find out
-whether certain behaviour of a jq implementation is accidental or intended.
+whether certain behaviour of a jq interpreter is accidental or intended.
 
-We have created denotational semantics (@sec:semantics) such that
-in most common use cases, the semantics and `jq`'s behaviour coincide.
+We have created denotational semantics (@sec:semantics) for the jq language.
 This makes it possible to verify
-the correctness of jq programs and implementations.
+the correctness of jq programs and interpreters.
 For example, our semantics could be used to prove that
-an optimisation technique in a jq interpreter preserves correctness.
+an optimisation technique in a jq interpreter is correct.
 Furthermore, our semantics are abstract over the type of values.
-This addresses the fact that the type of values differs between
-different jq implementations and different versions of `jq`.
-It also makes it possible to describe jq implementations that
+This accommodates the fact that the type of values differs between
+different jq interpreters and different versions of `jq`.
+It also makes it possible to describe jq interpreters that
 process other kinds of values than JSON.
 
 <!--
@@ -77,10 +76,10 @@ eliminates many potential errors, and
 allows for more performant execution.
 We compare this with jq's traditional path-based updates.
 
-We have created two jq interpreters:
+We have implemented two jq interpreters:
 _ujq_ is a direct translation of our semantics to Haskell, and
 _jaq_ is an optimised version written in Rust.
-To test whether a jq implementation (such as jaq) confirms to our semantics,
+To test whether a jq interpreter (such as jaq) confirms to our semantics,
 we can compare its behaviour to ujq.
 
 @sec:tour introduces jq by a series of examples that

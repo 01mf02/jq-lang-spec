@@ -16,7 +16,7 @@ an unordered map from _keys_ $k$ to values that we call an _object_.^[
 In JSON, object keys are strings.
 
 We write $\err\, ...$ to denote $\err\, e$ where we do not want to specify $e$.
-(In actual jq implementations, $e$ is frequently an error message string.)
+(In actual jq interpreters, $e$ is frequently an error message string.)
 
 The functions to construct arrays and objects, as well as to retrieve the _boolean value_, are as follows:
 \begin{alignat*}{3}
@@ -47,9 +47,9 @@ For all these operators, it holds that
 if $v$ is a boolean or a number,
 then the operator yields an error.
 Given that the definition of these operators
-differs greatly between different jq implementations,
+differs greatly between different jq interpreters,
 we are only going to cover a few basic cases for these operators
-that all jq implementations agree on.
+that all jq interpreters agree on.
 We omit all remaining cases, such as
 indexing with non-integer numbers,
 indexing with non-existing keys, and

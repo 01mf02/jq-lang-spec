@@ -344,4 +344,4 @@ Lowering this to IR yields
 :::
 
 @sec:semantics shows how to run an IR filter $f$.
-For a given input value $v$, the output of $f$ will be given by $\eval\, \sem f\, v$.
+For a given input value $v$, the output of $f$ will be given by "$\eval\, \sem f\, v$".
