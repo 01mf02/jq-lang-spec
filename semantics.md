@@ -244,12 +244,43 @@ using only the filters for which we gave semantics in @tab:eval-semantics-->
 ## Folding {#sec:folding}
 
 In this subsection, we will define the functions
-$\reducef$ and $\foreachf$ which underlie the semantics for the folding operators
+"$\reducef$" and "$\foreachf$" which underlie the semantics for the folding operators
 $\jqfold{reduce }{f_x}{\$x}{(.; f)}$ and
 $\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$.
 
+First, let us look at what the evaluation of the various folding filters expands to.
+Assuming that the filter $f_x$ evaluates to $\stream{x_0, ..., x_n}$,
+then $\jqf{reduce}$ and $\jqf{foreach}$ expand to:^[
+  `jq` implements restricted versions of these folding operators
+  that consider only the last output of $f$ for the next iteration.
+  That means that in `jq`,
+  $\jqfold{reduce}{f_x}{\$x}{(.;            f )}$ is equivalent to
+  $\jqfold{reduce}{f_x}{\$x}{(.; \jqf{last}(f))}$.
+  Here, we assume that the filter $\jqf{last}(f)$
+  returns the last output of $f$ if $f$ yields any output, else nothing.
+  Furthermore, `jq` does not preserve the paths of values output by folding operators;
+  for example,
+  `[1] | path(reduce 0 as $x (.; .[$x]))` yields an error in `jq`,
+  whereas our semantics yield the output `0`.
+]
+\begin{alignat*}{2}
+\jqfold{reduce }{f_x}{\$x}{(.; f   )} ={}& x_0 \jqas \$x | f & \quad
+\jqfold{foreach}{f_x}{\$x}{(.; f; g)} ={}& x_0 \jqas \$x | f | g, ( \\
+|\; & ... &
+    & ... \\
+|\; & x_n \jqas \$x | f &
+    & x_n \jqas \$x | f | g, ( \\
+    &     &
+    & \jqf{empty})...)
+\end{alignat*}
+The evaluation of `reduce` and `foreach` has a very similar shape.
+It differs only in two aspects:
+"`foreach`" outputs intermediate values (composed with `g`), and
+"`reduce`" outputs a final value (suppressed by `empty` in `foreach`).
+
 \newcommand{\foldf}{\operatorname{fold}}
-Let us start by defining a general folding function "$\foldf$":
+We will now define a function "$\foldf$",
+which holds the logic common to `reduce` and `foreach`:
 \begin{align*}
 \foldf&{}: (T \to U \to \stream{\resultt\, U}) \to (T \to U \to \stream{\resultt\, U}) \to (U \to \stream{\resultt\, U}) \to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
 &\coloneqq \lambda f\, g\, n. Y_2\, (\lambda F\, l\, v. l\, (\lambda h\, t. f\, h\, v \bind (\lambda y. g\, h\, y + F\, t\, y))\, (n\, v))
@@ -290,27 +321,6 @@ Their types are:
 \reducef &{}: (T \to U \to \stream{\resultt\, U}) &&\to \stream{\resultt\, T} \to U \to \stream{\resultt\, U} \\
 \foreachf&{}: (T \to U \to \stream{\resultt\, U}) \to (T \to U \to \stream{\resultt\, U}) &&\to \stream{\resultt\, T} \to U \to \stream{\resultt\, U}
 \end{alignat*}
-We will now look at what the evaluation of the various folding filters expands to.
-Assuming that the filter $f_x$ evaluates to $\stream{x_0, ..., x_n}$,
-then $\jqf{reduce}$ and $\jqf{foreach}$ expand to
-\begin{alignat*}{2}
-\jqfold{reduce }{f_x}{\$x}{(.; f   )} ={}& x_0 \jqas \$x | f & \quad
-\jqfold{foreach}{f_x}{\$x}{(.; f; g)} ={}& x_0 \jqas \$x | f | g, ( \\
-|\; & ... &
-    & ... \\
-|\; & x_n \jqas \$x | f &
-    & x_n \jqas \$x | f | g, ( \\
-    &     &
-    & \jqf{empty})...)
-\end{alignat*}
-Note that jq implements only restricted versions of these folding operators
-that consider only the last output of $f$ for the next iteration.
-That means that in jq,
-$\jqfold{reduce}{f_x}{\$x}{(.;            f )}$ is equivalent to
-$\jqfold{reduce}{f_x}{\$x}{(.; \jqf{last}(f))}$.
-Here, we assume that the filter $\jqf{last}(f)$
-returns the last output of $f$ if $f$ yields any output, else nothing.
-<!-- TODO: write about jq limitation of recording paths with folding operators -->
 
 
 # Update Semantics {#sec:updates}
