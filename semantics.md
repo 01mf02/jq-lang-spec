@@ -136,12 +136,15 @@ Let us discuss its different cases:
   takes a label $\fresh$ and a list $l$ of value results,
   returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
   \begin{alignat*}{3}
-  \untilf&{}: (\resultt \to \mathbb B) &{}\to{}& \listt \to \listt \coloneqq
+  \untilf&{}: (T \to \mathbb B) \to \stream{T} \to \stream{T} &{}\coloneqq{}&
   \lambda p\, l. l\, (\lambda h\, t. p\, h\, \stream{}\, (\stream h + \untilf\, p\, t)) \\
-  \labelf&{}: \mathbb N &\to{}& \listt \to \listt \coloneqq
+  \labelf&{}: \mathbb N \to \stream{\resultt\, T} \to \stream{\resultt\, T} &\coloneqq{}&
   \lambda \fresh. \untilf\, (\lambda r. r\, (\lambda o. \false)\, (\lambda e. \false)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b))
   \end{alignat*}
   Here,
+  "$\untilf\, p\, l$" returns
+  the longest prefix of $l$ for which
+  every element satisfies $p$, and
   $\nateq: \mathbb N \to \mathbb N \to \boolt$ returns
   $\true$ if two natural numbers are equal, else $\false$.
 - $\jqlb{break}{x}$: Returns a value result "$\breakf\, \$x$".
@@ -178,7 +181,7 @@ Let us discuss its different cases:
   We will discuss this in @sec:updates.
 
 <!-- TODO: explain how to handle builtin filters implemented by definition and as native function -->
-An implementation may also define semantics for builtin named filters, for example:
+An interpreter may also define semantics for builtin named filters, for example:
 \begin{align*}
 \run\, \sem{\jqf{error}}\, v &\coloneqq \stream{\err\, v} \\
 \run\, \sem{\jqf{path}(f)}\, v &\coloneqq \run\, \sem{f}\, v \bind \lambda v. \stream{\snd\, v\, (\lambda p. \arr\, (\mapl\, \ok\, p))\, (\err\, \dots)}
@@ -326,7 +329,7 @@ Their types are:
 # Update Semantics {#sec:updates}
 
 In this section, we will discuss how to evaluate updates $f \update g$.
-First, we show the path-based update semantics used in most jq implementations,
+First, we show the path-based update semantics used in most jq interpreters,
 and show which problems this approach entails.
 Then, we introduce our alternative, path-less update semantics, which
 avoid many problems of path-based updates, while
