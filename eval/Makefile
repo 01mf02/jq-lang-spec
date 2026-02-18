@@ -9,20 +9,20 @@ GOJQ=gojq
 HEADER="f	time-jaq	time-jq	time-gojq"
 
 upd: upd-arr.tsv upd-obj.tsv
-interpreters.tsv: bf-fib.json wsjq-hopper.json jqjq-implode.json jqjq-test.json
+interpreters.tsv: bf-fib.json wsjq-hopper.json jqjq-test.json
 	(echo $(HEADER) && cat $^ | $(JQ) -srf interpreters.jq) > $@
 
 bf-fib.json:
 	$(HF) "{jq} -sRrf bf.jq -R fib.bf"
 
-wsjq-hopper.json: wsjq/wsjq pik4ez-ascii/hopper.ws 
-	$(HF) "$< --jq={jq} --no-underflow pik4ez-ascii/hopper.ws"
+wsjq-hopper.json:
+	$(HF) "wsjq/wsjq --jq={jq} --no-underflow pik4ez-ascii/hopper.ws"
 
-jqjq-implode.json: jqjq/jqjq
-	$(HF) "JQ={jq} $< -n 'def f: 1,8; [f,f] | map(.+105) | implode'"
+jqjq-implode.json:
+	$(HF) "JQ={jq} jqjq/jqjq -n 'def f: 1,8; [f,f] | map(.+105) | implode'"
 
-jqjq-test.json: jqjq
-	$(HF) "make -C $< JQ={jq} test-jqjq"
+jqjq-test.json:
+	$(HF) "make -C jqjq JQ={jq} test-jqjq"
 
 # does not work ATM: https://github.com/wader/jqjq/issues/41
 jqjq-bf-fib.json: jqjq/jqjq
