@@ -679,6 +679,20 @@ yet it terminates with a valid result, namely $\{a: [\{a: 1\}]\}$.
   so $\jqf{error} \update 1$ is executed, which yields an error.
 :::
 
+We can simulate path-based updates with pathless updates:
+In jq interpreters with path-based updates, the filter
+$f \update g$ is equivalent to
+$\jqf{getpath}(\jqf{path}(f)) \update g$.
+Here,
+$\jqf{path}(f)$ yields the paths to outputs of $f$, then
+$\jqf{getpath}$ retrieves the corresponding value-paths, see @sec:builtin.
+We can exploit this equivalence to force path-based updates by writing
+$\jqf{getpath}(\jqf{path}(f)) \update g$ instead of
+$f \update g$,
+regardless of whether the used jq interpreter uses pathless or path-based updates.
+We use this to evaluate the performance of path-based updates in
+our interpreter that uses pathless updates, see @sec:eval.
+
 ## Folding {#sec:folding-update}
 
 In @sec:folding, we have seen how to evaluate folding filters of the shape
