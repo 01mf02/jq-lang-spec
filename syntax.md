@@ -256,38 +256,6 @@ $\stream{0, 1, 2, 3}$ using our lowering, and
 $\stream{0, 2, 1, 3}$ in `jq`.
 :::
 
-\newcommand{\wf}{\operatorname{wf}}
-Informally, we say that a filter is _wellformed_ if all references to
-named filters, variables, and labels were previously bound.
-For example, the filter "$a, \$x$" is not wellformed because
-neither $a$ nor $\$x$ was previously bound, but the filter
-"$\jqdef{a}{1} 2 \jqas \$x | a, \$x$" is wellformed.
-@tab:wf specifies in detail if a filter is wellformed.
-For this, it uses a context $c = (d, v, l)$, consisting of
-a set $d$ of pairs $(x, n)$ storing the name $x$ and the arity $n$ of a filter,
-a set $v$ of variables, and
-a set $l$ of labels.
-We say that a filter $\varphi$ is wellformed with respect to a context $c$ if
-$\wf(\varphi, c)$ is true.
-
-| $\varphi$ | $\wf(\varphi, c)$ |
-| --------- | ----------------- |
-| $n$, $s$, $.$, $..$, $[]$, or $\{\}$ | $\top$ |
-| $\$x$ or $-\$x$   | $\$x \in v$ |
-| $\jqlb{break}{x}$ | $\$x \in l$ |
-| $[f]$ | $\wf(f, c)$ |
-| $\{\$x: \$y\}$ or $\$x \cartesian \$y$ | $\$x \in v$ and $\$y \in v$ |
-| $f \star g$ or $\jqtc{f}{g}$ | $\wf(f, c)$ and $\wf(g, c)$ |
-| $.[p]^?$ | $\forall \$x \in p.\ \$x \in v$ |
-| $f \jqas \$x | g$ | $\wf(f, c)$ and $\wf(g, (d, v \cup \{\$x\}, l))$ |
-| $\jqlb{label}{x} | f$ | $\wf(f, (d, v, l \cup \{\$x\}))$ |
-| $\jqite{\$x}{f}{g}$ | $\$x \in v$ and $\wf(f, c)$ and $\wf(g, c)$ |
-| $\jqfold{\fold}{f_x}{\$x}{(.; f; g)}$ | $\wf(f_x, c)$ and $\wf((f | g), (d, v \cup \{\$x\}, l))$ |
-| $\jqdef{x(x_1; \dots; x_n)}{f} g$ | $\wf(f, (d \cup \{(x, n)\} \cup \bigcup_i \{(x_i, 0)\}, v, l))$ and $\wf(g, (d \cup \{(x, n)\}, v, l))$ |
-| $x(f_1; \dots; f_n)$ | $(x, n) \in d$ and $\forall i. \wf(f_i, c)$ |
-
-Table: Wellformedness of an IR filter $\varphi$ with respect to a context $c = (d, v, l)$. {#tab:wf}
-
 For hygienic reasons, we require that labels are disjoint from variables.
 This can be easily ensured by prefixing labels and variables differently.
 
