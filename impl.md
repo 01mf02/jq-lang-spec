@@ -5,11 +5,6 @@ ujq is a minimalistic research interpreter that
 demonstrates that our semantics can be implemented _compactly_.
 jaq is a full-featured interpreter that
 demonstrates that our semantics can also be implemented _efficiently_.
-jaq's user base allows us to estimate whether
-users are impacted by differences between our semantics and actual `jq` behaviour.
-This is particularly interesting for the update semantics,
-where our semantics diverge most notably from `jq`.
-
 
 ## ujq
 
@@ -19,9 +14,6 @@ In particular, ujq implements
 lowering of a jq filter to IR (@sec:ir) and
 execution of an IR filter (@sec:semantics).
 @sec:ujq explains in more detail how ujq relates to our semantics.
-
-
-
 
 ## jaq
 
@@ -34,19 +26,14 @@ Furthermore, jaq not only implements the core jq language,
 but also a substantial part of jq's standard library.
 It demonstrates that the semantics can be implemented efficiently.
 
-jaq can execute sufficiently large and complex jq programs such as
-interpreters written in jq for various programming languages, including
-Whitespace (`wsjq`),
-Brainfuck, and
-jq (`jqjq`) [@jqjq].
-
 The other main jq interpreters, namely `jq` and gojq,
 both compile jq programs to a list of imperative instructions and execute it, whereas
 jaq compiles jq programs to an abstract syntax tree and interprets it.
 
 jaq's public issue tracker has allowed us to identify which
 parts of our semantics cause compatibility problems for jq users.
-This is particularly useful for our path-less update semantics.
+This is particularly interesting for our path-less update semantics,
+where our semantics diverge most notably from `jq`.
 <!-- https://github.com/01mf02/jaq/pull/285 -->
 Users reported three issues caused by the update semantics described in this paper;
 these were all about the semantics of "`.. |= g`".
@@ -59,7 +46,7 @@ The fact that no other issues with update semantics were reported so far
 indicates that our new update semantics
 preserve compatibility for a vast majority of users.
 
-## Evaluation
+## Evaluation {#sec:eval}
 
 \begin{figure}
 \centering
@@ -76,14 +63,15 @@ We evaluated the jq interpreters `jq`, gojq, and jaq^[
 ]
 on a number of programming language interpreters written in the jq language:
 
-- "bf.jq" (35 lines of code) is an interpreter for the Brainfuck language.
-  We run it on "fib.bf",
+- `bf.jq` (35 lines of code) by the author of gojq is an interpreter for the Brainfuck language.
+  We run it on `fib.bf`,
   a Brainfuck program that calculates the first 13 Fibonacci numbers.
-- "wsjq.jq" (552 LOC) is an interpreter for the Whitespace language written by Thalia Archibald.
-  We run it on "hopper.ws",
-  a Whitespace program that outputs a portrait of Grace Hopper.
-- "jqjq.jq" (2837 LOC) is an interpreter for the jq language written by Mattias Wadman.
-  We run it on its whole test suite consisting of over 200 tests.
+- `wsjq.jq` (552 LOC) by Thalia Archibald is an interpreter for the Whitespace language [@wsjq].
+  We run it on `hopper.ws`,
+  a Whitespace program by Dmitry Belov that outputs a portrait of Grace Hopper.
+- `jqjq.jq` (2837 LOC) by Mattias Wadman is an interpreter for the jq language [@jqjq].
+  We run it on its whole test suite consisting of over 200 tests,
+  where each test executes a jq program inside jqjq.
 
 While these are relatively unusual jq programs due to their large size,
 they are very useful to test compatibility of jq interpreters,
@@ -103,7 +91,7 @@ being about 60 times (!) as fast as gojq and 5 times as fast as `jq`.
 On "jqjq-test", gojq achieves the best performance,
 being about twice as fast as jaq.^[
   We only recently found the relatively high runtime of jaq
-  on jqjq to be likely caused by an inefficient handling of tail calls in jaq.
+  on jqjq to be likely caused by a suboptimal handling of tail calls in jaq.
   We are confident to be able to provide better performance results for the final article.
 ]
 
@@ -163,7 +151,8 @@ The next section shows a more detailed updated benchmark that is not part of @ta
 
 ## Update performance
 
-We now compare the performance of path-based updates (as used in jq) and
+We now compare the performance of
+path-based updates (as used in `jq` and gojq) and
 path-less updates (as used in jaq).
 We evaluate on two different inputs:
 
@@ -214,20 +203,20 @@ we measure the time taken by
 \end{figure}
 
 The results are given in @fig:update.
-Let us first look at the results for array input `[range(1000000)]`.
+Consider the results for array input `[range(1000000)]`:
 We can see that native update performance differs enormously between
 `jq` and jaq:
 When subtracting the time for input construction,
 `jq` takes about fifty times (!) as long for the update as jaq.^[
-$(2043 - 107) \div (113 - 74) = 49.64$
+$(2041 - 106) \div (114 - 73) = 47.20$
 ]
-We can also see that in `jq`,
+We can also see that in `jq` and gojq,
 (path-based) native updates are significantly _slower_ than manual updates, whereas in jaq,
 (path-less)  native updates are _faster_ than manual updates.
 Finally, we can see that when forcing path-based updates,
 the performance of jaq plummets, arriving
-at the same order of magnitude as `jq`'s native updates.[^jq-path-force]
-That indicates that `jq`'s low update performance is caused by path-based updates.
+at the same order of magnitude as `jq`'s and gojq's native updates.[^jq-path-force]
+That indicates that `jq`'s and gojq's low update performance is caused by path-based updates.
 
 [^jq-path-force]:
   When forcing path-based updates in `jq` via `getpath(path(...)) |= ...`,
@@ -238,7 +227,7 @@ That indicates that `jq`'s low update performance is caused by path-based update
 Now, let us look at the results for object input `{"a": [range(1000000)]}`,
 in order to study the performance of nested updates, namely
 updating all values of an array inside an object.
-First, we can observe that the performance of manual updates in both `jq` and jaq,
+First, we can observe that the performance of manual updates in `jq`, gojq, and jaq,
 as well as native update performance in jaq, remain stable.
 That means that these kinds of updates are not impacted by nesting.
 On the other hand, the performance of path-based updates clearly decreases.
