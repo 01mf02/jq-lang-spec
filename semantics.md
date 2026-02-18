@@ -180,21 +180,6 @@ Let us discuss its different cases:
 - $f \update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @sec:updates.
 
-<!-- TODO: explain how to handle builtin filters implemented by definition and as native function -->
-An interpreter may also define semantics for builtin named filters, for example:
-\begin{align*}
-\run\, \sem{\jqf{error}}\, v &\coloneqq \stream{\err\, v} \\
-\run\, \sem{\jqf{path}(f)}\, v &\coloneqq \run\, \sem{f}\, v \bind \lambda v. \stream{\snd\, v\, (\lambda p. \arr\, (\mapl\, \ok\, p))\, (\err\, \dots)}
-\end{align*}
-In particular, $\jqf{path}(f)$ is an important filter that
-runs $f$ and returns the path of each output ($\snd\, v$) as array,
-yielding an error if an output does not have an associated path.
-<!-- and
-$\run\, \sem{\jqf{keys }}\, v \coloneqq \stream{\arr\, (\keys\, v)}$, see @sec:simple-fns.
-In the case of $\jqf{keys}$, for example, there is no obvious way to implement it by definition,
-in particular because there is no simple way to obtain the domain of an object $\{...\}$
-using only the filters for which we gave semantics in @tab:eval-semantics-->
-
 ::: {.example #ex:recursion name="Recursion"}
   Consider the following IR filter $\varphi$: $$\jqdef{\jqf{repeat}}{., \jqf{repeat}} \jqf{repeat}$$
   This filter repeatedly outputs its input;
@@ -243,6 +228,30 @@ using only the filters for which we gave semantics in @tab:eval-semantics-->
   This mechanism reliably allows us to generate fresh labels and to
   differentiate for each $\breakf$ the corresponding $\labelf$ that handles it.
 :::
+
+## Builtin filters {#sec:builtin}
+
+\newcommand{\topath}{\operatorname{to\_path}}
+Many named filters commonly available in jq, such as $\jqf{error}$ and $\jqf{path}(f)$,
+cannot be implemented by definition.
+That means that jq interpreters have to provide such filters natively.
+In our formal semantics, that amounts to
+substituting unbound occurrences of
+terms like $\jqf{error}^0$ and $\jqf{path}^1$
+in the compiled lambda term by their underlying implementations:
+\begin{alignat*}{4}
+\jqf{error}^0:{}& \filtert &&\coloneqq &&\pair\, (\lambda v. \stream{\err\, v}&)\, &(\lambda \sigma\, v. \stream{\err\, v}) \\
+\jqf{path}^1:{}& \filtert \to \filtert &&\coloneqq \lambda f. &&\pair\, (\lambda v. \run\, f\, v \bind \topath&)\, &(\lambda \sigma\, v. \stream{\err\, ...})
+\end{alignat*}
+In particular, $\jqf{path}(f)$ is an important filter that
+runs $f$ and returns the path of each output as array,
+yielding an error if an output does not have an associated path:
+$$\topath: \valpatht \to \stream{\resultt\, \valt} \coloneqq \lambda v. \stream{\snd\, v\, (\lambda p. \arr\, (\mapl\, \ok\, p))\, (\err\, \dots)}$$
+The inverse filter for $\jqf{path}(f)$ is $\jqf{getpath}(f)$:
+For every path produced by $f$, it yields the value the path is pointing to.
+It can be implemented by definition as
+$$\jqf{getpath}(f) \coloneqq f \jqas \$p | \jqfold{reduce}{\$p[]}{\$i}{(.; .[\$i])}$$
+and is included in the standard library of jq.
 
 ## Folding {#sec:folding}
 
