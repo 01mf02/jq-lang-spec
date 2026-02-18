@@ -48,13 +48,6 @@ preserve compatibility for a vast majority of users.
 
 ## Evaluation {#sec:eval}
 
-\begin{figure}
-\centering
-\input{eval/interpreters.tex}
-\caption{Time to run a benchmark in various jq interpreters, in milliseconds. Lower is better.}
-\label{fig:interpreters}
-\end{figure}
-
 We evaluated the jq interpreters `jq`, gojq, and jaq^[
   The used versions are
   `jq` 1.8.1,
@@ -82,6 +75,13 @@ not on other components such as JSON parsing.
 
 All evaluated jq interpreters, including jaq, yield the same output for all benchmarks.
 This shows that our semantics enable a high degree of compatibility with other jq interpreters.
+
+\begin{figure}
+\centering
+\input{eval/interpreters.tex}
+\caption{Time to run a benchmark in various jq interpreters, in milliseconds. Lower is better.}
+\label{fig:interpreters}
+\end{figure}
 
 The benchmarks were run on a Linux system with an AMD Ryzen 5 5500U.
 The results are given in @fig:interpreters.
