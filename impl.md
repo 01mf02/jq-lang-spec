@@ -169,7 +169,8 @@ in order to determine the cost of different kinds of updates:
   On jaq, this uses path-less  updates, whereas
   on jq,  this uses path-based updates.
 - Manual update: Update without `|=`.
-- Path-based update: Update with `|=`, forcing the usage of paths.
+- Path-based update: Update with `|=`,
+  forcing the usage of paths as shown in @sec:pathless-updates.
 
 Action            | `[range(1000000)]`        | `{"a": [range(1000000)]}`
 ----------------- | ------------------------- | -----------------------------

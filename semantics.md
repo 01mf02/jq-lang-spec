@@ -463,7 +463,7 @@ Let us discuss these for the different filters $\varphi$:
 While @tab:update-props allows us to define the behaviour of several filters
 by reducing them to more primitive filters,
 there are several filters $\varphi$ which cannot be defined this way.
-We will therefore give the actual update semantics of $\varphi \update \sigma$ in @sec:new-semantics
+We will therefore give the actual pathless update semantics of $\varphi \update \sigma$ in @sec:pathless-updates
 by defining $\upd\, \sem \varphi\, \sigma\, v$, not
 by translating $\varphi \update \sigma$ to equivalent filters.
 
@@ -502,7 +502,7 @@ $\sigma'\, x$ returns the output of the filter $\run\, \sigma\, x$.
 This allows us to bind variables in $\varphi$ without impacting $\sigma$.
 -->
 
-## Path-less updates {#sec:new-semantics}
+## Path-less updates {#sec:pathless-updates}
 
 We will now give update semantics that define the output of
 $\run\, \sem{f \update g}\, v$ as referred to in @sec:semantics.
@@ -679,17 +679,18 @@ yet it terminates with a valid result, namely $\{a: [\{a: 1\}]\}$.
   so $\jqf{error} \update 1$ is executed, which yields an error.
 :::
 
-We can simulate path-based updates with pathless updates:
+We can perform path-based updates with pathless updates:
 In jq interpreters with path-based updates, the filter
 $f \update g$ is equivalent to
 $\jqf{getpath}(\jqf{path}(f)) \update g$.
 Here,
 $\jqf{path}(f)$ yields the paths to outputs of $f$, then
 $\jqf{getpath}$ retrieves the corresponding value-paths, see @sec:builtin.
-We can exploit this equivalence to force path-based updates by writing
-$\jqf{getpath}(\jqf{path}(f)) \update g$ instead of
-$f \update g$,
-regardless of whether the used jq interpreter uses pathless or path-based updates.
+By replacing
+$f \update g$ with
+$\jqf{getpath}(\jqf{path}(f)) \update g$,
+we can force a path-based update, regardless of whether
+the used jq interpreter uses pathless or path-based updates.
 We use this to evaluate the performance of path-based updates in
 our interpreter that uses pathless updates, see @sec:eval.
 
