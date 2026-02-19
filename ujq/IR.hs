@@ -163,38 +163,38 @@ data Ctx = Ctx {
   lbls :: Set.Set String
 }
 
--- | Is the filter wellformed with respect to the context?
---
--- Return true iff all functions, variables, and labels referenced in the filter
--- were previously defined.
-wf :: Filter -> Ctx -> Bool
-wf f c@Ctx{vars, funs, lbls} = case f of
-  Id       -> True
-  Recurse  -> True
-  Num _    -> True
-  Str _    -> True
-  ToString -> True
-  Arr0     -> True
-  Obj0     -> True
-  Neg   x -> Set.member x vars
-  Var   x -> Set.member x vars
-  Break x -> Set.member x lbls
-  Obj1   x   y -> Set.member x vars && Set.member y vars
-  MathOp x _ y -> Set.member x vars && Set.member y vars
-  BoolOp x _ y -> Set.member x vars && Set.member y vars
-  ArrN     f   -> wf f c
-  Concat   f g -> wf f c && wf g c
-  Compose  f g -> wf f c && wf g c
-  Alt      f g -> wf f c && wf g c
-  Update   f g -> wf f c && wf g c
-  TryCatch f g -> wf f c && wf g c
-  Path idx _opt -> all (\x -> Set.member x vars) $ toList idx
-  Bind f x g -> wf f c && wf g (c { vars = Set.insert x vars })
-  Label x f -> wf f (c { lbls = Set.insert x lbls })
-  Ite x f g -> Set.member x vars && wf f c && wf g c
-  Reduce  fx x f   -> wf fx c && wf f             (c { vars = Set.insert x vars })
-  Foreach fx x f g -> wf fx c && wf (Compose f g) (c { vars = Set.insert x vars })
+-- | Unbound symbols of a filter with respect to context
+ub :: Filter -> Ctx -> Set.Set String
+ub f c@Ctx{vars, funs, lbls} = case f of
+  Id       -> Set.empty
+  Recurse  -> Set.empty
+  Num _    -> Set.empty
+  Str _    -> Set.empty
+  ToString -> Set.empty
+  Arr0     -> Set.empty
+  Obj0     -> Set.empty
+  Var   x -> if Set.member x vars then Set.empty else Set.singleton x
+  Break x -> if Set.member x lbls then Set.empty else Set.singleton x
+  Neg   x -> ub (Var x) c
+  Obj1   x   y -> ub (Var x) c `Set.union` ub (Var y) c
+  MathOp x _ y -> ub (Var x) c `Set.union` ub (Var y) c
+  BoolOp x _ y -> ub (Var x) c `Set.union` ub (Var y) c
+  ArrN     f   -> ub f c
+  Concat   f g -> ub f c `Set.union` ub g c
+  Compose  f g -> ub f c `Set.union` ub g c
+  Alt      f g -> ub f c `Set.union` ub g c
+  Update   f g -> ub f c `Set.union` ub g c
+  TryCatch f g -> ub f c `Set.union` ub g c
+  Path idx _opt -> Set.unions $ map (\x -> ub (Var x) c) $ toList idx
+  Bind f x g -> ub f c `Set.union` ub g (c { vars = Set.insert x vars })
+  Label x f -> ub f (c { lbls = Set.insert x lbls })
+  Ite x f g -> ub (Var x) c `Set.union` ub f c `Set.union` ub g c
+  Reduce  fx x f   -> ub fx c `Set.union` ub f             (c { vars = Set.insert x vars })
+  Foreach fx x f g -> ub fx c `Set.union` ub (Concat f g) (c { vars = Set.insert x vars })
   Def x xs f g ->
-    wf f (c { funs = Set.insert (x, length xs) $ foldr (\xi -> Set.insert (xi, 0)) funs xs }) &&
-    wf g (c { funs = Set.insert (x, length xs) funs })
-  App x fs -> Set.member (x, length fs) funs && all (\f -> wf f c) fs
+    ub f (c { funs = Set.insert (x, length xs) $ foldr (\xi -> Set.insert (xi, 0)) funs xs }) `Set.union`
+    ub g (c { funs = Set.insert (x, length xs) funs })
+  App x fs ->
+    (if Set.member (x, length fs) funs then Set.empty else Set.singleton x)
+    `Set.union`
+    Set.unions (map (\f -> ub f c) fs)

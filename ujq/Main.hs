@@ -1,4 +1,5 @@
 import qualified Data.Map as Map
+import Data.Foldable (toList)
 import qualified Val
 import qualified IR
 import Eval (Ctx(..), run, builtins, toIRCtx)
@@ -14,8 +15,9 @@ main = do
   let f = IR.compile 0 tm
 
   let c = Ctx {vars = Map.empty, funs = builtins, lbls = Map.empty}
-  when (not $ IR.wf f $ toIRCtx c) $ do
-    putStrLn $ "Filter is not well-formed (unknown function or variable)"
+  let ub = toList $ IR.ub f $ toIRCtx c
+  when (ub /= []) $ do
+    putStrLn $ "Error: undefined symbols " ++ show ub
     exitFailure
 
   let v = Val.newVal Val.Null
