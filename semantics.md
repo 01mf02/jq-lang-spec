@@ -439,6 +439,7 @@ Table: Properties of path-less update semantics. {#tab:update-props}
 | $.$ | $\sigma$ |
 | $f | g$ | $f \update (g \update \sigma)$ |
 | $f, g$ | $(f \update \sigma) | (g \update \sigma)$ |
+| $f \jqas \$x | g$ | $((x_1 \jqas \$x | g) \update \sigma) | \dots | ((x_n \jqas \$x | g) \update \sigma)$ |
 | $\jqite{\$x}{f}{g}$ | $\jqite{\$x}{f \update \sigma}{g \update \sigma}$ |
 | $f \alt g$ | $\jqite{\jqf{first}(f \alt \jqf{false})}{f \update \sigma}{g \update \sigma}$ |
 
@@ -455,6 +456,15 @@ Let us discuss these for the different filters $\varphi$:
   $.[] \update (.[] \update \sigma)$, yielding the same output as in the example.
 - $f, g$: Applies the update of $\sigma$ at $g$ to the output of the update of $\sigma$ at $f$.
   We have already seen this at the end of @sec:jq-updates.
+- $f \jqas \$x | g$:
+  Applies $\sigma$ at $g$ for every value yielded by $f$ bound to $\$x$.
+  Here, we suppose that $f$ yields the outputs $\stream{x_1, \dots, x_n}$.
+  Then this property can be derived from
+  $(f \jqas \$x | g) \equiv ((x_1 \jqas \$x | g), \dots, (x_n \jqas \$x | g))$ and
+  the concatenation property above.
+  @sec:folding suggests that is essentially equivalent to
+  $\jqfold{reduce}{f}{\$x}{(.; g \update \sigma)}$ ---
+  with the exception that $\$x$ is not accessible in $\sigma$.
 - $\jqite{\$x}{f}{g}$: Applies $\sigma$ at $f$ if $\$x$ holds, else at $g$.
 - $f \alt g$: Applies $\sigma$ at $f$ if $f$ yields some output whose boolean value (see @sec:value-ops) is not false, else applies $\sigma$ at $g$.
   Here, $\jqf{first}(f)$ is a filter that returns
@@ -510,7 +520,7 @@ We will first define
 $$\run\, \sem{f \update g}\, v \coloneqq \upd\, \sem f\, \sigma\, v, \text{where }
   \sigma: \valt \to \stream{\resultt\, \valt} \coloneqq \run\, \sem g$$
 
-Table: Path-less update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \listt$ is a function from a value to a list of value results. {#tab:update-semantics}
+Table: Path-less update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \stream{\resultt\, \valt}$ is a function from a value to a list of value results. {#tab:update-semantics}
 
 | $\varphi$ | $\upd\, \sem \varphi\, \sigma\, v$ |
 | --------- | ------------------------- |
@@ -527,6 +537,7 @@ Table: Path-less update semantics. Here, $\varphi$ is a filter and $\sigma: \val
 | $\jqfold{foreach}{f_x}{\$x}{(.; f; g)}$ | $\foreachf_{\update}\, (\lambda \$x. \upd\, \sem f)\, (\lambda \$x. \upd\, \sem g)\, \sigma\, (\run\, \sem{f_x}\, v)\, v$ |
 | $\jqdef{x(x_1; ...; x_n)}{f} g$ | $(\lambda x. \upd\, \sem g)\, (Y_{n+1}\, (\lambda x\, x_1\, ...\, x_n. \sem f))\, \sigma\, v$ |
 | $x(f_1; ...; f_n)$ | $\upd\, (x\, \sem{f_1}\, ...\, \sem{f_n})\, \sigma\, v$ |
+| all others | $\stream{\err\, ...}$ |
 
 @tab:update-semantics shows the definition of $\upd\, \sem \varphi\, \sigma\, v$.
 Several of the cases for $\varphi$, like
@@ -556,22 +567,28 @@ We discuss the remaining cases for $\varphi$:
   updating the accumulator by $g \update \sigma$, where
   $\$x$ is bound to the current output of $f$.
   The definition of $\reducef$ is given in @sec:folding.
-  <!-- TODO: explain that $x should not be bound in \sigma -->
+  As explained in @sec:update-props,
+  we must bind $\$x$ only in $g$, not in $\sigma$.
+  That is why we use
+  $(\lambda x. (\lambda \$x. \upd\, \sem g)\, x\, \sigma)$ instead of the simpler
+  $(\lambda \$x. \upd\, \sem g \sigma)$
+  in the first argument of "$\reducef$".
 - $\jqfold{\fold}{x}{\$x}{(.; f)}$: Folds $f$ over the values returned by $\$x$.
   We will discuss this in @sec:folding-update.
 - $\jqdef{x(x_1; ...; x_n)}{f} g$: Defines a filter.
   This is defined analogously to @tab:eval-semantics.
 - $x(f_1; ...; f_n)$, $x$: Calls a filter.
   This is defined analogously to @tab:eval-semantics.
+- All others: Many filters $\varphi$, such as $\$x$, $[f]$, and $\{\}$,
+  yield fresh values instead of references to input data.
+  In such cases, we yield an error, just like jq.
 
-<!-- TODO: make undefined filters explicit -->
-There are many filters $\varphi$ for which
-$\upd\, \sem \varphi\, \sigma\, v$ is not defined,
-for example $\$x$, $[f]$, and $\{\}$.
-In such cases, we assume that $\upd\, \sem \varphi\, \sigma\, v$ returns an error just like jq,
-because these filters do not return paths to their input data.
-Our update semantics support all kinds of filters $\varphi$ that are supported by jq, except for
+Our update semantics support all kinds of filters $\varphi$
+that are supported by jq, except for
 $\jqlb{label}{x} | g$ and $\jqtc{f}{g}$.
+However, we never encountered any of these filters
+on the left-hand side of an update in the wild so far, and
+no user of our semantics requested this yet, see @sec:jaq.
 
 ::: {.example name="Update compilation"}
   Let us consider the jq filter $(.[] \update (.+.))$.
