@@ -12,8 +12,8 @@ an array of values, or
 an associative map from strings to values.
 
 `jq` is a widely used tool that
-provides a language to define filters and
-executes programs written in that language.
+provides a language to define programs called filters and
+executes them.
 Where UNIX filters operate on streams of characters,
 jq filters operate on streams of JSON values.
 This allows to manipulate JSON data with relatively compact filters.
@@ -45,7 +45,15 @@ This leaves a lot of space for interpretation and makes it difficult to find out
 whether certain behaviour of a jq interpreter is accidental or intended.
 
 We have created denotational semantics (@sec:semantics) for the jq language.
-This makes it possible to verify
+We describe only jq filters with dedicated syntax,
+as their behaviour is relatively
+consistent among jq interpreters and stable over time.
+We do not describe the various named filters for
+regular expressions, mathematics, formatting, etc.
+that make up jq's "standard library",
+as this would go beyond the scope of this article.
+
+Having formal semantics for jq makes it possible to verify
 the correctness of jq programs and interpreters.
 For example, our semantics could be used to prove that
 an optimisation technique in a jq interpreter is correct.
