@@ -34,6 +34,18 @@ spec.html: spec.yaml $(SPEC) $(DEPS)
 	xelatex $<
 	xelatex $<
 
+# create anonymised distribution
+dist:
+	find -type f -path "./jaq/*" \( -name "*ml" -o -name "*.jq*" -o -name "*.dj" \) -exec sed -i \
+	  -e 's/Michael Färber/Anonymous/g' \
+	  -e 's/michael.faerber/anonymous/g' \
+	  -e 's/gedenkt.at/anonymous.org/g' \
+	  -e 's/01mf02/anonymous/g' \{\} \;
+	tar --exclude-vcs-ignores --exclude-vcs --exclude="target" --exclude=".github" \
+	  --transform 's,^,jq-lang-spec/,' \
+	  -cf jq-lang-spec.tar eval/ ujq/ jaq/
+
+
 # remove trailing semicolons to suppress error messages
 structure.tex: structure.dot
 	dot2tex structure.dot --autosize --figonly | sed 's/0};/0}/' > $@
