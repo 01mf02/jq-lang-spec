@@ -35,6 +35,6 @@ filters $x^n$.
 Table: Unbound symbols of an IR filter $\varphi$ with respect to a context $c$. {#tab:ub}
 
 When we have a set of builtin filters such as
-$c = \{\jqf{error}^0, \jqf{path}^1\}$, then
+$c = \{\jqf{error}^0, \jqf{path}^1\}$ (see @sec:builtin), then
 a compiled filter $\varphi$ is wellformed with respect to these filters iff
 $\ub\, \varphi\, c = \emptyset$.
