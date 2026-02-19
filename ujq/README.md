@@ -10,6 +10,8 @@ Next, you can run `ujq`, e.g. like this:
 
     ./ujq 'def recurse(f): def rec: ., (f | rec); rec; 0 | recurse(.+1)'
 
+(The first run will be a bit slow, because it compiles ujq and jaq's parser.)
+
 Internally, this hands the filter to jaq's parser, which produces an AST.
 The Haskell part then takes this AST and performs all
 steps described in the formal specification (lowering to IR and interpretation).
