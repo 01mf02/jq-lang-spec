@@ -22,8 +22,8 @@ documentclass: acmart
 classoption:
   - acmsmall
   - screen
-# - anonymous
-# - review
+  - anonymous
+  - review
 topmatter:
   - printfolios=false
   - printccs=true
