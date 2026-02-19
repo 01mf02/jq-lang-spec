@@ -15,20 +15,25 @@ lowering of a jq filter to IR (@sec:ir) and
 execution of an IR filter (@sec:semantics).
 @sec:ujq explains in more detail how ujq relates to our semantics.
 
-## jaq
+## jaq {#sec:jaq}
 
 jaq is a full-featured jq interpreter written in Rust.
 Like ujq, jaq implements the semantics in @sec:semantics, however,
 it adds a number of optimisation techniques, such as tail-call optimisation (TCO).
 That makes it more difficult to establish by looking at the code that jaq implements our semantics.
 However, this can be tested experimentally by comparing outputs of ujq and jaq.
-Furthermore, jaq not only implements the core jq language,
-but also a substantial part of jq's standard library.
+Furthermore, jaq not only implements the core jq language, but also
+all syntactic constructs omitted from this specification, such as modules,
+as well as more than 90% of jq's standard library.
 It demonstrates that the semantics can be implemented efficiently.
+To ensure compatibility with `jq`,
+jaq has a test suite of more than 500 jq programs
+which yield the same output for `jq` and jaq.
 
 The other main jq interpreters, namely `jq` and gojq,
-both compile jq programs to a list of imperative instructions and execute it, whereas
-jaq compiles jq programs to an abstract syntax tree and interprets it.
+both compile a jq program to a list of imperative instructions and execute it, whereas
+jaq compiles a jq program to an abstract syntax tree and interprets it,
+yielding an iterator over output values.
 
 jaq's public issue tracker has allowed us to identify which
 parts of our semantics cause compatibility problems for jq users.
@@ -37,7 +42,7 @@ where our semantics diverge most notably from `jq`.
 <!-- https://github.com/01mf02/jaq/pull/285 -->
 Users reported three issues caused by the update semantics described in this paper;
 these were all about the semantics of "`.. |= g`".
-As explained in @ex:rec-update, our original semantics caused infinite loops,
+As explained in @ex:rec-update, our original semantics could cause infinite loops,
 and we have since adjusted our semantics to address this issue.
 The fact that there were three independent reports of
 the same issue related to update semantics shows that users
@@ -45,6 +50,11 @@ extensively use updates in jaq and report their issues with it.
 The fact that no other issues with update semantics were reported so far
 indicates that our new update semantics
 preserve compatibility for a vast majority of users.
+Most reported issues have been about
+the command-line interface and
+filters in the standard library.
+There are currently no open issues related to
+the core jq semantics described in this article.
 
 ## Evaluation {#sec:eval}
 
@@ -220,9 +230,9 @@ at the same order of magnitude as `jq`'s and gojq's native updates.[^jq-path-for
 That indicates that `jq`'s and gojq's low update performance is caused by path-based updates.
 
 [^jq-path-force]:
-  When forcing path-based updates in `jq` via `getpath(path(...)) |= ...`,
+  When forcing path-based updates in `jq` and gojq via `getpath(path(...)) |= ...`,
   the performance also decreases compared to its (path-based) native updates.
-  That is because in this scenario, `jq` evaluates each path twice, namely
+  That is because in this scenario, `jq` and gojq evaluate each path twice, namely
   a first time via `|=` and a second time via `getpath(path(..))`.
 
 Now, let us look at the results for object input `{"a": [range(1000000)]}`,
