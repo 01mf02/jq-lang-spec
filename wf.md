@@ -1,4 +1,4 @@
-# Wellformedness
+# Wellformedness {#sec:wf}
 
 To be able to run a filter,
 we wish that its compiled form is a closed lambda term.

@@ -83,10 +83,10 @@ We consider equivalent the following notations^[
 
 ## IR {#sec:ir}
 
-We are now going to define IR filters and
+We now define IR filters and
 show how to _lower_ a jq filter to an IR filter.
 This allows us later to define semantics for IR
-in a much less verbose way than for actual jq syntax.
+in a much less verbose way than for full jq syntax.
 
 An IR filter $f$ is defined by the grammar
 \begin{align*}
@@ -105,7 +105,6 @@ The set of complex operators $\star$ in IR is reduced compared to full jq syntax
 for example, IR does not include "`=`" and "$\arith$`=`".
 @tab:op-correspondence gives an exhaustive list of IR operators and
 their corresponding operators in jq syntax.
-In the remainder, we will use IR operators also in jq syntax.
 
 -- --- --- --------- ------ ------- ------ --- ------ --- ------ --- --- -------- ------ ----
 jq `|` `,` `|=`      `//`   `==`    `!=`   `<` `<=`   `>` `>=`   `+` `-` `*`      `/`    `%`
@@ -118,8 +117,8 @@ Compared to actual jq syntax, IR filters
 have simpler path operations
 (such as $.[p]^?$ versus $f [p]^? \dots [p]^?$) and
 replace certain occurrences of filters by variables
-(e.g. $\$x \cartesian \$x$ versus $f \cartesian f$),
-which will make their execution easier to describe and understand.
+(e.g. $\$x \cartesian \$x$ versus $f \cartesian f$).
+This makes their execution easier to describe and understand.
 
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |

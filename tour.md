@@ -6,9 +6,6 @@ The official documentation of jq is its user manual [@jq-manual].
 jq programs are called _filters_.
 For now, let us consider a filter to be a function from a value to
 a (lazy, possibly infinite) stream of values.
-Furthermore, in this section, let us assume a value to be either
-a boolean, an integer, or an array of values.
-(We introduce the full set of JSON values in @sec:json.)
 
 The identity filter "`.`" returns a stream containing the input.^[
   The filters in this section can be executed on most UNIX shells by
@@ -21,7 +18,7 @@ The identity filter "`.`" returns a stream containing the input.^[
   In case where the input value does not matter,
   we can also use `jq -n $FILTER`,
   which runs the filter with the input value `null`.
-  We use `jq` 1.8.
+  We use `jq` 1.8.1.
 ]
 
 Arithmetic operations, such as

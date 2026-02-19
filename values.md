@@ -37,8 +37,8 @@ $$
 \end{alignedat}
 $$
 We write the empty list
-$\nil$ as $\stream{}$ and
-$\cons\, r_1\, (\cons\, r_2\, ...)$ as $\stream{r_1, r_2, ...}$.
+"$\nil$" as $\stream{}$ and
+"$\cons\, r_1\, (\cons\, r_2\, ...)$" as $\stream{r_1, r_2, ...}$.
 Because the jq language is evaluated lazily, lists can be infinite.
 
 We assume a combinator $Y: (T \to T) \to T$ for which
@@ -80,10 +80,7 @@ Furthermore, for any boolean $b$, $b$ is a value.
 By convention, we write
 $v$ for values,
 $n$ for numbers, and
-$s$ for strings
-in the remainder.
-We write $l \coloneqq \quad r_1 \gror \dots \gror r_n$ to say that
-$l$ is of shape $r_i$ for some $i \leq n$.
+$s$ for strings.
 
 The value type must provide the binary arithmetic operations
 $\{+, -, \times, \div, \modulo\}$
@@ -106,6 +103,8 @@ We assume the existence of several functions:
   may fail in case that the provided value is not a valid key.)
 - $\bool: \valt \to \boolt$ takes a value and returns a boolean.
 
+We write $l \coloneqq \quad r_1 \gror \dots \gror r_n$ to say that
+$l$ is of shape $r_i$ for some $i \leq n$.
 A _position_ $p$ is defined by the grammar $p \coloneqq \quad \emptyset \gror v \gror v: \gror :v \gror v:v$.
 The values contained in a position are called _indices_.
 We assume two operators:

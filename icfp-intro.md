@@ -45,7 +45,8 @@ This leaves a lot of space for interpretation and makes it difficult to find out
 whether certain behaviour of a jq interpreter is accidental or intended.
 
 We have created denotational semantics (@sec:semantics) for the jq language.
-We describe only jq filters with dedicated syntax,
+For jq users, this provides a succinct and unambiguous reference of the language.
+We cover only the core of jq, i.e. jq filters with dedicated syntax,
 as their behaviour is relatively
 consistent among jq interpreters and stable over time.
 We do not describe the various named filters for
@@ -78,7 +79,7 @@ are _updates_:
 An update filter, such as `f |= g`, modifies input data using
 a filter `f` that defines which parts of the input to update, and
 a filter `g` that defines what the matching input parts should be replaced with.
-We found a new approach called _path-less updates_ which
+We found a new approach called _pathless updates_ which
 can be described compactly and unambiguously,
 eliminates many potential errors, and
 allows for more performant execution.

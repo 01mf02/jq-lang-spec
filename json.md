@@ -15,7 +15,7 @@ an unordered map from _keys_ $k$ to values that we call an _object_.^[
 ]
 In JSON, object keys are strings.
 
-We write $\err\, ...$ to denote $\err\, e$ where we do not want to specify $e$.
+We write "$\err\, ...$" to denote "$\err\, e$" where we do not want to specify $e$.
 (In actual jq interpreters, $e$ is frequently an error message string.)
 
 The functions to construct arrays and objects, as well as to retrieve the _boolean value_, are as follows:

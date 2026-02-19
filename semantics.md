@@ -37,13 +37,14 @@ $t_u = \sigma\, v$ was obtained from @tab:update-semantics.
 
 \newcommand{\fresh}{\kappa}
 
-The lambda term $\sem \varphi$ obtained from a well-formed filter $\varphi$
-may contain at most one free variable, namely $\fresh$.
+The lambda term $\sem \varphi$ obtained from a filter $\varphi$
+contains the free variable $\fresh$.
 This variable is used to generate fresh labels for the execution of
 $\jqlb{label}{x} | f$, see @ex:labels.
-In order to create a closed term, we initially bind $\fresh$ to zero.
 We can then run a filter using the following function:
 $$\eval: \filtert \to \valt \to \stream{\resultt\, \valt} \coloneqq \lambda \varphi. (\lambda \fresh. \run\, \varphi)\, \zero$$
+This initially binds $\fresh$ to zero,
+yielding a closed term iff $\varphi$ is _wellformed_; see @sec:wf.
 
 \newcommand{\reducef }{\operatorname{reduce }}
 \newcommand{\foreachf}{\operatorname{foreach}}
@@ -251,7 +252,8 @@ The inverse filter for $\jqf{path}(f)$ is $\jqf{getpath}(f)$:
 For every path produced by $f$, it yields the value the path is pointing to.
 It can be implemented by definition as
 $$\jqf{getpath}(f) \coloneqq f \jqas \$p | \jqfold{reduce}{\$p[]}{\$i}{(.; .[\$i])}$$
-and is included in the standard library of jq.
+and is included in jq's standard library.
+We will use $\jqf{path}$ and $\jqf{getpath}$ in @sec:pathless-updates.
 
 ## Folding {#sec:folding}
 
@@ -338,9 +340,8 @@ Their types are:
 # Update Semantics {#sec:updates}
 
 In this section, we will discuss how to evaluate updates $f \update g$.
-First, we show the path-based update semantics used in most jq interpreters,
-and show which problems this approach entails.
-Then, we introduce our alternative, path-less update semantics, which
+First, we show the path-based update semantics used in most jq interpreters.
+Then, we introduce our alternative, pathless update semantics, which
 avoid many problems of path-based updates, while
 enabling higher performance by forgoing the construction of temporary path data.
 
@@ -354,7 +355,7 @@ Note that "$.$" is a valid path, referring to the input value.
 The update operation "$f \update g$" attempts to
 first obtain the paths of all values returned by $f$,
 then for each path, it replaces the value at the path by $g$ applied to it.
-Note that $f$ is not allowed to produce new values; it may only return paths.
+Note that $f$ may not produce new values; it may only return parts of its input.
 
 ::: {.example #ex:arr-update}
   Consider the input value $[[1, 2], [3, 4]]$.
@@ -424,14 +425,14 @@ The resulting update semantics can be understood to _interleave_ calls to $f$ an
 By doing so, these semantics can abandon the construction of paths altogether,
 which results in higher performance when evaluating updates.
 
-## Properties of path-less updates {#sec:update-props}
+## Properties of pathless updates {#sec:update-props}
 
 <!--
 μονοπάτι = path
 συνάρτηση = function
 -->
 
-Table: Properties of path-less update semantics. {#tab:update-props}
+Table: Properties of pathless update semantics. {#tab:update-props}
 
 | $\varphi$ | $\varphi \update \sigma$ |
 | --------- | ------------------------ |
@@ -512,7 +513,7 @@ $\sigma'\, x$ returns the output of the filter $\run\, \sigma\, x$.
 This allows us to bind variables in $\varphi$ without impacting $\sigma$.
 -->
 
-## Path-less updates {#sec:pathless-updates}
+## Pathless updates {#sec:pathless-updates}
 
 We will now give update semantics that define the output of
 $\run\, \sem{f \update g}\, v$ as referred to in @sec:semantics.
@@ -520,7 +521,7 @@ We will first define
 $$\run\, \sem{f \update g}\, v \coloneqq \upd\, \sem f\, \sigma\, v, \text{where }
   \sigma: \valt \to \stream{\resultt\, \valt} \coloneqq \run\, \sem g$$
 
-Table: Path-less update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \stream{\resultt\, \valt}$ is a function from a value to a list of value results. {#tab:update-semantics}
+Table: Pathless update semantics. Here, $\varphi$ is a filter and $\sigma: \valt \to \stream{\resultt\, \valt}$ is a function from a value to a list of value results. {#tab:update-semantics}
 
 | $\varphi$ | $\upd\, \sem \varphi\, \sigma\, v$ |
 | --------- | ------------------------- |
@@ -635,7 +636,7 @@ for which the path "$.[0]$" is invalid --- the path-based update fails with an e
 The problem here is that "$..$" yields values closer to the root before values closer to the leaves.
 We call this strategy "root-first", as opposed to "leaf-first".
 
-Next, let us consider how path-less updates would evaluate
+Next, let us consider how pathless updates would evaluate
 $.. \update f$ if "$..$" was interpreted like above.
 This, again, performs updates root-first.
 Using @tab:update-props, we can show that this is equivalent to
@@ -709,15 +710,15 @@ $\jqf{getpath}(\jqf{path}(f)) \update g$,
 we can force a path-based update, regardless of whether
 the used jq interpreter uses pathless or path-based updates.
 We use this to evaluate the performance of path-based updates in
-our interpreter that uses pathless updates, see @sec:eval.
+our interpreter that uses pathless updates, see @sec:update-eval.
 
 ## Folding {#sec:folding-update}
 
 In @sec:folding, we have seen how to evaluate folding filters of the shape
 $\jqfold{reduce }{x}{\$x}{(.; f)}$ and
 $\jqfold{foreach}{x}{\$x}{(.; f; g)}$.
-Here, we will define path-less update semantics for these filters.
-These update operations are _not_ supported in jq 1.8; however,
+Here, we will define pathless update semantics for these filters.
+These update operations are _not_ supported in jq 1.8 and yield an error; however,
 we will show that they arise quite naturally from previous definitions.
 
 Let us start with an example to understand folding on the left-hand side of an update.

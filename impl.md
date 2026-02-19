@@ -24,7 +24,7 @@ That makes it more difficult to establish by looking at the code that jaq implem
 However, this can be tested experimentally by comparing outputs of ujq and jaq.
 Furthermore, jaq not only implements the core jq language, but also
 all syntactic constructs omitted from this specification, such as modules,
-as well as more than 90% of jq's standard library.
+as well as more than 90% of the filters in jq's standard library.
 It demonstrates that the semantics can be implemented efficiently.
 To ensure compatibility with `jq`,
 jaq has a test suite of more than 500 jq programs
@@ -32,25 +32,24 @@ which yield the same output for `jq` and jaq.
 
 The other main jq interpreters, namely `jq` and gojq,
 both compile a jq program to a list of imperative instructions and execute it, whereas
-jaq compiles a jq program to an abstract syntax tree and interprets it,
-yielding an iterator over output values.
+jaq compiles a jq program to an abstract syntax tree and interprets it.
 
-jaq's public issue tracker has allowed us to identify which
+jaq's public issue tracker has been instrumental to identify which
 parts of our semantics cause compatibility problems for jq users.
-This is particularly interesting for our path-less update semantics,
-where our semantics diverge most notably from `jq`.
+This particularly matters for our pathless update semantics,
+where we diverge most notably from `jq`.
 <!-- https://github.com/01mf02/jaq/pull/285 -->
-Users reported three issues caused by the update semantics described in this paper;
+Users reported three issues caused by pathless update semantics;
 these were all about the semantics of "`.. |= g`".
-As explained in @ex:rec-update, our original semantics could cause infinite loops,
-and we have since adjusted our semantics to address this issue.
+As explained in @ex:rec-update, our original semantics could cause infinite loops.
+The semantics shown in this paper address this issue.
 The fact that there were three independent reports of
-the same issue related to update semantics shows that users
+the same issue related to updates shows that users
 extensively use updates in jaq and report their issues with it.
-The fact that no other issues with update semantics were reported so far
-indicates that our new update semantics
+The fact that no other issues with updates were reported so far
+indicates that our pathless update semantics
 preserve compatibility for a vast majority of users.
-Most reported issues have been about
+Most reported issues concerned
 the command-line interface and
 filters in the standard library.
 There are currently no open issues related to
@@ -63,6 +62,9 @@ We evaluated the jq interpreters `jq`, gojq, and jaq^[
   `jq` 1.8.1,
   gojq 0.12.18, and
   jaq revision 80a0dc0.
+  The accompanying material for this article includes
+  the benchmark data,
+  the used version of jaq, as well as ujq.
 ]
 on a number of programming language interpreters written in the jq language:
 
@@ -159,11 +161,11 @@ We can see that jaq is the fastest implementation for all update benchmarks.
 The next section shows a more detailed updated benchmark that is not part of @tab:benchmark.
 -->
 
-## Update performance
+## Update performance {#sec:update-eval}
 
 We now compare the performance of
 path-based updates (as used in `jq` and gojq) and
-path-less updates (as used in jaq).
+pathless updates (as used in jaq).
 We evaluate on two different inputs:
 
 - `[range(1000000)]`        (an array of the shape `[0, ..., 999999]`)
@@ -176,7 +178,7 @@ in order to determine the cost of different kinds of updates:
 - Construction: Only construct the input (identity function).
   This serves as baseline, because all actions include input construction.
 - Native update: Update using the built-in update operator `|=`.
-  On jaq, this uses path-less  updates, whereas
+  On jaq, this uses pathless   updates, whereas
   on jq,  this uses path-based updates.
 - Manual update: Update without `|=`.
 - Path-based update: Update with `|=`,
@@ -209,7 +211,7 @@ we measure the time taken by
 \begin{figure}
 \centering
 \input{eval/update.tex}
-\caption{Runtime to construct and process input. Lower is better.}
+\caption{Runtime to construct and update input. Lower is better.}
 \label{fig:update}
 \end{figure}
 
@@ -223,7 +225,7 @@ $(2041 - 106) \div (114 - 73) = 47.20$
 ]
 We can also see that in `jq` and gojq,
 (path-based) native updates are significantly _slower_ than manual updates, whereas in jaq,
-(path-less)  native updates are _faster_ than manual updates.
+(pathless)   native updates are _faster_ than manual updates.
 Finally, we can see that when forcing path-based updates,
 the performance of jaq plummets, arriving
 at the same order of magnitude as `jq`'s and gojq's native updates.[^jq-path-force]
@@ -233,7 +235,7 @@ That indicates that `jq`'s and gojq's low update performance is caused by path-b
   When forcing path-based updates in `jq` and gojq via `getpath(path(...)) |= ...`,
   the performance also decreases compared to its (path-based) native updates.
   That is because in this scenario, `jq` and gojq evaluate each path twice, namely
-  a first time via `|=` and a second time via `getpath(path(..))`.
+  a first time via `|=` and a second time via `getpath(path(...))`.
 
 Now, let us look at the results for object input `{"a": [range(1000000)]}`,
 in order to study the performance of nested updates, namely
