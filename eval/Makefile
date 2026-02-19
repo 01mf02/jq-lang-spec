@@ -4,7 +4,7 @@
 HF=hyperfine -M 10 --export-json $@ -L jq $(JAQ),$(JQ),$(GOJQ)
 
 JQ=jq
-JAQ=jaq
+JAQ=../jaq/target/release/jaq
 GOJQ=gojq
 HEADER="f	time-jaq	time-jq	time-gojq"
 

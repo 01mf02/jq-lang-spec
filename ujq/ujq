@@ -3,4 +3,4 @@
 set -e
 
 ghc -dynamic -W -O Main.hs
-(cat defs.jq && echo "$1") | (cd jaq/jaq-core && cargo run -q --example parse) | ./Main
+(cat defs.jq && echo "$1") | (cd ../jaq/jaq-core && cargo run -q --example parse) | ./Main

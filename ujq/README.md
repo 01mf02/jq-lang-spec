@@ -4,10 +4,6 @@ Instead, it aims to provide an implementation that is as compact as possible.
 
 To try `ujq`, you need GHC (tried with 9.4.8) and a Rust toolchain (>= 1.65).
 
-First, you need to clone a recent version of jaq, because `ujq` uses jaq's parser:
-
-    git clone https://github.com/01mf02/jaq
-
 Next, you can run `ujq`, e.g. like this:
 
     ./ujq 'def recurse(f): def rec: ., (f | rec); rec; 0 | recurse(.+1)'

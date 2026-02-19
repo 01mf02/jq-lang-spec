@@ -8,5 +8,5 @@
 	path = eval/pik4ez-ascii
 	url = https://github.com/wspace/pik4ez-ascii
 [submodule "ujq/jaq"]
-	path = ujq/jaq
+	path = jaq
 	url = https://github.com/01mf02/jaq
