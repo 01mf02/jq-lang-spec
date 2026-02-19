@@ -9,10 +9,16 @@ We will use IR later to define the semantics in @sec:semantics.
 ## jq {#sec:hir}
 
 We will now present a subset of jq syntax^[
-  Actual jq syntax has a few more constructions to offer, including
+  jq provides more syntactical constructs, such as
   variable arguments, string interpolation, modules, etc.
-  However, these constructions can be transformed into
-  semantically equivalent syntax as treated in this text.
+  Most of these constructs are light syntactic sugar;
+  for example, the filter `.a` is equivalent to `.["a"]`.
+  However, because of the sheer amount of such sugar,
+  we omit it here.
+  All these constructs can be transformed into
+  equivalent syntax treated in this text.
+  This is demonstrated by our interpreter jaq,
+  which supports all constructs.
 ] of which we have already seen examples in @sec:tour.
 
 A _filter_ $f$ is defined by the grammar
@@ -112,7 +118,8 @@ Compared to actual jq syntax, IR filters
 have simpler path operations
 (such as $.[p]^?$ versus $f [p]^? \dots [p]^?$) and
 replace certain occurrences of filters by variables
-(e.g. $\$x \cartesian \$x$ versus $f \cartesian f$).
+(e.g. $\$x \cartesian \$x$ versus $f \cartesian f$),
+which will make their execution easier to describe and understand.
 
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |
@@ -237,8 +244,8 @@ In @sec:semantics, we will see that its output is $\stream{[1], [2]}$.
 
 The lowering in @tab:lowering is compatible with the semantics of `jq`,
 with one notable exception:
-In `jq`, Cartesian operations $f \cartesian g$ would be lowered to
-$\floor g \jqas \$y' | \floor f \jqas \$x' | \$x \cartesian \$y$, whereas we lower it to
+In `jq`, Cartesian operations $f \cartesian g$ are equivalent to
+$\floor g \jqas \$y' | \floor f \jqas \$x' | \$x \cartesian \$y$, whereas we lower them to
 $\floor f \jqas \$x' | \floor g \jqas \$y' | \$x \cartesian \$y$,
 thus inverting the binding order.
 Note that the difference only shows when both $f$ and $g$ return multiple values.
@@ -256,17 +263,20 @@ $\stream{0, 1, 2, 3}$ using our lowering, and
 $\stream{0, 2, 1, 3}$ in `jq`.
 :::
 
-For hygienic reasons, we require that labels are disjoint from variables.
-This can be easily ensured by prefixing labels and variables differently.
+For hygienic reasons, we require that
+labels are disjoint from variables and that
+filters with the same name represent filters with equal arity.
+This can be easily ensured by renaming
+labels $\$x$ to $\$l_x$,
+variables $\$x$ to $\$v_x$, and
+identifiers $x$ of arity $n$ to $x^n$.
+For brevity, we do not perform this renaming in most examples.
 
 ::: {.example}
 Consider the filter $\jqlb{label}{x} | . \jqas \$x | \$x + \$x, \jqlb{break}{x}$.
 Here, we have to rename to ensure that labels and variables are disjoint, yielding e.g.
 $\jqlb{label}{l_x} | . \jqas \$v_x | \$v_x + \$v_x, \jqlb{break}{l_x}$.
 :::
-
-Furthermore, we require that identifiers with the same name represent filters with equal arity.
-This can be ensured by postfixing all identifiers with their arity.
 
 ::: {.example}
 Consider the filter $\jqdef{f(g)}{g} \jqdef{f}{.} f(f)$.
