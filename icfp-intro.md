@@ -98,7 +98,7 @@ values, results, and lists.
 @sec:syntax formalises a subset of jq syntax and shows
 how to transform jq syntax to an intermediate representation (IR).
 @sec:semantics shows how to evaluate jq filters on a given input value.
-@sec:updates presents the traditional path-based and our new path-less approach to executing updates.
+@sec:updates presents the traditional path-based and our new pathless approach to executing updates.
 @sec:impl describes and evaluates our two jq interpreters.
 It shows that our semantics enable performant and correct execution of
 several large programs written in jq.

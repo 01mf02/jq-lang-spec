@@ -250,4 +250,4 @@ Path-based updates are significantly slower than
 manually updating data without the `|=` operator.
 Furthermore, path-based update performance is impacted negatively by nesting.
 However, updates can be made to achieve higher performance than manual updates,
-by using our path-less update semantics.
+by using our pathless update semantics.
