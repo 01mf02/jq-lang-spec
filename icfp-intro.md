@@ -47,18 +47,18 @@ whether certain behaviour of a jq interpreter is accidental or intended.
 We have created denotational semantics (@sec:semantics) for the jq language.
 For jq users, this provides a succinct and unambiguous reference of the language.
 We cover only the core of jq, i.e. jq filters with dedicated syntax,
-as their behaviour is relatively
+whose behaviour is relatively
 consistent among jq interpreters and stable over time.
 We do not describe the various named filters for
 regular expressions, mathematics, formatting, etc.
 that make up jq's "standard library",
-as this would go beyond the scope of this article.
+as this would go beyond the constraints of this article.
 
 Having formal semantics for jq makes it possible to verify
 the correctness of jq programs and interpreters.
 For example, our semantics could be used to prove that
 an optimisation technique in a jq interpreter is correct.
-Furthermore, our semantics are abstract over the type of values.
+Furthermore, our semantics are abstract over the type of processed values.
 This accommodates the fact that the type of values differs between
 different jq interpreters and different versions of `jq`.
 It also makes it possible to describe jq interpreters that
@@ -79,11 +79,12 @@ are _updates_:
 An update filter, such as `f |= g`, modifies input data using
 a filter `f` that defines which parts of the input to update, and
 a filter `g` that defines what the matching input parts should be replaced with.
+Most jq interpreters perform updates using
+an approach that we call path-based updates.
 We found a new approach called _pathless updates_ which
 can be described compactly and unambiguously,
 eliminates many potential errors, and
 allows for more performant execution.
-We compare this with jq's traditional path-based updates.
 
 We have implemented two jq interpreters:
 _ujq_ is a direct translation of our semantics to Haskell, and
@@ -93,12 +94,13 @@ we can compare its behaviour to ujq.
 
 @sec:tour introduces jq by a series of examples that
 give a glimpse of actual jq syntax and behaviour.
-@sec:values defines several data types and corresponding lambda terms, such as
+@sec:preliminaries defines several data types and corresponding lambda terms, such as
 values, results, and lists.
 @sec:syntax formalises a subset of jq syntax and shows
 how to transform jq syntax to an intermediate representation (IR).
 @sec:semantics shows how to evaluate jq filters on a given input value.
 @sec:updates presents the traditional path-based and our new pathless approach to executing updates.
 @sec:impl describes and evaluates our two jq interpreters.
-It shows that our semantics enable performant and correct execution of
-several large programs written in jq.
+It shows that our semantics enable correct execution of
+several large programs written in jq, as well as
+significantly more performant update execution.

@@ -34,8 +34,8 @@ f &\coloneqq \quad n \gror s \gror . \gror .. \gror \$x \gror (f) \\
 \end{align*}
 where:
 
-- $p$ is a _position_ defined by the grammar $p \coloneqq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
-- $P$ is a _pattern_ defined by the grammar $P \coloneqq \quad \$x \gror [P, \dots, P] \gror \{f: P, \dots, f: P\}$.
+- $p$ is a _position_ defined by $p \coloneqq \quad \emptyset \gror f \gror f: \gror :f \gror f:f$.
+- $P$ is a _pattern_ defined by $P \coloneqq \quad \$x \gror [P, \dots, P] \gror \{f: P, \dots, f: P\}$.
 - $x$ is an identifier (such as $\jqf{empty}$).
 - $n$ is a number (such as $42$ or $3.14$).
 - $s$ is a string (such as "Hello world!").
@@ -120,6 +120,8 @@ replace certain occurrences of filters by variables
 (e.g. $\$x \cartesian \$x$ versus $f \cartesian f$).
 This makes their execution easier to describe and understand.
 
+## Lowering
+
 | $\varphi$ | $\floor \varphi$ |
 | ----- | ------------ |
 | $n$, $s$, $.$, $..$, $[]$, or $\{\}$ | $\varphi$ |
@@ -142,7 +144,7 @@ This makes their execution easier to describe and understand.
 | $\$x \jqas [P_1, \dots, P_n] | g$ | $\floor{\$x \jqas \obj{(0): P_1, \dots, (n-1): P_n} | g}$ |
 | $\$x \jqas \obj{f_1: P_1, \dots} | g$ | $\floor{\$x[f_1] \jqas \$x' | \$x' \jqas P_1 | \$x \jqas \obj{f_2: P_2, \dots} | g}$ |
 | $\$x \jqas \obj{} | g$ | $\floor g$ |
-| $\jqfold{\fold}{f_x}{\$x}{(f_y; f; g)}$ | $. \jqas \$x' | \floor{f_y} | \jqfold{\fold}{(\floor{\$x'} | f_x)}{\$x}{(.; \floor f; \floor g)}$ |
+| $\jqfold{\fold}{f_x}{\$x}{(f_y; f; g)}$ | $. \jqas \$x' | \floor{f_y} | \jqfold{\fold}{(\$x' | \floor{f_x})}{\$x}{(.; \floor f; \floor g)}$ |
 | $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$ | $\floor{\jqfold{\fold}{(f_x \jqas P | \beta P)}{\$x'}{(f_y; \$x' \jqas \beta P | f; \$x' \jqas \beta P | g)}}$ |
 | $\jqite{f_x}{f}{g}$ | $\floor{f_x} \jqas \$x' | \jqite{\$x'}{\floor f}{\floor g}$ |
 | $f?$ | $\jqlb{label}{x'} | \jqtc{\floor f}{(\jqlb{break}{x'})}$ |
@@ -156,8 +158,8 @@ Table: Lowering of a jq filter $\phi$ to an IR filter $\floor \phi$. {#tab:lower
 
 @tab:lowering shows how to lower a jq filter $\varphi$ to
 an equivalent IR filter $\floor \varphi$.
-In particular, this desugars path operations and
-makes it explicit which operations are Cartesian or complex.
+As a side effect, this provides equational properties that
+can be used to reason about jq programs.
 By convention, we write $\$x'$ to denote a fresh variable.
 Note that for some complex operators $\star$, namely
 "`=`", "$\arith$`=`", "`//=`", "`and`", and "`or`",
@@ -174,6 +176,31 @@ We define filters that yield the boolean values as
 \end{align*}
 The filter "$\jqf{bool} \coloneqq (\jqite{.}{\jqf{true}}{\jqf{false}})$"
 maps its input to its boolean value.
+
+### Compatibility
+
+The lowering in @tab:lowering is compatible with the semantics of `jq`,
+with one notable exception:
+In `jq`, Cartesian operations $f \cartesian g$ are equivalent to
+$\floor g \jqas \$y' | \floor f \jqas \$x' | \$x \cartesian \$y$, whereas we lower them to
+$\floor f \jqas \$x' | \floor g \jqas \$y' | \$x \cartesian \$y$,
+thus inverting the binding order.
+Note that the difference only shows when both $f$ and $g$ return multiple values.
+We diverge here from `jq` to make the lowering of Cartesian operations
+consistent with that of other operators, such as $\{f: g\}$, where
+the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
+That also makes it easier to describe other filters, such as
+$\{f_1: g_1, \dots, f_n: g_n\}$, which we can lower to
+$\floor{\{f_1: g_1\} + \dots + \{f_n: g_n\}}$, whereas its lowering assuming `jq`'s lowering of Cartesian operations would be
+$$\floor{\{f_1: g_1\}} \jqas \$x'_1 | \dots | \floor{\{f_n: g_n\}} \jqas \$x'_n | \$x'_1 + \dots + \$x'_n.$$
+
+::: {.example}
+The filter $(0, 2) + (0, 1)$ yields
+$\stream{0, 1, 2, 3}$ using our lowering, and
+$\stream{0, 2, 1, 3}$ in `jq`.
+:::
+
+### Patterns
 
 In the lowering of the folding operators $\jqfold{\fold}{f_x}{P}{(f_y; f; g)}$
 (where $\fold$ stands for either $\jqkw{reduce}$ or $\jqkw{foreach}$),
@@ -204,6 +231,8 @@ Here, we first used $\beta P$ as filter
 ($[\$x, \$y, \$z] \jqas \$x' | \dots$) to "serialise" the pattern variables to an array, then as pattern
 ($\$x' \jqas [\$x, \$y, \$z] | \dots$) to "deserialise" the array to retrieve the pattern variables.
 :::
+
+### Positions
 
 | $[p]  ^?$ | $\floor{[p]^?}_{\$x}$ |
 | --------- | ---------------------- |
@@ -241,26 +270,7 @@ $\floor \varphi \equiv ([3] | (\jqf{length}, 2) \jqas \$z | \floor \mu \update \
 In @sec:semantics, we will see that its output is $\stream{[1], [2]}$.
 :::
 
-The lowering in @tab:lowering is compatible with the semantics of `jq`,
-with one notable exception:
-In `jq`, Cartesian operations $f \cartesian g$ are equivalent to
-$\floor g \jqas \$y' | \floor f \jqas \$x' | \$x \cartesian \$y$, whereas we lower them to
-$\floor f \jqas \$x' | \floor g \jqas \$y' | \$x \cartesian \$y$,
-thus inverting the binding order.
-Note that the difference only shows when both $f$ and $g$ return multiple values.
-We diverge here from `jq` to make the lowering of Cartesian operations
-consistent with that of other operators, such as $\{f: g\}$, where
-the leftmost filter ($f$) is bound first and the rightmost filter ($g$) is bound last.
-That also makes it easier to describe other filters, such as
-$\{f_1: g_1, \dots, f_n: g_n\}$, which we can lower to
-$\floor{\{f_1: g_1\} + \dots + \{f_n: g_n\}}$, whereas its lowering assuming `jq`'s lowering of Cartesian operations would be
-$$\floor{\{f_1: g_1\}} \jqas \$x'_1 | \dots | \floor{\{f_n: g_n\}} \jqas \$x'_n | \$x'_1 + \dots + \$x'_n.$$
-
-::: {.example}
-The filter $(0, 2) + (0, 1)$ yields
-$\stream{0, 1, 2, 3}$ using our lowering, and
-$\stream{0, 2, 1, 3}$ in `jq`.
-:::
+## Hygiene {#sec:hygiene}
 
 For hygienic reasons, we require that
 labels are disjoint from variables and that
@@ -278,18 +288,13 @@ $\jqlb{label}{l_x} | . \jqas \$v_x | \$v_x + \$v_x, \jqlb{break}{l_x}$.
 :::
 
 ::: {.example}
-Consider the filter $\jqdef{f(g)}{g} \jqdef{f}{.} f(f)$.
+Consider the filter $\jqdef{f(g)}{g} \jqdef{f}{.} f(f)$,
+which uses two filters called "$f$" with different arity.
 Here, we have to rename identifiers to prevent shadowing issues in the semantics, yielding e.g.
 $\jqdef{f^1(g^0)}{g^0} \jqdef{f^0}{.} f^1(f^0)$.
 :::
 
-::: {.example}
-Consider the jq filter $\jqdef{\jqf{recurse}(f)}{., (f | \jqf{recurse}(f))} \jqf{recurse}(. + 1)$,
-which returns the infinite stream of output values $n, n+1, \dots$
-when provided with an input number $n$.
-Lowering this to IR yields
-$\jqdef{\jqf{recurse}(f)}{., (f | \jqf{recurse}(f))} \jqf{recurse}(. \jqas \$x' | 1 \jqas \$y' | \$x' + \$y')$.
-:::
+## Examples
 
 ::: {.example}
 Consider the following jq program:
@@ -320,5 +325,15 @@ Lowering this to IR yields
 \end{align*}
 :::
 
+::: {.example}
+Consider the jq filter $\jqdef{\jqf{recurse}(f)}{., (f | \jqf{recurse}(f))} \jqf{recurse}(. + 1)$,
+which returns the infinite stream of output values $n, n+1, \dots$
+when provided with an input number $n$.
+Lowering this to IR yields
+$\jqdef{\jqf{recurse}(f)}{., (f | \jqf{recurse}(f))} \jqf{recurse}(. \jqas \$x' | 1 \jqas \$y' | \$x' + \$y')$.
+:::
+
+<!--
 @sec:semantics shows how to run an IR filter $f$.
 For a given input value $v$, the output of $f$ will be given by "$\eval\, \sem f\, v$".
+-->

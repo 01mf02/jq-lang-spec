@@ -2,9 +2,9 @@
 
 In this section, we will show how to transform --- or compile ---
 an IR filter $\varphi$ to a lambda term $\sem \varphi$ of type $\filtert$.
-We will then define a function "$\eval\, \varphi\, v$" that
+We will then define a function "$\eval\, \sem \varphi\, v$" that
 returns the list of value-path results that
-the filter $\varphi: \filtert$ outputs when given
+the filter $\varphi$ outputs when given
 the value-path $v: \valpatht$ as input.
 The evaluation strategy is call-by-name.
 
@@ -82,19 +82,20 @@ Table: Evaluation semantics. {#tab:eval-semantics}
 | $f \update g$ | $\upd\, \sem f\, (\run\, \sem g)\, v$ |
 
 The evaluation semantics are given in @tab:eval-semantics.
+This is the very heart of jq.
 Let us discuss its different cases:
 
 - $n$ or $s$: Returns the value corresponding to the number $n$ or string $s$.
 - "$.$": Returns the input value. This is the identity filter.
 - "$..$": Returns the input value and all values recursively contained within it.
 - $\$x$: Returns the value currently bound to the variable $\$x$.
-  Wellformedness of the filter (as defined in @sec:ir) ensures that
+  Wellformedness of the filter (see @sec:wf) ensures that
   whenever we evaluate a variable, it must have been substituted by a concrete value,
-  for example by a surrounding call to $f \jqas \$x | g$.
+  for example by a surrounding call to "$f \jqas \$x | g$".
 - $[]$ or $\{\}$: Creates an empty array or object.
-- $[f]$: Creates an array from the output of $f$, using the function $\arr$ defined in @sec:values.
+- $[f]$: Creates an array from the output of $f$, using the "$\arr$" function defined in @sec:values.
 - $\{\$x: \$y\}$: Creates an object from the values bound to $\$x$ and $\$y$,
-  using the function $\objf_1$ defined in @sec:values.
+  using the "$\objf_1$" function defined in @sec:values.
 - $\$x \arith \$y$: Returns the output of an arithmetic operation "$\arith$"
   (any of $+$, $-$, $\times$, $\div$, and $\%$, as given in @tab:op-correspondence)
   on the values bound to $\$x$ and $\$y$.
@@ -103,7 +104,7 @@ Let us discuss its different cases:
   on the values bound to $\$x$ and $\$y$.
   Because we assumed that Boolean operations return $\valt$ and are thus infallible
   (unlike the arithmetic operations $\arith$, which return $\resultt\, \valt$),
-  we have to wrap their outputs with an $\ok$.
+  we have to wrap their outputs in an "$\ok$".
 - $f, g$: Concatenates the outputs of $f$ and $g$, both applied to the same input.
 - $f | g$: Composes $f$ and $g$, returning the outputs of $g$ applied to all outputs of $f$.
 - $f \alt g$: Let $l$ be the outputs of $f$ whose boolean values are not false.
@@ -137,10 +138,10 @@ Let us discuss its different cases:
   takes a label $\fresh$ and a list $l$ of value results,
   returning the longest prefix of $l$ that does not contain $\breakf\, \fresh$:
   \begin{alignat*}{3}
-  \untilf&{}: (T \to \mathbb B) \to \stream{T} \to \stream{T} &{}\coloneqq{}&
-  \lambda p\, l. l\, (\lambda h\, t. p\, h\, \stream{}\, (\stream h + \untilf\, p\, t)) \\
   \labelf&{}: \mathbb N \to \stream{\resultt\, T} \to \stream{\resultt\, T} &\coloneqq{}&
-  \lambda \fresh. \untilf\, (\lambda r. r\, (\lambda o. \false)\, (\lambda e. \false)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b))
+  \lambda \fresh. \untilf\, (\lambda r. r\, (\lambda o. \false)\, (\lambda e. \false)\, (\lambda b. \operatorname{nat\_eq}\, \fresh\, b)) \\
+  \untilf&{}: (T \to \mathbb B) \to \stream{T} \to \stream{T} &{}\coloneqq{}&
+  \lambda p\, l. l\, (\lambda h\, t. p\, h\, \stream{}\, (\stream h + \untilf\, p\, t))
   \end{alignat*}
   Here,
   "$\untilf\, p\, l$" returns
@@ -150,7 +151,7 @@ Let us discuss its different cases:
   $\true$ if two natural numbers are equal, else $\false$.
 - $\jqlb{break}{x}$: Returns a value result "$\breakf\, \$x$".
   Similarly to the evaluation of variables $\$x$ described above,
-  wellformedness of the filter (as defined in @sec:hir) ensures that
+  wellformedness of the filter (see @sec:wf) ensures that
   the returned value $\breakf\, \$x$ will be
   eventually handled by a corresponding filter
   $\jqlb{label}{x} | f$.
@@ -158,9 +159,9 @@ Let us discuss its different cases:
   values and errors, but never a break result.
 - $\jqite{\$x}{f}{g}$: Returns the output of $f$ if $\$x$ is bound to
   a "true" value (neither null nor false for JSON, see @sec:json), else returns the output of $g$.
-- $.[p]^?$: Accesses parts of the input value;
-  see @sec:value-ops for the definitions of the operators.
-  When evaluating this, the indices contained in $p$ have been substituted by values.
+- $.[p]^?$: Accesses parts of the input value; see @sec:values.
+  Wellformedness ensures that
+  the indices contained in $p$ have been substituted by values.
 - $\jqfold{\fold}{f_x}{\$x}{(.; f; g)}$: Folds $f$ over the values returned by $f_x$,
   starting with the current input as accumulator.
   The current accumulator value is provided to $f$ as input value and
@@ -180,6 +181,8 @@ Let us discuss its different cases:
   This also handles the case of calling nullary filters such as $\jqf{empty}$.
 - $f \update g$: Updates the input at positions returned by $f$ by $g$.
   We will discuss this in @sec:updates.
+
+## Examples
 
 ::: {.example #ex:recursion name="Recursion"}
   Consider the following IR filter $\varphi$: $$\jqdef{\jqf{repeat}}{., \jqf{repeat}} \jqf{repeat}$$
@@ -208,7 +211,7 @@ Let us discuss its different cases:
   &= \stream{\ok v} + \run\, \sem \varphi\, v.
   \end{align*}
   This shows that the evaluation of $\varphi$ on any input $v$ yields
-  an infinite stream of $\ok v$ results.
+  an infinite stream of "$\ok v$" results.
 :::
 
 ::: {.example #ex:labels name="Labels"}
@@ -342,8 +345,9 @@ Their types are:
 In this section, we will discuss how to evaluate updates $f \update g$.
 First, we show the path-based update semantics used in most jq interpreters.
 Then, we introduce our alternative, pathless update semantics, which
-avoid many problems of path-based updates, while
-enabling higher performance by forgoing the construction of temporary path data.
+avoid many problems of path-based updates.
+In @sec:update-eval, we will give evidence that
+pathless updates enable higher performance by omitting the construction of temporary path data.
 
 ## Path-based updates {#sec:jq-updates}
 
@@ -467,7 +471,7 @@ Let us discuss these for the different filters $\varphi$:
   $\jqfold{reduce}{f}{\$x}{(.; g \update \sigma)}$ ---
   with the exception that $\$x$ is not accessible in $\sigma$.
 - $\jqite{\$x}{f}{g}$: Applies $\sigma$ at $f$ if $\$x$ holds, else at $g$.
-- $f \alt g$: Applies $\sigma$ at $f$ if $f$ yields some output whose boolean value (see @sec:value-ops) is not false, else applies $\sigma$ at $g$.
+- $f \alt g$: Applies $\sigma$ at $f$ if $f$ yields some output whose boolean value (see @sec:values) is not false, else applies $\sigma$ at $g$.
   Here, $\jqf{first}(f)$ is a filter that returns
   the first output of its argument $f$ if there is one, else the empty list.
 
@@ -517,7 +521,7 @@ This allows us to bind variables in $\varphi$ without impacting $\sigma$.
 
 We will now give update semantics that define the output of
 $\run\, \sem{f \update g}\, v$ as referred to in @sec:semantics.
-We will first define
+We will first recall from @tab:eval-semantics:
 $$\run\, \sem{f \update g}\, v \coloneqq \upd\, \sem f\, \sigma\, v, \text{where }
   \sigma: \valt \to \stream{\resultt\, \valt} \coloneqq \run\, \sem g$$
 
@@ -561,8 +565,8 @@ We discuss the remaining cases for $\varphi$:
   This filter is unusual because is the only kind where a subexpression may be both
   evaluated ($\run\, \sem f\, v$) as well as
   updated with ($\upd\, \sem f\, \sigma\, v$).
-- $.[p]^?$: Applies $\sigma$ to the current value at the path part $p$
-  using the update operators in @sec:value-ops.
+- $.[p]^?$: Applies $\sigma$ to the value at position $p$ in the input,
+  using the update operators in @sec:values.
 - $f \jqas \$x | g$:
   Folds over all outputs of $f$, using the input value $v$ as initial accumulator and
   updating the accumulator by $g \update \sigma$, where

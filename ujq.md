@@ -1,7 +1,7 @@
 # Comparison between ujq and our semantics {#sec:ujq}
 
 ujq implements a value type that is quite close to JSON, as well as
-the operations given in @sec:value-ops.
+the operations given in @sec:values.
 However, the operations implemented in ujq are quite simplified and
 do not support all functionalities of their counterparts in `jq`;
 for example,
@@ -10,13 +10,13 @@ ujq yields a runtime error in that case.
 Implementing all value operations like in `jq` would add a lot of code to ujq,
 without deepening our understanding of the core semantics.
 The feasibility of implementing more complete value operations
-within the framework established in @sec:value-ops is demonstrated by jaq.
+within the framework established in @sec:values is demonstrated by jaq.
 
 There is one main difference between ujq and the semantics in this paper:
 In our semantics, compilation transforms an IR filter into
 a lambda term that can be readily executed.
 This compilation involves the construction of lambda terms with unbound variables,
-which relies on wellformedness (@sec:ir) to ensure that
+which relies on wellformedness (@sec:wf) to ensure that
 the final result is a closed term.
 However, in Haskell, we cannot construct functions with unbound variables.
 Therefore, ujq carries along a _context_ that

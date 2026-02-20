@@ -16,6 +16,7 @@ For this, it uses a set of symbol names $c$ that may contain
 variables $\$v_x$,
 labels $\$l_x$, and
 filters $x^n$.
+This relies on the renaming of symbols shown in @sec:hygiene.
 
 | $\varphi$ | $\ub\, \varphi\, c$ |
 | --------- | ----------------- |

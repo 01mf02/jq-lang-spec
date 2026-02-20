@@ -1,4 +1,4 @@
-# Preliminaries {#sec:values}
+# Preliminaries {#sec:preliminaries}
 
 In this section, we define several data types, such as
 values, results, and lists, in simply typed lambda calculus.
@@ -51,7 +51,7 @@ $$l + r = l\, (\lambda h\, t. \cons\, h\, (t + r))\, r.$$
 For simplicity, we will define recursive functions from here on mostly by equational properties,
 from which we could easily derive proper definitions using the $Y$ combinator.
 
-## Values {#sec:value-ops}
+## Values {#sec:values}
 
 While `jq` operates uniquely on JSON values,
 we define jq semantics for a general value type $\valt$.
@@ -71,7 +71,7 @@ The idea behind it is that if the path is present,
 it represents the location of the value in input data.
 
 We now specify conditions for $\valt$.
-Concrete definitions for JSON values are given in @sec:json.
+@sec:json gives concrete definitions for JSON values.
 
 For the value type $\valt$, there must be a type of numbers and a type of strings, such that
 for any number $n$, $n$ is a value, and
@@ -100,12 +100,14 @@ We assume the existence of several functions:
 - $\objf_0: \valt$ yields an empty object.
 - $\objf_1: \valt \to \valt \to \resultt\, \valt$ constructs a singleton object from a key and value.
   (It returns a value result instead of a value because it
-  may fail in case that the provided value is not a valid key.)
+  may fail in case that the provided value is not a valid key,
+  i.e. a string in JSON.)
 - $\bool: \valt \to \boolt$ takes a value and returns a boolean.
 
-We write $l \coloneqq \quad r_1 \gror \dots \gror r_n$ to say that
-$l$ is of shape $r_i$ for some $i \leq n$.
-A _position_ $p$ is defined by the grammar $p \coloneqq \quad \emptyset \gror v \gror v: \gror :v \gror v:v$.
+A _position_ $p$ is defined by the grammar $p \coloneqq \quad \emptyset \gror v \gror v: \gror :v \gror v:v$.^[
+  We write $l \coloneqq \quad r_1 \gror \dots \gror r_n$ to say that
+  $l$ is of shape $r_i$ for some $i \leq n$.
+]
 The values contained in a position are called _indices_.
 We assume two operators:
 
@@ -129,7 +131,7 @@ We write $[]$ instead of $[\emptyset]$ and
 define error-suppressing variants of these operators:
 If $v[p]$ yields an error, then
 $v[p]?$ yields $\stream{}$ and
-$v[p]? \update f$ yields $\ok\, v$.
+$v[p]? \update f$ yields "$\ok\, v$".
 Otherwise, $v[p]? = v[p]$ and $(v[p]? \update f) = (v[p] \update f)$.
 
 ## Composition
@@ -159,14 +161,14 @@ the value is implicitly converted to match the expected type.
 A value can be converted to and from a value-path with the following functions:
 \begin{align*}
 \tovp   &{}: \valt \to \valpatht \coloneqq \lambda v. \pair\, v\, \none \\
-\fromvp &{}: \valpatht \to \valt \coloneqq \snd
+\fromvp &{}: \valpatht \to \valt \coloneqq \fst
 \end{align*}
 This conversion can also take place inside results and lists. For example:
 
 - If we have a value-path $v_p: \valpatht$ and
   apply it to a function that expects a $\valt$, then
   $v_p$ is implicitly substituted by
-  "$\fromvp\, \v_p$".
+  "$\fromvp\, v_p$".
 - If we have a result $r: \resultt\, \valt$ and
   apply it to a function that expects a $\resultt\, \valpatht$, then
   $r$ is implicitly substituted by
