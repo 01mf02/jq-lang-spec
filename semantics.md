@@ -570,8 +570,8 @@ We discuss the remaining cases for $\varphi$:
 - $f \jqas \$x | g$:
   Folds over all outputs of $f$, using the input value $v$ as initial accumulator and
   updating the accumulator by $g \update \sigma$, where
-  $\$x$ is bound to the current output of $f$.
-  The definition of $\reducef$ is given in @sec:folding.
+  $\$x$ is bound in $g$ to the current output of $f$.
+  The definition of "$\reducef$" is given in @sec:folding.
   As explained in @sec:update-props,
   we must bind $\$x$ only in $g$, not in $\sigma$.
   That is why we use
