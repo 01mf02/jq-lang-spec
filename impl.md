@@ -220,7 +220,7 @@ Consider the results for array input `[range(1000000)]`:
 We can see that native update performance differs enormously between
 `jq` and jaq:
 When subtracting the time for input construction,
-`jq` takes about fifty times (!) as long for the update as jaq.^[
+`jq` takes about 47 times (!) as long for the update as jaq.^[
 $(2041 - 106) \div (114 - 73) = 47.20$
 ]
 We can also see that in `jq` and gojq,

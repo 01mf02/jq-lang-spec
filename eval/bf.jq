@@ -8,7 +8,6 @@
 #     jaq -sRrf examples/bf.jq examples/fib.bf
 #
 # Original version taken from <https://github.com/itchyny/brainfuck>
-# Adapted for jaq by Michael Färber
 
 def skip_loop: last(recurse(
   .input[.cursor:.cursor+1] as $c |
